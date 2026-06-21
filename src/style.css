@@ -1,0 +1,336 @@
+/* ---- Reset & base ---- */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* Type system (Adobe Fonts, kit xan5bdy linked in index.html — see CLAUDE.md):
+   headline/wordmark "ogg" · body/UI "acumin-pro" · mono/HUD "source-code-pro". */
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;           /* navigation is snap-based now; no page scroll */
+  background: #06141c;        /* dark cinematic teal-navy */
+  font-family: "acumin-pro", "Inter", system-ui, -apple-system, sans-serif;
+  color: #cfe8ff;
+}
+
+/* The 3D canvas fills the viewport */
+#scene {
+  position: fixed;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+/* ---- Big centered title overlay (fades out as you start flying) ---- */
+#overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  text-align: center;
+  text-shadow: 0 0 34px rgba(79, 210, 255, 0.35);
+  transition: opacity 0.4s ease;
+}
+#overlay h1 {
+  font-family: "ogg", Georgia, serif;
+  font-size: clamp(3rem, 11vw, 8.5rem);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: #eaf4ff;
+  opacity: 1;
+}
+#overlay .sub {
+  font-family: "source-code-pro", ui-monospace, monospace;
+  margin-top: 0.6rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #8fb0cc;
+}
+#overlay .hint {
+  font-family: "source-code-pro", ui-monospace, monospace;
+  position: absolute;
+  bottom: 2.2rem;
+  left: 0; right: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: #5b768f;
+}
+
+/* ---- Heads-up display, bottom-left ---- */
+#hud {
+  font-family: "source-code-pro", ui-monospace, monospace;
+  position: fixed;
+  left: 1.5rem;
+  bottom: 1.25rem;
+  z-index: 2;
+  display: flex;
+  gap: 0.9rem;
+  align-items: baseline;
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #6f8db0;
+  pointer-events: none;
+}
+#hud #hud-beat { color: #cfe8ff; }
+#hud #hud-progress { color: #4fd2ff; }
+
+/* ---- Free-roam button (shown only at the final beat) ---- */
+#freeroam {
+  position: fixed;
+  left: 50%;
+  bottom: 2rem;
+  transform: translateX(-50%);
+  z-index: 3;
+  padding: 0.7rem 1.4rem;
+  font: inherit;
+  font-size: 0.8rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #eaf4ff;
+  background: rgba(79, 210, 255, 0.08);
+  border: 1px solid rgba(79, 210, 255, 0.5);
+  border-radius: 999px;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background 0.25s ease, border-color 0.25s ease;
+}
+#freeroam:hover {
+  background: rgba(79, 210, 255, 0.18);
+  border-color: rgba(79, 210, 255, 0.9);
+}
+#freeroam[hidden] { display: none; }
+
+/* ---- Live edit panel (press E) ---- */
+#editor {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 5;
+  width: 260px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 0.9rem 1rem;
+  background: rgba(8, 14, 22, 0.82);
+  border: 1px solid rgba(79, 210, 255, 0.35);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+  color: #cfe8ff;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  pointer-events: auto;
+}
+#editor[hidden] { display: none; }
+#editor .row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
+}
+#editor .row.title {
+  justify-content: space-between;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #4fd2ff;
+  margin-bottom: 0.8rem;
+}
+#editor .hint { color: #5b768f; font-weight: 400; letter-spacing: 0.06em; }
+#editor label { flex: 0 0 56px; color: #8fb0cc; text-transform: uppercase; }
+#editor input[type="range"] { flex: 1; accent-color: #4fd2ff; }
+#editor .val { flex: 0 0 38px; text-align: right; color: #eaf4ff; font-variant-numeric: tabular-nums; }
+#editor .beatnav { justify-content: space-between; margin: 0.6rem 0; }
+#editor .beatnav span { color: #eaf4ff; }
+#editor button {
+  font: inherit;
+  color: #eaf4ff;
+  background: rgba(79, 210, 255, 0.1);
+  border: 1px solid rgba(79, 210, 255, 0.45);
+  border-radius: 8px;
+  padding: 0.35rem 0.7rem;
+  cursor: pointer;
+}
+#editor button:hover { background: rgba(79, 210, 255, 0.22); }
+#editor #ed-copy { width: 100%; margin-top: 0.5rem; }
+#editor .status { margin-top: 0.5rem; color: #6ee7a8; min-height: 1em; }
+
+/* ---- Director Mode extra UI ---- */
+#editor { width: 290px; }
+#editor input[type="number"], #editor input[type="text"] {
+  flex: 1; min-width: 0;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(79,210,255,0.3);
+  border-radius: 6px;
+  color: #eaf4ff;
+  font: inherit;
+  padding: 0.2rem 0.4rem;
+}
+#editor .sec-title {
+  margin: 0.7rem 0 0.45rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #4fd2ff;
+  border-top: 1px solid rgba(79,210,255,0.18);
+  padding-top: 0.55rem;
+}
+#editor .btns { gap: 0.4rem; flex-wrap: wrap; }
+#editor .btns button { flex: 1; padding: 0.35rem 0.4rem; font-size: 0.68rem; white-space: nowrap; }
+#editor .chk { display: flex; align-items: center; gap: 0.4rem; margin: 0.3rem 0 0.55rem; color: #8fb0cc; }
+#editor .chk input { accent-color: #4fd2ff; }
+#editor .navhint { margin-top: 0.5rem; font-size: 0.6rem; color: #5b768f; letter-spacing: 0.05em; }
+
+/* selected-section rows: label + range slider + small number box, synced */
+#editor .row.slider { gap: 0.45rem; }
+#editor .row.slider input[type="range"] { flex: 1; min-width: 0; accent-color: #4fd2ff; }
+#editor .row.slider .numbox { flex: 0 0 52px; }
+
+/* multi-line content rows (label stacked above the field) */
+#editor .row.col { flex-direction: column; align-items: stretch; gap: 0.25rem; }
+#editor .row.col label { flex: none; }
+#editor textarea {
+  width: 100%; background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(79,210,255,0.3); border-radius: 6px;
+  color: #eaf4ff; font: inherit; padding: 0.25rem 0.4rem; resize: vertical;
+}
+#editor input::placeholder, #editor textarea::placeholder { color: #5b768f; }
+#ed-panelfields { display: flex; flex-direction: column; gap: 0.55rem; margin-bottom: 0.4rem; }
+
+/* drag-to-reorder feedback in the section list */
+.beat-row.dragging { opacity: 0.45; }
+.beat-row.dragover { outline: 2px dashed rgba(79,210,255,0.85); outline-offset: 1px; }
+.beat-row .bidx { cursor: grab; }
+
+/* "visit live" button — play mode, when the current section has a link */
+#visitlive {
+  position: fixed; right: 1.5rem; bottom: 2rem; z-index: 3;
+  padding: 0.6rem 1.2rem; font: inherit; font-size: 0.78rem;
+  letter-spacing: 0.16em; text-transform: uppercase; text-decoration: none;
+  color: #eaf4ff; background: rgba(79,210,255,0.12);
+  border: 1px solid rgba(79,210,255,0.6); border-radius: 999px;
+  backdrop-filter: blur(6px); transition: background 0.25s ease, border-color 0.25s ease;
+}
+#visitlive:hover { background: rgba(79,210,255,0.24); border-color: rgba(79,210,255,0.95); }
+#visitlive[hidden] { display: none; }
+
+/* ---- Camera timeline (keyframes = sections) ---- */
+#timeline {
+  position: fixed; left: 1.5rem; right: 320px; bottom: 1rem; z-index: 5;
+  padding: 0.6rem 0.9rem 1.1rem;
+  background: rgba(8, 14, 22, 0.82);
+  border: 1px solid rgba(79, 210, 255, 0.35);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+  color: #cfe8ff; font-size: 0.7rem;
+}
+#timeline[hidden] { display: none; }
+#timeline .tl-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  letter-spacing: 0.1em; color: #6f93b8; margin-bottom: 0.55rem;
+}
+#timeline #tl-total { color: #4fd2ff; font-variant-numeric: tabular-nums; }
+.tl-track {
+  position: relative; height: 36px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px; cursor: crosshair;
+}
+.tl-track::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 50%;
+  height: 2px; background: rgba(79, 210, 255, 0.25); transform: translateY(-50%);
+}
+.tl-node {
+  position: absolute; top: 0; height: 100%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  transform: translateX(-50%); cursor: grab; touch-action: none;
+}
+.tl-node .tl-dot {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: #4fd2ff; box-shadow: 0 0 6px rgba(79, 210, 255, 0.6);
+}
+.tl-node.selected .tl-dot { background: #fff; width: 16px; height: 16px; }
+.tl-node .tl-lbl { font-size: 0.6rem; color: #8fb0cc; margin-top: 3px; font-variant-numeric: tabular-nums; }
+.tl-playhead {
+  position: absolute; top: -3px; bottom: -3px; width: 2px;
+  background: #ff3df0; box-shadow: 0 0 6px rgba(255, 61, 240, 0.7);
+  transform: translateX(-50%); pointer-events: none;
+}
+
+/* ---- Magnetic custom cursor ---- */
+body.has-custom-cursor,
+body.has-custom-cursor a,
+body.has-custom-cursor button,
+body.has-custom-cursor input,
+body.has-custom-cursor textarea,
+body.has-custom-cursor [data-magnetic] { cursor: none; }
+.cursor-dot, .cursor-ring {
+  position: fixed; top: 0; left: 0; z-index: 9999; pointer-events: none;
+  border-radius: 50%; will-change: transform;
+}
+.cursor-dot { width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; background: #4fd2ff; box-shadow: 0 0 8px rgba(79, 210, 255, 0.8); }
+.cursor-ring {
+  width: 38px; height: 38px; margin: -19px 0 0 -19px;
+  border: 1px solid rgba(79, 210, 255, 0.55);
+  transition: width .22s ease, height .22s ease, margin .22s ease, background .22s ease, border-color .22s ease;
+}
+.cursor-ring.cursor-grow { width: 60px; height: 60px; margin: -30px 0 0 -30px; background: rgba(79, 210, 255, 0.08); border-color: rgba(79, 210, 255, 0.85); }
+.cursor-ring.cursor-press { width: 30px; height: 30px; margin: -15px 0 0 -15px; }
+[data-magnetic] { transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* ---- Waypoint rail: the visible journey, a dot per section ---- */
+#waypoints {
+  position: fixed; left: 1.7rem; top: 50%; transform: translateY(-50%);
+  z-index: 4; height: 46vh; min-height: 240px;
+  display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start;
+}
+#waypoints[hidden] { display: none; }
+#waypoints .wp-track, #waypoints .wp-fill { position: absolute; left: 5px; top: 0; width: 1px; }
+#waypoints .wp-track { bottom: 0; background: rgba(143, 176, 204, 0.22); }
+#waypoints .wp-fill { height: 100%; transform-origin: top; transform: scaleY(0); background: linear-gradient(#4fd2ff, rgba(79, 210, 255, 0.12)); box-shadow: 0 0 8px rgba(79, 210, 255, 0.5); }
+.wp-dot {
+  position: relative; width: 11px; height: 11px; margin: 0; padding: 0; flex: 0 0 auto;
+  border-radius: 50%; border: 1px solid rgba(143, 176, 204, 0.5);
+  background: rgba(6, 20, 28, 0.85); cursor: pointer; transition: all .25s ease;
+}
+.wp-dot .wp-label {
+  font-family: "source-code-pro", ui-monospace, monospace;
+  position: absolute; left: 22px; top: 50%; transform: translateY(-50%);
+  white-space: nowrap; font-size: 0.62rem; letter-spacing: 0.18em; text-transform: uppercase;
+  color: #8fb0cc; opacity: 0; transition: opacity .25s ease; pointer-events: none;
+}
+.wp-dot:hover .wp-label, .wp-dot.active .wp-label { opacity: 1; }
+.wp-dot.done { border-color: rgba(79, 210, 255, 0.55); background: rgba(79, 210, 255, 0.35); }
+.wp-dot.active { width: 15px; height: 15px; border-color: #4fd2ff; background: #4fd2ff; box-shadow: 0 0 14px rgba(79, 210, 255, 0.95); }
+
+/* beat list rows */
+#ed-beatlist { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; }
+.beat-row {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 5px; border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  cursor: pointer;
+}
+.beat-row.selected { background: rgba(79,210,255,0.22); outline: 1px solid rgba(79,210,255,0.6); }
+.beat-row .thumb {
+  width: 100%; aspect-ratio: 240 / 150; display: block;
+  border-radius: 5px; background: #04060a;
+  border: 1px solid rgba(79,210,255,0.18);
+}
+.beat-row .beat-meta { display: flex; align-items: center; gap: 4px; }
+.beat-row .bname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.beat-row .bidx { color: #4fd2ff; font-variant-numeric: tabular-nums; }
+.beat-row button {
+  padding: 0 5px; line-height: 1.4; font-size: 0.7rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(79,210,255,0.25);
+  border-radius: 4px; color: #cfe8ff; cursor: pointer;
+}
+.beat-row button:hover { background: rgba(79,210,255,0.2); }
+
+#editor .btns button.active { background: rgba(79,210,255,0.38); border-color: rgba(79,210,255,0.95); color:#fff; }

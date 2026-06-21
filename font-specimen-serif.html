@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Type Specimen — Editorial Serif (distinct)</title>
+    <link rel="stylesheet" href="https://use.typekit.net/xan5bdy.css" />
+    <style>
+      :root { --bg:#05070b; --ink:#f3f6fb; --dim:#7f9bb8; --cyan:#4fd2ff; }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      body {
+        background: radial-gradient(1200px 600px at 70% -10%, rgba(79,210,255,0.10), transparent 60%), var(--bg);
+        color: var(--ink); font-family:"acumin-pro",system-ui,sans-serif;
+        padding: 48px clamp(20px,5vw,80px) 90px;
+      }
+      .page-title { font-family:"source-code-pro",monospace; color:var(--cyan);
+        letter-spacing:.3em; text-transform:uppercase; font-size:12px; margin-bottom:6px; }
+      .page-sub { color:var(--dim); font-size:14px; margin-bottom:44px; max-width:70ch; }
+      .card { border:1px solid rgba(79,210,255,0.18); border-radius:16px;
+        padding:40px clamp(20px,4vw,52px); margin-bottom:28px;
+        background: linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0)); }
+      .tag { font-family:"source-code-pro",monospace; color:var(--cyan);
+        font-size:12px; letter-spacing:.2em; text-transform:uppercase; margin-bottom:6px; }
+      .diff { color:var(--dim); font-size:13px; margin-bottom:22px; }
+      .diff b { color:#cfe0f0; font-weight:600; }
+      .wordmark { line-height:0.95; color:var(--ink); margin-bottom:10px; font-size: clamp(54px, 11vw, 150px); }
+      /* big glyph row to expose each font's signature letterforms */
+      .glyphs { color:#9fb6cd; line-height:1; margin-top:14px; font-size: clamp(28px,5vw,64px); }
+      .tagline { color:var(--dim); font-size: clamp(15px,1.5vw,19px); margin-top:18px; font-family:"acumin-pro",sans-serif; }
+
+      .playfair .wordmark, .playfair .glyphs { font-family:"playfair-display",serif; font-weight:900; }
+      .ogg .wordmark, .ogg .glyphs           { font-family:"ogg",serif; font-weight:700; }
+      .freight .wordmark, .freight .glyphs   { font-family:"freight-big-pro",serif; font-weight:700; }
+    </style>
+  </head>
+  <body>
+    <div class="page-title">Type Specimen · Editorial Serif (made distinct)</div>
+    <div class="page-sub">Three serifs with clearly different personalities, at display weight. Look at the &amp; ampersand, the R leg, and the a/g shapes — that's where each font's character lives.</div>
+
+    <section class="card playfair">
+      <div class="tag">A — Playfair Display (Black)</div>
+      <div class="diff">The one that stood out to you. <b>Didone:</b> extreme thick-to-thin stroke contrast, flat hairline serifs, vertical stress. Dramatic, fashion-magazine. High impact.</div>
+      <div class="wordmark">Yarin&nbsp;Levin</div>
+      <div class="glyphs">R a g &amp; Q 3</div>
+      <div class="tagline">I build landing pages &amp; SaaS interfaces.</div>
+    </section>
+
+    <section class="card ogg">
+      <div class="tag">B — Ogg (Bold)</div>
+      <div class="diff">Modern calligraphic. <b>Tell-tale:</b> sharp pen-drawn apexes, teardrop/ball terminals, a hand-cut feel. The "art gallery / luxury fashion" serif — more crafted and less mechanical than Playfair.</div>
+      <div class="wordmark">Yarin&nbsp;Levin</div>
+      <div class="glyphs">R a g &amp; Q 3</div>
+      <div class="tagline">I build landing pages &amp; SaaS interfaces.</div>
+    </section>
+
+    <section class="card freight">
+      <div class="tag">C — Freight Big (Bold)</div>
+      <div class="diff">Editorial workhorse. <b>Tell-tale:</b> bracketed (curved) serifs, gentler contrast, warmer and rounder. Sophisticated but friendly and easy to read — less severe than the other two.</div>
+      <div class="wordmark">Yarin&nbsp;Levin</div>
+      <div class="glyphs">R a g &amp; Q 3</div>
+      <div class="tagline">I build landing pages &amp; SaaS interfaces.</div>
+    </section>
+  </body>
+</html>

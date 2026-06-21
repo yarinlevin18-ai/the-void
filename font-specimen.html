@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Type Specimen — The Void</title>
+    <!-- Adobe Fonts kit (Futura PT, Mono45 Headline, Aktiv Grotesk, Omnes, Acumin Pro, Source Code Pro) -->
+    <link rel="stylesheet" href="https://use.typekit.net/siu2swj.css" />
+    <style>
+      :root { --bg:#05070b; --ink:#eaf4ff; --dim:#7f9bb8; --cyan:#4fd2ff; }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      body {
+        background:
+          radial-gradient(1200px 600px at 70% -10%, rgba(79,210,255,0.10), transparent 60%),
+          var(--bg);
+        color: var(--ink);
+        font-family: "acumin-pro", system-ui, sans-serif;
+        padding: 48px clamp(20px,5vw,80px) 80px;
+      }
+      .page-title { font-family:"source-code-pro",monospace; color:var(--cyan);
+        letter-spacing:.3em; text-transform:uppercase; font-size:12px; margin-bottom:6px; }
+      .page-sub { color:var(--dim); font-size:14px; margin-bottom:40px; }
+      .card {
+        border:1px solid rgba(79,210,255,0.18);
+        border-radius:16px; padding:34px clamp(20px,4vw,44px); margin-bottom:26px;
+        background: linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0));
+      }
+      .tag { font-family:"source-code-pro",monospace; color:var(--cyan);
+        font-size:11px; letter-spacing:.22em; text-transform:uppercase; margin-bottom:18px; }
+      .tag b { color:var(--dim); font-weight:400; }
+      .wordmark { line-height:1; color:var(--ink); margin-bottom:14px;
+        font-size: clamp(40px, 8vw, 96px); }
+      .tagline { color:var(--dim); font-size: clamp(15px,1.6vw,20px); margin-bottom:22px; }
+      .body { color:#c3d4e6; max-width:60ch; font-size:15px; line-height:1.6; margin-bottom:16px; }
+      .hud { font-family:"source-code-pro",monospace; color:var(--cyan);
+        font-size:12px; letter-spacing:.12em; opacity:.9; }
+
+      /* --- the four candidate systems --- */
+      .futura .wordmark   { font-family:"futura-pt",sans-serif; font-weight:700; letter-spacing:.02em; }
+      .mono45 .wordmark   { font-family:"mono45-headline",monospace; font-weight:700; letter-spacing:-.01em; }
+      .aktiv .wordmark    { font-family:"aktiv-grotesk",sans-serif; font-weight:800; letter-spacing:-.01em; }
+      .omnes .wordmark    { font-family:"omnes-pro",sans-serif; font-weight:600; letter-spacing:.01em; }
+
+      .futura .tagline, .mono45 .tagline, .aktiv .tagline, .omnes .tagline { font-weight:400; }
+    </style>
+  </head>
+  <body>
+    <div class="page-title">Type Specimen</div>
+    <div class="page-sub">Four Adobe Fonts systems on the dark void. Headline · body (Acumin Pro) · mono (Source Code Pro).</div>
+
+    <!-- 1. Futura PT -->
+    <section class="card futura">
+      <div class="tag">Option 1 — Futura&nbsp;PT <b>/ headline</b> &nbsp;·&nbsp; Acumin Pro <b>/ body</b> &nbsp;·&nbsp; Source Code Pro <b>/ mono</b></div>
+      <div class="wordmark">YARIN&nbsp;LEVIN</div>
+      <div class="tagline">I build landing pages &amp; SaaS interfaces.</div>
+      <p class="body">Geometric, iconic, timeless. Futura reads premium and confident without trying hard — it lets the 3D motion carry the wow while the type stays authoritative. The safest high-end choice.</p>
+      <div class="hud">PROJECT 03 / 06 &nbsp;·&nbsp; SHADIEZ &nbsp;·&nbsp; VISIT&nbsp;LIVE&nbsp;↗</div>
+    </section>
+
+    <!-- 2. Mono45 Headline -->
+    <section class="card mono45">
+      <div class="tag">Option 2 — Mono45&nbsp;Headline <b>/ headline (mono)</b> &nbsp;·&nbsp; Acumin Pro <b>/ body</b></div>
+      <div class="wordmark">YARIN&nbsp;LEVIN</div>
+      <div class="tagline">I build landing pages &amp; SaaS interfaces.</div>
+      <p class="body">A monospace headline leans hard into the data / code / SaaS identity — it literally looks like the work. Most distinctive and on-theme for a network/void world; bolder, less conventional.</p>
+      <div class="hud">PROJECT 03 / 06 &nbsp;·&nbsp; SHADIEZ &nbsp;·&nbsp; VISIT&nbsp;LIVE&nbsp;↗</div>
+    </section>
+
+    <!-- 3. Aktiv Grotesk -->
+    <section class="card aktiv">
+      <div class="tag">Option 3 — Aktiv&nbsp;Grotesk <b>/ headline</b> &nbsp;·&nbsp; Acumin Pro <b>/ body</b> &nbsp;·&nbsp; Source Code Pro <b>/ mono</b></div>
+      <div class="wordmark">YARIN&nbsp;LEVIN</div>
+      <div class="tagline">I build landing pages &amp; SaaS interfaces.</div>
+      <p class="body">Swiss, neutral, sharp — Helvetica-grade confidence with cleaner detailing. Understated and modern; gets out of the way so the experience does the talking.</p>
+      <div class="hud">PROJECT 03 / 06 &nbsp;·&nbsp; SHADIEZ &nbsp;·&nbsp; VISIT&nbsp;LIVE&nbsp;↗</div>
+    </section>
+
+    <!-- 4. Omnes -->
+    <section class="card omnes">
+      <div class="tag">Option 4 — Omnes <b>/ headline</b> &nbsp;·&nbsp; Acumin Pro <b>/ body</b> &nbsp;·&nbsp; Source Code Pro <b>/ mono</b></div>
+      <div class="wordmark">YARIN&nbsp;LEVIN</div>
+      <div class="tagline">I build landing pages &amp; SaaS interfaces.</div>
+      <p class="body">Geometric but warmer and rounder — friendly, modern, approachable. Softens the high-tech void with a human, welcoming tone.</p>
+      <div class="hud">PROJECT 03 / 06 &nbsp;·&nbsp; SHADIEZ &nbsp;·&nbsp; VISIT&nbsp;LIVE&nbsp;↗</div>
+    </section>
+  </body>
+</html>

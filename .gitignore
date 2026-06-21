@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.DS_Store
+*.local
+.vite/
+
+# Cloned reference libraries — study-only, not part of the site (see CLAUDE.md).
+# Bulky and carry nested .git folders, so keep them out of this repo.
+references/
+
+# Personal notes — not part of the project, keep out of the repo.
+Israel-companies-to-apply.md
+Israel-open-roles.md

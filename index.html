@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Yarin — The Void</title>
+    <link rel="stylesheet" href="https://use.typekit.net/xan5bdy.css" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <canvas id="scene"></canvas>
+
+    <div id="overlay">
+      <h1>Yarin&nbsp;Levin</h1>
+      <p class="sub">I build landing pages &amp; SaaS interfaces</p>
+      <p class="hint">scroll to fly</p>
+    </div>
+
+    <div id="hud">
+      <span id="hud-beat">Hero Section</span>
+      <span id="hud-progress">1 / 6</span>
+    </div>
+
+    <button id="freeroam" hidden data-magnetic>Enter free roam</button>
+    <a id="visitlive" hidden target="_blank" rel="noopener" data-magnetic>Visit live ↗</a>
+
+    <!-- Journey waypoint rail (a dot per section, lights up as you arrive) -->
+    <nav id="waypoints" hidden aria-label="Sections"></nav>
+
+    <!-- DIRECTOR MODE editor (toggle with E) -->
+    <div id="editor" hidden>
+      <div class="row title">DIRECTOR MODE <span class="hint">E to exit</span></div>
+
+      <div class="row"><label>Speed</label><input id="ed-speed" type="range" min="0.25" max="3" step="0.05" /><span id="ed-speed-val" class="val"></span></div>
+      <div class="row"><label>Smooth</label><input id="ed-smooth" type="range" min="0" max="1" step="0.05" /><span id="ed-smooth-val" class="val"></span></div>
+      <div class="row"><label>Look sens</label><input id="ed-sens" type="range" min="0.1" max="1.2" step="0.05" /><span id="ed-sens-val" class="val"></span></div>
+
+      <div class="sec-title">Sections / path</div>
+      <div id="ed-beatlist"></div>
+      <div class="row btns"><button id="ed-add">+ Add section from view</button></div>
+
+      <div class="sec-title">Selected section</div>
+      <div class="row"><label>Name</label><input id="ed-name" type="text" /></div>
+      <div id="ed-fields"></div>
+      <label class="chk"><input id="ed-vertical" type="checkbox" /> look straight up (final-style)</label>
+      <div class="row btns">
+        <button id="ed-setview">Set cam from view</button>
+        <button id="ed-jump">Jump to</button>
+      </div>
+
+      <div class="sec-title">Content panel</div>
+      <label class="chk"><input id="ed-haspanel" type="checkbox" /> show a content panel</label>
+      <div id="ed-panelfields">
+        <label class="chk"><input id="ed-billboard" type="checkbox" /> face the camera</label>
+      </div>
+      <div class="row col"><label>Desc</label><textarea id="ed-desc" rows="2" placeholder="short description…"></textarea></div>
+      <div class="row"><label>Image</label><input id="ed-img" type="text" placeholder="/img/shot.png or https://…" /></div>
+      <div class="row"><label>Link</label><input id="ed-link" type="text" placeholder="https://…  (visit live)" /></div>
+      <div class="navhint">The panel title is the section <b>Name</b> above.</div>
+      <div class="row btns">
+        <button id="ed-move">↔ Move (G)</button>
+        <button id="ed-rotate">⟳ Rotate (T)</button>
+      </div>
+
+      <div class="sec-title">History &amp; save</div>
+      <div class="row btns">
+        <button id="ed-undo">↶ Undo</button>
+        <button id="ed-redo">Redo ↷</button>
+      </div>
+      <div class="row btns">
+        <button id="ed-save">Save</button>
+        <button id="ed-reset">Reset</button>
+        <button id="ed-copy">Copy config</button>
+      </div>
+      <div class="row btns"><button id="ed-preview">▶ Preview from start</button></div>
+      <div class="navhint">WASD&nbsp;fly · R/F&nbsp;up·down · Shift&nbsp;faster · drag&nbsp;=&nbsp;look · scroll&nbsp;=&nbsp;zoom</div>
+      <div id="ed-status" class="status"></div>
+    </div>
+
+    <!-- Camera timeline (keyframes = sections), shown in Director Mode -->
+    <div id="timeline" hidden>
+      <div class="tl-head"><span>TIMELINE · drag a keyframe to retime · drag the bar to scrub</span><span id="tl-total"></span></div>
+      <div class="tl-track" id="tl-track">
+        <div class="tl-playhead" id="tl-playhead"></div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

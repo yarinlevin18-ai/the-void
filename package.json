@@ -1,0 +1,20 @@
+{
+  "name": "void-portfolio",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "An interactive 3D 'void you fly through' portfolio. See PLAN.md.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "meshline": "^3.3.1",
+    "three": "^0.169.0",
+    "three.quarks": "^0.16.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}
