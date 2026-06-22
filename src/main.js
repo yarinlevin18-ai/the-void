@@ -12,6 +12,10 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { initMagneticCursor } from './cursor.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
+import { AfterimagePass } from 'three/addons/postprocessing/AfterimagePass.js';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const UP_NORMAL = [0, 1, 0];
@@ -22,6 +26,8 @@ const canvas = document.querySelector('#scene');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+let composer = null, bokeh = null, afterimage = null;   // DOF + motion blur (set up below)
+const _focusV = new THREE.Vector3();
 
 // ---- Offscreen renderer that draws each shot's thumbnail in the editor list -
 const THUMB_W = 240, THUMB_H = 150;
@@ -1176,7 +1182,19 @@ window.addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  if (composer) composer.setSize(window.innerWidth, window.innerHeight);
 });
+
+// ---- Depth-of-field + gentle motion blur (kept subtle to avoid sickness) ----
+try {
+  composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  bokeh = new BokehPass(scene, camera, { focus: 200, aperture: 0.0005, maxblur: 0.006 });
+  composer.addPass(bokeh);
+  afterimage = new AfterimagePass(0.72);   // low damp = short trail = lines smear only while moving
+  composer.addPass(afterimage);
+  composer.setSize(window.innerWidth, window.innerHeight);
+} catch (e) { composer = null; console.warn('Postprocessing disabled:', e); }
 
 // ---- Animation loop ---------------------------------------------------------
 const clock = new THREE.Clock();
@@ -1259,7 +1277,12 @@ function animate() {
   if (!editMode && !freeRoam && cur && cur.link) { visitBtn.hidden = false; visitBtn.href = cur.link; }
   else visitBtn.hidden = true;
 
-  renderer.render(scene, camera);
+  if (bokeh && bokeh.uniforms && bokeh.uniforms.focus) {   // keep the focused section sharp
+    if (editMode || freeRoam) _focusV.copy(controls.target);
+    else _focusV.set(beats[index].look[0], beats[index].look[1], beats[index].look[2]);
+    bokeh.uniforms.focus.value = Math.max(1, camera.position.distanceTo(_focusV));
+  }
+  if (composer) composer.render(); else renderer.render(scene, camera);
   requestAnimationFrame(animate);
 }
 animate();
