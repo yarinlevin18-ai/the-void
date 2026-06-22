@@ -15,7 +15,6 @@ import { initMagneticCursor } from './cursor.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
-import { AfterimagePass } from 'three/addons/postprocessing/AfterimagePass.js';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const UP_NORMAL = [0, 1, 0];
@@ -26,7 +25,7 @@ const canvas = document.querySelector('#scene');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-let composer = null, bokeh = null, afterimage = null;   // DOF + motion blur (set up below)
+let composer = null, bokeh = null;   // DOF (set up below)
 const _focusV = new THREE.Vector3();
 
 // ---- Offscreen renderer that draws each shot's thumbnail in the editor list -
@@ -1191,8 +1190,6 @@ try {
   composer.addPass(new RenderPass(scene, camera));
   bokeh = new BokehPass(scene, camera, { focus: 200, aperture: 0.0005, maxblur: 0.006 });
   composer.addPass(bokeh);
-  afterimage = new AfterimagePass(0.72);   // low damp = short trail = lines smear only while moving
-  composer.addPass(afterimage);
   composer.setSize(window.innerWidth, window.innerHeight);
 } catch (e) { composer = null; console.warn('Postprocessing disabled:', e); }
 
@@ -1200,14 +1197,12 @@ try {
 (() => {
   const p = document.querySelector('#fxpanel');
   if (!p) return;
-  const mb = document.querySelector('#fx-maxblur'), ap = document.querySelector('#fx-aperture'), dp = document.querySelector('#fx-damp');
-  const mbv = document.querySelector('#fx-maxblur-v'), apv = document.querySelector('#fx-aperture-v'), dpv = document.querySelector('#fx-damp-v');
+  const mb = document.querySelector('#fx-maxblur'), ap = document.querySelector('#fx-aperture');
+  const mbv = document.querySelector('#fx-maxblur-v'), apv = document.querySelector('#fx-aperture-v');
   if (bokeh) { mb.value = bokeh.uniforms.maxblur.value; ap.value = bokeh.uniforms.aperture.value; }
-  if (afterimage) dp.value = afterimage.uniforms.damp.value;
-  const sync = () => { mbv.textContent = (+mb.value).toFixed(4); apv.textContent = (+ap.value).toFixed(4); dpv.textContent = (+dp.value).toFixed(2); };
+  const sync = () => { mbv.textContent = (+mb.value).toFixed(4); apv.textContent = (+ap.value).toFixed(4); };
   mb.addEventListener('input', () => { if (bokeh) bokeh.uniforms.maxblur.value = +mb.value; sync(); });
   ap.addEventListener('input', () => { if (bokeh) bokeh.uniforms.aperture.value = +ap.value; sync(); });
-  dp.addEventListener('input', () => { if (afterimage) afterimage.uniforms.damp.value = +dp.value; sync(); });
   sync();
   window.addEventListener('keydown', (e) => {
     if (e.key.toLowerCase() === 'b' && !/INPUT|TEXTAREA/.test(document.activeElement?.tagName || '')) p.hidden = !p.hidden;
