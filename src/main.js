@@ -1300,3 +1300,26 @@ function animate() {
 }
 animate();
 initMagneticCursor();
+
+// ---- Intro loader: mono % count → reveal the Ogg wordmark -------------------
+(() => {
+  const ld = document.querySelector('#loader');
+  if (!ld) return;
+  const pct = document.querySelector('#ld-pct'), fill = document.querySelector('#ld-fill');
+  const overlay = document.querySelector('#overlay');
+  const dur = 1900; let t0 = null;
+  const ease = (x) => 1 - Math.pow(1 - x, 3);
+  function step(ts) {
+    if (t0 === null) t0 = ts;
+    const p = clamp((ts - t0) / dur, 0, 1), e = ease(p);
+    if (pct) pct.textContent = Math.round(e * 100);
+    if (fill) fill.style.transform = `scaleX(${e})`;
+    if (p < 1) requestAnimationFrame(step);
+    else {
+      ld.classList.add('done');
+      if (overlay) overlay.classList.add('revealed');
+      setTimeout(() => { ld.style.display = 'none'; }, 900);
+    }
+  }
+  requestAnimationFrame(step);
+})();

@@ -8,6 +8,13 @@
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
+    <!-- Intro loader: mono % counter, then the Ogg wordmark resolves -->
+    <div id="loader">
+      <div class="ld-num"><span id="ld-pct">0</span><span class="ld-unit">%</span></div>
+      <div class="ld-bar"><div class="ld-fill" id="ld-fill"></div></div>
+      <div class="ld-label">Entering the void</div>
+    </div>
+
     <canvas id="scene"></canvas>
 
     <div id="overlay">
