@@ -17,6 +17,8 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+// Only TEXT entry should swallow global hotkeys (E/V/arrows) — not range sliders, checkboxes, etc.
+const isTextEntry = (el) => el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && !['range', 'checkbox', 'radio', 'button', 'submit'].includes(el.type));
 const UP_NORMAL = [0, 1, 0];
 const UP_VERTICAL = [0, 0, -1]; // "look straight up" orientation
 
@@ -517,7 +519,7 @@ function applyFly(dt) {
 }
 window.addEventListener('keydown', (e) => {
   if (!(editMode || freeRoam)) return;
-  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+  if (isTextEntry(e.target)) return;
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   switch (e.key.toLowerCase()) {
     case 'w': flyKeys.w = true; break;
@@ -667,7 +669,7 @@ window.addEventListener('wheel', (e) => {
   step(e.deltaY > 0 ? 1 : -1);
 }, { passive: false });
 window.addEventListener('keydown', (e) => {
-  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+  if (isTextEntry(e.target)) return;
   if (editMode) return;
   if (['ArrowDown','PageDown',' ','Spacebar'].includes(e.key)) { e.preventDefault(); step(1); }
   else if (['ArrowUp','PageUp'].includes(e.key)) { e.preventDefault(); step(-1); }
@@ -1214,7 +1216,7 @@ window.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
   if ((e.ctrlKey || e.metaKey) && k === 'y') { e.preventDefault(); redo(); return; }
-  const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+  const typing = isTextEntry(e.target);
   if (k === 'e' && !typing) { setEdit(!editMode); }
   if (k === 'v' && !typing) {                    // V = drop into / out of noclip free-fly
     if (editMode) { setEdit(false); setFreeRoam(true); }
