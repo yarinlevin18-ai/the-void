@@ -128,6 +128,25 @@ const BASE_EDGE = new THREE.Color(0x3fb6e6), BASE_NODE = new THREE.Color(0x6fd8f
 const CHAPTER_COLORS = [0x4fd2ff, 0x9b8cff, 0x36e0c0, 0xff9e7a, 0x7fb4ff, 0xff8fb0, 0xffd27f];
 const _chapTarget = new THREE.Color();
 
+// Warp streaks: forward-rushing lines that only appear while the camera is
+// flying fast between chapters — a cinematic whoosh, invisible when settled.
+const warp = (() => {
+  const M = 140, SEG = 9, DEPTH = 340;
+  const pos = new Float32Array(M * 2 * 3), data = [];
+  for (let i = 0; i < M; i++) {
+    const a = Math.random() * Math.PI * 2, r = 12 + Math.random() * 108;
+    data.push({ x: Math.cos(a) * r, y: Math.sin(a) * r, z: -Math.random() * DEPTH, spd: 110 + Math.random() * 200 });
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const mat = new THREE.LineBasicMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending });
+  const obj = new THREE.LineSegments(geo, mat);
+  obj.frustumCulled = false; obj.renderOrder = -5;
+  scene.add(obj);
+  return { SEG, DEPTH, data, pos, geo, mat, obj };
+})();
+let _prevCamPos = null;
+
 // (electric energy sprites removed — a dedicated lightning repo will go here)
 
 // ---- Default path (used until the user edits / loads saved) -----------------
@@ -1314,6 +1333,25 @@ function animate() {
     else _focusV.set(beats[index].look[0], beats[index].look[1], beats[index].look[2]);
     bokeh.uniforms.focus.value = Math.max(1, camera.position.distanceTo(_focusV));
   }
+  {                                          // warp streaks — visible only while flying fast between chapters
+    const { data, pos, geo, mat, obj, DEPTH, SEG } = warp;
+    if (!_prevCamPos) _prevCamPos = camera.position.clone();
+    const camSpeed = camera.position.distanceTo(_prevCamPos) / Math.max(dt, 0.0001);
+    _prevCamPos.copy(camera.position);
+    obj.position.copy(camera.position);
+    obj.quaternion.copy(camera.quaternion);
+    for (let i = 0; i < data.length; i++) {
+      const d = data[i];
+      d.z += (d.spd + camSpeed * 5) * dt;
+      if (d.z > 12) { d.z = -DEPTH; const a = Math.random() * Math.PI * 2, r = 12 + Math.random() * 108; d.x = Math.cos(a) * r; d.y = Math.sin(a) * r; }
+      const o = i * 6;
+      pos[o] = d.x; pos[o + 1] = d.y; pos[o + 2] = d.z;
+      pos[o + 3] = d.x; pos[o + 4] = d.y; pos[o + 5] = d.z + SEG;
+    }
+    geo.attributes.position.needsUpdate = true;
+    mat.opacity = editMode ? 0 : clamp((camSpeed - 10) / 70, 0, 0.5);
+  }
+
   if (composer && !editMode && !freeRoam) composer.render(); else renderer.render(scene, camera); // no blur while editing / free-roaming
   requestAnimationFrame(animate);
 }
