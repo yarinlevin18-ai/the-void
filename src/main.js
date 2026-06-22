@@ -1295,7 +1295,7 @@ function animate() {
     else _focusV.set(beats[index].look[0], beats[index].look[1], beats[index].look[2]);
     bokeh.uniforms.focus.value = Math.max(1, camera.position.distanceTo(_focusV));
   }
-  if (composer) composer.render(); else renderer.render(scene, camera);
+  if (composer && !editMode && !freeRoam) composer.render(); else renderer.render(scene, camera); // no blur while editing / free-roaming
   requestAnimationFrame(animate);
 }
 animate();
