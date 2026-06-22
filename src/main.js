@@ -19,6 +19,15 @@ import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 // Only TEXT entry should swallow global hotkeys (E/V/arrows) — not range sliders, checkboxes, etc.
 const isTextEntry = (el) => el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && !['range', 'checkbox', 'radio', 'button', 'submit'].includes(el.type));
+// Live-tunable effect parameters — the FX panel (press B) edits these in place,
+// and the render loop reads them every frame, so every effect is adjustable.
+const FX = {
+  dofBlur: 0.006, dofAperture: 0.0005,        // depth of field
+  panelDimFloor: 0.1, panelLightRange: 300,   // section panels: idle opacity + light-up falloff
+  colorIntensity: 1.0, colorReach: 200,       // per-chapter color world
+  warpStrength: 0.16, warpLength: 0.1,        // warp streaks
+};
+const fxEl = document.querySelector('#fxpanel');
 const UP_NORMAL = [0, 1, 0];
 const UP_VERTICAL = [0, 0, -1]; // "look straight up" orientation
 
@@ -1188,6 +1197,7 @@ function setEdit(on) {
   editor.hidden = !on;
   timelineEl.hidden = !on;
   if (wpEl) wpEl.hidden = on;
+  if (fxEl) fxEl.hidden = on;        // hide the FX panel in Director Mode (no overlap with the editor)
   pathGroup.visible = on;
   controls.enabled = on;
   clearFly();
@@ -1241,24 +1251,35 @@ window.addEventListener('resize', () => {
 try {
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  bokeh = new BokehPass(scene, camera, { focus: 200, aperture: 0.0005, maxblur: 0.006 });
+  bokeh = new BokehPass(scene, camera, { focus: 200, aperture: FX.dofAperture, maxblur: FX.dofBlur });
   composer.addPass(bokeh);
   composer.setSize(window.innerWidth, window.innerHeight);
 } catch (e) { composer = null; console.warn('Postprocessing disabled:', e); }
 
-// ---- Live blur controls (toggle with B) ------------------------------------
+// ---- FX control panel (toggle with B) — live-edits every effect -------------
 (() => {
-  const p = document.querySelector('#fxpanel');
-  if (!p) return;
-  const mb = document.querySelector('#fx-maxblur'), ap = document.querySelector('#fx-aperture');
-  const mbv = document.querySelector('#fx-maxblur-v'), apv = document.querySelector('#fx-aperture-v');
-  if (bokeh) { mb.value = bokeh.uniforms.maxblur.value; ap.value = bokeh.uniforms.aperture.value; }
-  const sync = () => { mbv.textContent = (+mb.value).toFixed(4); apv.textContent = (+ap.value).toFixed(4); };
-  mb.addEventListener('input', () => { if (bokeh) bokeh.uniforms.maxblur.value = +mb.value; sync(); });
-  ap.addEventListener('input', () => { if (bokeh) bokeh.uniforms.aperture.value = +ap.value; sync(); });
-  sync();
+  if (!fxEl) return;
+  const f4 = (v) => v.toFixed(4), f3 = (v) => v.toFixed(3), f2 = (v) => v.toFixed(2), f0 = (v) => String(Math.round(v));
+  // each row: [id, getter, setter, formatter]
+  const rows = [
+    ['dofblur', () => (bokeh ? bokeh.uniforms.maxblur.value : FX.dofBlur), (v) => { FX.dofBlur = v; if (bokeh) bokeh.uniforms.maxblur.value = v; }, f4],
+    ['dofap', () => (bokeh ? bokeh.uniforms.aperture.value : FX.dofAperture), (v) => { FX.dofAperture = v; if (bokeh) bokeh.uniforms.aperture.value = v; }, f4],
+    ['dim', () => FX.panelDimFloor, (v) => { FX.panelDimFloor = v; }, f2],
+    ['range', () => FX.panelLightRange, (v) => { FX.panelLightRange = v; }, f0],
+    ['colint', () => FX.colorIntensity, (v) => { FX.colorIntensity = v; }, f2],
+    ['colreach', () => FX.colorReach, (v) => { FX.colorReach = v; }, f0],
+    ['warpstr', () => FX.warpStrength, (v) => { FX.warpStrength = v; }, f2],
+    ['warplen', () => FX.warpLength, (v) => { FX.warpLength = v; }, f3],
+  ];
+  for (const [id, get, set, fmt] of rows) {
+    const inp = document.querySelector('#fx-' + id), out = document.querySelector('#fx-' + id + '-v');
+    if (!inp) continue;
+    inp.value = get();
+    if (out) out.textContent = fmt(parseFloat(inp.value));
+    inp.addEventListener('input', () => { const v = parseFloat(inp.value); set(v); if (out) out.textContent = fmt(v); });
+  }
   window.addEventListener('keydown', (e) => {
-    if (e.key.toLowerCase() === 'b' && !/INPUT|TEXTAREA/.test(document.activeElement?.tagName || '')) p.hidden = !p.hidden;
+    if (e.key.toLowerCase() === 'b' && !isTextEntry(e.target) && !editMode) fxEl.hidden = !fxEl.hidden;
   });
 })();
 
@@ -1327,7 +1348,7 @@ function animate() {
       const d = dx * dx + dy * dy + dz * dz;
       if (d < bd) { bd = d; bi = i; }
     }
-    const s = clamp(1 - Math.sqrt(bd) / 200, 0, 1);   // 1 at a section, 0 far between
+    const s = clamp(1 - Math.sqrt(bd) / FX.colorReach, 0, 1) * FX.colorIntensity;   // 1 at a section, 0 far between
     _chapTarget.set(CHAPTER_COLORS[bi % CHAPTER_COLORS.length]);
     dataNet.lineMat.color.copy(BASE_EDGE).lerp(_chapTarget, s * 0.8);
     dataNet.nMat.color.copy(BASE_NODE).lerp(_chapTarget, s);
@@ -1351,8 +1372,8 @@ function animate() {
     if (beats[i]?.panel?.billboard) m.quaternion.copy(camera.quaternion);
     if (editMode) { m.material.opacity = 1; m.scale.setScalar(1); }
     else {
-      const a = clamp(1 - (camera.position.distanceTo(m.position) - 90) / 300, 0, 1); // near = lit
-      m.material.opacity = 0.1 + 0.9 * a;
+      const a = clamp(1 - (camera.position.distanceTo(m.position) - 90) / FX.panelLightRange, 0, 1); // near = lit
+      m.material.opacity = FX.panelDimFloor + (1 - FX.panelDimFloor) * a;
       m.scale.setScalar(0.92 + 0.08 * a);
     }
   }
@@ -1379,7 +1400,7 @@ function animate() {
     const camSpeed = _vel.length() / Math.max(dt, 0.0001);
     _prevCamPos.copy(camera.position);
     if (_vel.lengthSq() > 1e-8) _dir.copy(_vel).normalize();
-    const len = clamp(camSpeed * 0.1, 0, 34);            // longer streaks the faster you move
+    const len = clamp(camSpeed * FX.warpLength, 0, 60);  // longer streaks the faster you move
     for (let i = 0; i < data.length; i++) {
       const p = data[i].p;
       if (camera.position.distanceTo(p) > R) p.set(      // recycle points that fall out of range around the camera
@@ -1392,7 +1413,7 @@ function animate() {
       pos[o + 3] = p.x - _dir.x * len; pos[o + 4] = p.y - _dir.y * len; pos[o + 5] = p.z - _dir.z * len;
     }
     geo.attributes.position.needsUpdate = true;
-    mat.opacity = editMode ? 0 : clamp((camSpeed - 12) / 120, 0, 0.16);   // much softer
+    mat.opacity = editMode ? 0 : clamp((camSpeed - 12) / 120, 0, FX.warpStrength);
   }
 
   if (composer && !editMode && !freeRoam) composer.render(); else renderer.render(scene, camera); // no blur while editing / free-roaming

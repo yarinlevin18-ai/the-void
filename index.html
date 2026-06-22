@@ -41,11 +41,27 @@
       <p class="cap-desc"></p>
     </div>
 
-    <!-- Blur controls (toggle with B) -->
+    <!-- FX control panel (toggle with B) — live-edits every effect -->
     <div id="fxpanel">
-      <div class="fx-row"><label>DOF blur</label><input id="fx-maxblur" type="range" min="0" max="0.02" step="0.0005" /><span id="fx-maxblur-v"></span></div>
-      <div class="fx-row"><label>DOF aperture</label><input id="fx-aperture" type="range" min="0" max="0.003" step="0.0001" /><span id="fx-aperture-v"></span></div>
-      <div class="fx-hint">B to hide</div>
+      <div class="fx-head">FX Controls <span>B</span></div>
+
+      <div class="fx-group">Depth of field</div>
+      <div class="fx-row"><label>Blur</label><input id="fx-dofblur" type="range" min="0" max="0.02" step="0.0005" /><span id="fx-dofblur-v"></span></div>
+      <div class="fx-row"><label>Aperture</label><input id="fx-dofap" type="range" min="0" max="0.003" step="0.0001" /><span id="fx-dofap-v"></span></div>
+
+      <div class="fx-group">Section panels</div>
+      <div class="fx-row"><label>Dim floor</label><input id="fx-dim" type="range" min="0" max="1" step="0.02" /><span id="fx-dim-v"></span></div>
+      <div class="fx-row"><label>Light range</label><input id="fx-range" type="range" min="80" max="800" step="10" /><span id="fx-range-v"></span></div>
+
+      <div class="fx-group">Color world</div>
+      <div class="fx-row"><label>Intensity</label><input id="fx-colint" type="range" min="0" max="1" step="0.02" /><span id="fx-colint-v"></span></div>
+      <div class="fx-row"><label>Reach</label><input id="fx-colreach" type="range" min="50" max="500" step="10" /><span id="fx-colreach-v"></span></div>
+
+      <div class="fx-group">Warp streaks</div>
+      <div class="fx-row"><label>Strength</label><input id="fx-warpstr" type="range" min="0" max="0.6" step="0.01" /><span id="fx-warpstr-v"></span></div>
+      <div class="fx-row"><label>Length</label><input id="fx-warplen" type="range" min="0" max="0.3" step="0.005" /><span id="fx-warplen-v"></span></div>
+
+      <div class="fx-hint">B to hide · live · play mode</div>
     </div>
 
     <!-- DIRECTOR MODE editor (toggle with E) -->

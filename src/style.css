@@ -315,22 +315,26 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
 .wp-dot.done { border-color: rgba(79, 210, 255, 0.55); background: rgba(79, 210, 255, 0.35); }
 .wp-dot.active { width: 15px; height: 15px; border-color: #4fd2ff; background: #4fd2ff; box-shadow: 0 0 14px rgba(79, 210, 255, 0.95); }
 
-/* ---- Live blur controls (B) ---- */
+/* ---- FX control panel (B) ---- */
 #fxpanel {
-  position: fixed; right: 1.2rem; bottom: 1.2rem; z-index: 6;
-  display: flex; flex-direction: column; gap: 0.4rem;
-  padding: 0.8rem 0.9rem; border-radius: 8px;
-  background: rgba(6, 20, 28, 0.88); border: 1px solid rgba(79, 210, 255, 0.25);
+  position: fixed; right: 1.2rem; top: 1.2rem; z-index: 6;
+  width: 212px; max-height: 88vh; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 0.28rem;
+  padding: 0.7rem 0.8rem; border-radius: 9px;
+  background: rgba(6, 20, 28, 0.9); border: 1px solid rgba(79, 210, 255, 0.22);
   backdrop-filter: blur(8px);
   font-family: "source-code-pro", ui-monospace, monospace;
-  font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; color: #8fb0cc;
+  font-size: 0.58rem; letter-spacing: 0.05em; text-transform: uppercase; color: #8fb0cc;
 }
 #fxpanel[hidden] { display: none; }
-#fxpanel .fx-row { display: flex; align-items: center; gap: 0.5rem; }
-#fxpanel label { flex: 0 0 86px; }
-#fxpanel input[type="range"] { flex: 1; accent-color: #4fd2ff; }
-#fxpanel span { flex: 0 0 46px; text-align: right; color: #4fd2ff; }
-#fxpanel .fx-hint { color: #5b768f; text-align: right; }
+#fxpanel .fx-head { display: flex; justify-content: space-between; align-items: center; color: #eaf4ff; letter-spacing: 0.16em; margin-bottom: 0.2rem; }
+#fxpanel .fx-head span { color: #5b768f; border: 1px solid rgba(143, 176, 204, 0.3); border-radius: 3px; padding: 0 5px; }
+#fxpanel .fx-group { color: #4fd2ff; letter-spacing: 0.18em; margin-top: 0.55rem; padding-top: 0.35rem; border-top: 1px solid rgba(79, 210, 255, 0.14); }
+#fxpanel .fx-row { display: flex; align-items: center; gap: 0.4rem; }
+#fxpanel .fx-row label { flex: 0 0 66px; }
+#fxpanel .fx-row input[type="range"] { flex: 1; min-width: 0; accent-color: #4fd2ff; }
+#fxpanel .fx-row span { flex: 0 0 44px; text-align: right; color: #4fd2ff; }
+#fxpanel .fx-hint { color: #5b768f; text-align: right; margin-top: 0.45rem; }
 
 /* ---- Intro loader ---- */
 #loader {
