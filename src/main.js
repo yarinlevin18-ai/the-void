@@ -131,21 +131,19 @@ const _chapTarget = new THREE.Color();
 // Warp streaks: forward-rushing lines that only appear while the camera is
 // flying fast between chapters — a cinematic whoosh, invisible when settled.
 const warp = (() => {
-  const M = 140, SEG = 9, DEPTH = 340;
+  const M = 90, R = 260;
   const pos = new Float32Array(M * 2 * 3), data = [];
-  for (let i = 0; i < M; i++) {
-    const a = Math.random() * Math.PI * 2, r = 12 + Math.random() * 108;
-    data.push({ x: Math.cos(a) * r, y: Math.sin(a) * r, z: -Math.random() * DEPTH, spd: 110 + Math.random() * 200 });
-  }
+  for (let i = 0; i < M; i++) data.push({ p: new THREE.Vector3((Math.random() - 0.5) * R * 1.6, (Math.random() - 0.5) * R * 1.6, (Math.random() - 0.5) * R * 1.6) });
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const mat = new THREE.LineBasicMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending });
-  const obj = new THREE.LineSegments(geo, mat);
+  const mat = new THREE.LineBasicMaterial({ color: 0x7fd2ee, transparent: true, opacity: 0, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending });
+  const obj = new THREE.LineSegments(geo, mat);          // identity transform — positions are world-space
   obj.frustumCulled = false; obj.renderOrder = -5;
   scene.add(obj);
-  return { SEG, DEPTH, data, pos, geo, mat, obj };
+  return { R, data, pos, geo, mat, obj };
 })();
 let _prevCamPos = null;
+const _vel = new THREE.Vector3(), _dir = new THREE.Vector3();
 
 // (electric energy sprites removed — a dedicated lightning repo will go here)
 
@@ -1333,23 +1331,27 @@ function animate() {
     else _focusV.set(beats[index].look[0], beats[index].look[1], beats[index].look[2]);
     bokeh.uniforms.focus.value = Math.max(1, camera.position.distanceTo(_focusV));
   }
-  {                                          // warp streaks — visible only while flying fast between chapters
-    const { data, pos, geo, mat, obj, DEPTH, SEG } = warp;
+  {                                          // warp streaks — world-anchored, stream along actual camera travel
+    const { data, pos, geo, mat, R } = warp;
     if (!_prevCamPos) _prevCamPos = camera.position.clone();
-    const camSpeed = camera.position.distanceTo(_prevCamPos) / Math.max(dt, 0.0001);
+    _vel.copy(camera.position).sub(_prevCamPos);
+    const camSpeed = _vel.length() / Math.max(dt, 0.0001);
     _prevCamPos.copy(camera.position);
-    obj.position.copy(camera.position);
-    obj.quaternion.copy(camera.quaternion);
+    if (_vel.lengthSq() > 1e-8) _dir.copy(_vel).normalize();
+    const len = clamp(camSpeed * 0.1, 0, 34);            // longer streaks the faster you move
     for (let i = 0; i < data.length; i++) {
-      const d = data[i];
-      d.z += (d.spd + camSpeed * 5) * dt;
-      if (d.z > 12) { d.z = -DEPTH; const a = Math.random() * Math.PI * 2, r = 12 + Math.random() * 108; d.x = Math.cos(a) * r; d.y = Math.sin(a) * r; }
+      const p = data[i].p;
+      if (camera.position.distanceTo(p) > R) p.set(      // recycle points that fall out of range around the camera
+        camera.position.x + (Math.random() - 0.5) * R * 1.6,
+        camera.position.y + (Math.random() - 0.5) * R * 1.6,
+        camera.position.z + (Math.random() - 0.5) * R * 1.6,
+      );
       const o = i * 6;
-      pos[o] = d.x; pos[o + 1] = d.y; pos[o + 2] = d.z;
-      pos[o + 3] = d.x; pos[o + 4] = d.y; pos[o + 5] = d.z + SEG;
+      pos[o] = p.x; pos[o + 1] = p.y; pos[o + 2] = p.z;
+      pos[o + 3] = p.x - _dir.x * len; pos[o + 4] = p.y - _dir.y * len; pos[o + 5] = p.z - _dir.z * len;
     }
     geo.attributes.position.needsUpdate = true;
-    mat.opacity = editMode ? 0 : clamp((camSpeed - 10) / 70, 0, 0.5);
+    mat.opacity = editMode ? 0 : clamp((camSpeed - 12) / 120, 0, 0.16);   // much softer
   }
 
   if (composer && !editMode && !freeRoam) composer.render(); else renderer.render(scene, camera); // no blur while editing / free-roaming
