@@ -102,10 +102,8 @@ const dataNet = (() => {
   }
   const group = new THREE.Group();
   group.renderOrder = -10;                    // whole network sits behind the content panels
-  group.add(new THREE.LineSegments(
-    new THREE.BufferGeometry().setFromPoints(edgePts),
-    new THREE.LineBasicMaterial({ color: 0x3fb6e6, transparent: true, opacity: 0.13, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, fog: true }),
-  ));
+  const lineMat = new THREE.LineBasicMaterial({ color: 0x3fb6e6, transparent: true, opacity: 0.13, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, fog: true });
+  group.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(edgePts), lineMat));
   const nMat = new THREE.PointsMaterial({ size: 4, sizeAttenuation: true, color: 0x6fd8f5, transparent: true, opacity: 0.45, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending });
   group.add(new THREE.Points(new THREE.BufferGeometry().setFromPoints(nodes), nMat));
   // flowing pulses (gentler speeds = smoother)
@@ -120,8 +118,15 @@ const dataNet = (() => {
   new THREE.TextureLoader().load('/particle.png', (tex) => { tex.colorSpace = THREE.SRGBColorSpace; nMat.alphaMap = tex; nMat.needsUpdate = true; pMat.alphaMap = tex; pMat.needsUpdate = true; });
   group.add(new THREE.Points(pGeo, pMat));
   scene.add(group);
-  return { nodes, adj, pulses, pPos, pGeo };
+  return { nodes, adj, pulses, pPos, pGeo, lineMat, nMat, pMat };
 })();
+
+// Per-chapter "color world": the network recolors toward the nearest section's
+// hue on approach, fading back to neutral cyan between beats. (Placeholder
+// palette — swap to real project brand colors in Phase A/C.)
+const BASE_EDGE = new THREE.Color(0x3fb6e6), BASE_NODE = new THREE.Color(0x6fd8f5), BASE_PULSE = new THREE.Color(0xc8f6ff);
+const CHAPTER_COLORS = [0x4fd2ff, 0x9b8cff, 0x36e0c0, 0xff9e7a, 0x7fb4ff, 0xff8fb0, 0xffd27f];
+const _chapTarget = new THREE.Color();
 
 // (electric energy sprites removed — a dedicated lightning repo will go here)
 
@@ -1265,6 +1270,20 @@ function animate() {
       pPos[i * 3 + 2] = A.z + (B.z - A.z) * q;
     }
     pGeo.attributes.position.needsUpdate = true;
+  }
+  {                                          // per-chapter color world
+    let bi = 0, bd = Infinity;
+    for (let i = 0; i < beats.length; i++) {
+      const c = beats[i].cam;
+      const dx = camera.position.x - c[0], dy = camera.position.y - c[1], dz = camera.position.z - c[2];
+      const d = dx * dx + dy * dy + dz * dz;
+      if (d < bd) { bd = d; bi = i; }
+    }
+    const s = clamp(1 - Math.sqrt(bd) / 200, 0, 1);   // 1 at a section, 0 far between
+    _chapTarget.set(CHAPTER_COLORS[bi % CHAPTER_COLORS.length]);
+    dataNet.lineMat.color.copy(BASE_EDGE).lerp(_chapTarget, s * 0.8);
+    dataNet.nMat.color.copy(BASE_NODE).lerp(_chapTarget, s);
+    dataNet.pMat.color.copy(BASE_PULSE).lerp(_chapTarget, s);
   }
 
   // panels: billboard to face the camera, and light up as the camera arrives
