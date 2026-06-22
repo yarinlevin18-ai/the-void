@@ -308,6 +308,23 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
 .wp-dot.done { border-color: rgba(79, 210, 255, 0.55); background: rgba(79, 210, 255, 0.35); }
 .wp-dot.active { width: 15px; height: 15px; border-color: #4fd2ff; background: #4fd2ff; box-shadow: 0 0 14px rgba(79, 210, 255, 0.95); }
 
+/* ---- Live blur controls (B) ---- */
+#fxpanel {
+  position: fixed; right: 1.2rem; bottom: 1.2rem; z-index: 6;
+  display: flex; flex-direction: column; gap: 0.4rem;
+  padding: 0.8rem 0.9rem; border-radius: 8px;
+  background: rgba(6, 20, 28, 0.88); border: 1px solid rgba(79, 210, 255, 0.25);
+  backdrop-filter: blur(8px);
+  font-family: "source-code-pro", ui-monospace, monospace;
+  font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; color: #8fb0cc;
+}
+#fxpanel[hidden] { display: none; }
+#fxpanel .fx-row { display: flex; align-items: center; gap: 0.5rem; }
+#fxpanel label { flex: 0 0 86px; }
+#fxpanel input[type="range"] { flex: 1; accent-color: #4fd2ff; }
+#fxpanel span { flex: 0 0 46px; text-align: right; color: #4fd2ff; }
+#fxpanel .fx-hint { color: #5b768f; text-align: right; }
+
 /* beat list rows */
 #ed-beatlist { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; }
 .beat-row {

@@ -1196,6 +1196,24 @@ try {
   composer.setSize(window.innerWidth, window.innerHeight);
 } catch (e) { composer = null; console.warn('Postprocessing disabled:', e); }
 
+// ---- Live blur controls (toggle with B) ------------------------------------
+(() => {
+  const p = document.querySelector('#fxpanel');
+  if (!p) return;
+  const mb = document.querySelector('#fx-maxblur'), ap = document.querySelector('#fx-aperture'), dp = document.querySelector('#fx-damp');
+  const mbv = document.querySelector('#fx-maxblur-v'), apv = document.querySelector('#fx-aperture-v'), dpv = document.querySelector('#fx-damp-v');
+  if (bokeh) { mb.value = bokeh.uniforms.maxblur.value; ap.value = bokeh.uniforms.aperture.value; }
+  if (afterimage) dp.value = afterimage.uniforms.damp.value;
+  const sync = () => { mbv.textContent = (+mb.value).toFixed(4); apv.textContent = (+ap.value).toFixed(4); dpv.textContent = (+dp.value).toFixed(2); };
+  mb.addEventListener('input', () => { if (bokeh) bokeh.uniforms.maxblur.value = +mb.value; sync(); });
+  ap.addEventListener('input', () => { if (bokeh) bokeh.uniforms.aperture.value = +ap.value; sync(); });
+  dp.addEventListener('input', () => { if (afterimage) afterimage.uniforms.damp.value = +dp.value; sync(); });
+  sync();
+  window.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() === 'b' && !/INPUT|TEXTAREA/.test(document.activeElement?.tagName || '')) p.hidden = !p.hidden;
+  });
+})();
+
 // ---- Animation loop ---------------------------------------------------------
 const clock = new THREE.Clock();
 const cp = new THREE.Vector3();
