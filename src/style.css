@@ -353,6 +353,34 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
   font-size: 0.62rem; letter-spacing: 0.34em; text-transform: uppercase; color: #5b768f;
 }
 
+/* ---- Kinetic section caption ---- */
+#caption {
+  position: fixed; left: 6vw; top: 50%; transform: translateY(-50%);
+  z-index: 3; max-width: min(440px, 42vw); pointer-events: none;
+}
+#caption .cap-label {
+  font-family: "source-code-pro", ui-monospace, monospace;
+  font-size: 0.66rem; letter-spacing: 0.34em; text-transform: uppercase; color: #4fd2ff;
+  margin-bottom: 0.9rem;
+  opacity: 0; transform: translateY(8px);
+  transition: opacity .5s ease, transform .5s ease;
+}
+#caption .cap-title {
+  font-family: "ogg", Georgia, serif; font-weight: 600;
+  font-size: clamp(2rem, 4.6vw, 3.8rem); line-height: 1.04; letter-spacing: 0.01em; color: #eaf4ff;
+  opacity: 0; transform: translateY(26px); filter: blur(7px);
+  transition: opacity .9s ease, transform .9s cubic-bezier(0.22, 1, 0.36, 1), filter .9s ease;
+}
+#caption .cap-desc {
+  font-family: "acumin-pro", system-ui, sans-serif;
+  margin-top: 1rem; font-size: 0.95rem; line-height: 1.55; color: #9fc2e0;
+  opacity: 0; transform: translateY(14px);
+  transition: opacity .7s ease, transform .7s ease;
+}
+#caption.show .cap-label { opacity: 1; transform: none; transition-delay: .05s; }
+#caption.show .cap-title { opacity: 1; transform: none; filter: none; transition-delay: .12s; }
+#caption.show .cap-desc  { opacity: 1; transform: none; transition-delay: .32s; }
+
 /* beat list rows */
 #ed-beatlist { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; }
 .beat-row {

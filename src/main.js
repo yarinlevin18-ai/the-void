@@ -724,6 +724,35 @@ function updateWaypoints() {
 }
 buildWaypoints();
 
+// ---- Kinetic section caption (demo content until real copy drops in) --------
+const capEl = document.querySelector('#caption');
+const capLabel = capEl && capEl.querySelector('.cap-label');
+const capTitle = capEl && capEl.querySelector('.cap-title');
+const capDesc = capEl && capEl.querySelector('.cap-desc');
+const DEMO_CAPTIONS = beats.map((b, i) => ({
+  label: `CH.${String(i + 1).padStart(2, '0')} — ${b.name}`,
+  title: b.name,
+  desc: 'Placeholder copy — this is where the real section content will drop in.',
+}));
+let _capShown = -1;
+function setCaption(i) {
+  if (!capEl || i === _capShown) return;
+  _capShown = i;
+  const c = DEMO_CAPTIONS[i] || { label: '', title: '', desc: '' };
+  capEl.classList.remove('show');
+  requestAnimationFrame(() => {                 // reset → set text → replay the reveal
+    capLabel.textContent = c.label;
+    capTitle.textContent = c.title;
+    capDesc.textContent = c.desc;
+    requestAnimationFrame(() => capEl.classList.add('show'));
+  });
+}
+function hideCaption() {
+  if (!capEl || _capShown === -1) return;
+  _capShown = -1;
+  capEl.classList.remove('show');
+}
+
 // subtle parallax (play mode only)
 const mouse = { x: 0, y: 0 };
 window.addEventListener('pointermove', (e) => {
@@ -1301,6 +1330,16 @@ function animate() {
     dataNet.lineMat.color.copy(BASE_EDGE).lerp(_chapTarget, s * 0.8);
     dataNet.nMat.color.copy(BASE_NODE).lerp(_chapTarget, s);
     dataNet.pMat.color.copy(BASE_PULSE).lerp(_chapTarget, s);
+  }
+  {                                          // kinetic caption: reveal on arrival, hide while moving / in editor
+    if (editMode || freeRoam) hideCaption();
+    else {
+      const c = beats[index].cam;
+      const dx = camera.position.x - c[0], dy = camera.position.y - c[1], dz = camera.position.z - c[2];
+      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      if (!tween && dist < 26 && index !== 0) setCaption(index);   // arrived & parked (skip hero — it has the wordmark)
+      else if (tween || dist > 70) hideCaption();
+    }
   }
 
   // panels: billboard to face the camera, and light up as the camera arrives

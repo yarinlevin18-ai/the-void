@@ -10,6 +10,7 @@
   :root{--cyan:#4fd2ff;--ink:#eaf4ff;--dim:#8fb0cc}
   *{margin:0;padding:0;box-sizing:border-box}
   html,body{height:100%;overflow:hidden;background:#05070b;font-family:"acumin-pro",system-ui,sans-serif;color:var(--ink)}
+  body.cursoron{cursor:none}
   #scene{position:fixed;inset:0;display:block}
   #content{position:fixed;inset:0;display:flex;flex-direction:column;justify-content:center;padding-left:9vw;pointer-events:none;z-index:2}
   .kicker{font-family:"source-code-pro",monospace;color:var(--cyan);font-size:.72rem;letter-spacing:.28em;text-transform:uppercase;margin-bottom:1rem;opacity:0}
@@ -19,30 +20,37 @@
   @keyframes rgb{0%,100%{text-shadow:0 0 40px rgba(79,210,255,.25)}25%{text-shadow:2px 0 #ff3df0,-2px 0 #4fd2ff}50%{text-shadow:-2px 0 #ff3df0,2px 0 #4fd2ff}}
   .desc{max-width:42ch;margin-top:1.2rem;color:var(--dim);font-size:clamp(1rem,1.5vw,1.2rem);line-height:1.6;opacity:0}
   .meta{font-family:"source-code-pro",monospace;color:#5b768f;font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;margin-top:.8rem;opacity:0}
-  .cta{margin-top:2rem;pointer-events:auto;align-self:flex-start;display:inline-flex;gap:.6rem;font-family:"source-code-pro",monospace;font-size:.78rem;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);background:transparent;border:1px solid rgba(79,210,255,.55);border-radius:999px;padding:.75rem 1.5rem;cursor:pointer;opacity:0}
-  /* ambient overlays */
+  .cta{margin-top:2rem;pointer-events:auto;align-self:flex-start;display:inline-flex;gap:.6rem;font-family:"source-code-pro",monospace;font-size:.78rem;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);background:transparent;border:1px solid rgba(79,210,255,.55);border-radius:999px;padding:.75rem 1.5rem;cursor:pointer;opacity:0;will-change:transform}
   body.scan::after{content:"";position:fixed;inset:0;z-index:4;pointer-events:none;background:repeating-linear-gradient(rgba(0,0,0,0) 0 2px,rgba(0,0,0,.22) 2px 3px);mix-blend-mode:multiply}
-  #flash{position:fixed;inset:0;z-index:5;pointer-events:none;background:radial-gradient(circle at 50% 50%,rgba(120,220,255,.0),rgba(120,220,255,0));opacity:0}
+  #flash{position:fixed;inset:0;z-index:5;pointer-events:none;opacity:0}
   #vig{position:fixed;inset:0;z-index:4;pointer-events:none;box-shadow:inset 0 0 220px rgba(0,0,0,.8)}
+  /* custom cursor */
+  #cdot,#cring{position:fixed;top:0;left:0;z-index:9;pointer-events:none;border-radius:50%;transform:translate(-50%,-50%)}
+  #cdot{width:6px;height:6px;background:#bff0ff;box-shadow:0 0 10px rgba(79,210,255,.9)}
+  #cring{width:34px;height:34px;border:1px solid rgba(79,210,255,.7);transition:width .25s,height .25s,background .25s,border-color .25s}
+  #cring.big{width:64px;height:64px;background:rgba(79,210,255,.12);border-color:rgba(79,210,255,1)}
+  body:not(.cursoron) #cdot,body:not(.cursoron) #cring{display:none}
   /* control panel */
-  #panel{position:fixed;top:1rem;right:1rem;z-index:6;width:240px;background:rgba(8,14,22,.85);border:1px solid rgba(79,210,255,.3);border-radius:12px;padding:.9rem 1rem;backdrop-filter:blur(8px);font-size:.72rem}
+  #panel{position:fixed;top:1rem;right:1rem;z-index:8;width:240px;background:rgba(8,14,22,.9);border:1px solid rgba(79,210,255,.3);border-radius:12px;padding:.9rem 1rem;backdrop-filter:blur(8px);font-size:.72rem}
   #panel h3{font-family:"source-code-pro",monospace;color:var(--cyan);letter-spacing:.2em;text-transform:uppercase;font-size:.62rem;margin-bottom:.7rem}
   #panel label{display:block;color:var(--dim);text-transform:uppercase;letter-spacing:.12em;font-size:.6rem;margin:.6rem 0 .25rem}
-  #panel select,#panel button{width:100%;font:inherit;color:var(--ink);background:rgba(79,210,255,.1);border:1px solid rgba(79,210,255,.4);border-radius:7px;padding:.4rem .5rem;cursor:pointer}
-  #panel .chk{display:flex;gap:.5rem;align-items:center;color:var(--dim);margin-top:.5rem;text-transform:uppercase;letter-spacing:.1em;font-size:.62rem}
+  #panel select,#panel button{width:100%;font:inherit;color:var(--ink);background:#0c1822;border:1px solid rgba(79,210,255,.4);border-radius:7px;padding:.4rem .5rem;cursor:pointer}
+  #panel select option{background:#0a141d;color:#eaf4ff}
+  #panel .chk{display:flex;gap:.5rem;align-items:center;color:var(--dim);margin-top:.5rem;text-transform:uppercase;letter-spacing:.1em;font-size:.62rem;cursor:pointer}
   #panel button.go{margin-top:.8rem;background:rgba(79,210,255,.2)}
-  #panel button:hover{background:rgba(79,210,255,.25)}
+  #panel button:hover{background:rgba(79,210,255,.28)}
 </style>
 </head>
-<body>
+<body class="cursoron">
   <canvas id="scene"></canvas>
   <div id="vig"></div><div id="flash"></div>
+  <div id="cring"></div><div id="cdot"></div>
   <div id="content">
     <div class="kicker">Project 01 — SaaS / CRM</div>
     <h1 id="title">TEEPO</h1>
     <div class="desc">A full SaaS product — Next.js, Flask, Supabase &amp; AI. Real complexity: auth, billing, RTL, dashboards.</div>
     <div class="meta">Next.js · Flask · Supabase · AI</div>
-    <button class="cta">Visit live ↗</button>
+    <button class="cta" data-magnetic>Visit live ↗</button>
   </div>
 
   <div id="panel">
@@ -62,11 +70,18 @@
       <option value="drop">Drop from depth</option>
       <option value="rise">Rise up</option>
     </select>
+    <label>Cursor</label>
+    <select id="cStyle">
+      <option value="ring">Ring + dot</option>
+      <option value="dotonly">Dot only</option>
+      <option value="native">Native (off)</option>
+    </select>
     <button class="go" id="replay">▶ Play reveal</button>
     <button id="trans">Section transition</button>
     <div class="chk"><input type="checkbox" id="tFloat" checked> idle float</div>
     <div class="chk"><input type="checkbox" id="tScan"> scanlines</div>
     <div class="chk"><input type="checkbox" id="tRgb"> RGB headline</div>
+    <div class="chk"><input type="checkbox" id="tMag" checked> magnetic CTA</div>
   </div>
 
 <script type="module">
@@ -77,15 +92,12 @@ renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(deviceP
 const scene=new THREE.Scene();scene.fog=new THREE.FogExp2(0x05070b,0.0009);
 const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,0.1,2000);camera.position.set(0,0,120);
 
-// void points
 const N=1500,P=new Float32Array(N*3),C=new Float32Array(N*3),baseCol=new Float32Array(N*3);
 const a=new THREE.Color(0x2f6f8f),b=new THREE.Color(0xeaf4ff),t=new THREE.Color();
 for(let i=0;i<N;i++){P[i*3]=(Math.random()-.5)*900;P[i*3+1]=(Math.random()-.5)*620;P[i*3+2]=(Math.random()-.5)*900-200;t.copy(a).lerp(b,Math.random());C[i*3]=baseCol[i*3]=t.r;C[i*3+1]=baseCol[i*3+1]=t.g;C[i*3+2]=baseCol[i*3+2]=t.b;}
 const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.BufferAttribute(P,3));pg.setAttribute('color',new THREE.BufferAttribute(C,3));
-const points=new THREE.Points(pg,new THREE.PointsMaterial({size:1.6,sizeAttenuation:true,vertexColors:true,transparent:true,opacity:.85,depthWrite:false,blending:THREE.AdditiveBlending}));
-scene.add(points);
+const points=new THREE.Points(pg,new THREE.PointsMaterial({size:1.6,sizeAttenuation:true,vertexColors:true,transparent:true,opacity:.85,depthWrite:false,blending:THREE.AdditiveBlending}));scene.add(points);
 
-// panel group
 const project=new THREE.Group();scene.add(project);
 function makeMock(){const w=1024,h=640,cv=document.createElement('canvas');cv.width=w;cv.height=h;const x=cv.getContext('2d');
   x.fillStyle='#0a141d';x.fillRect(0,0,w,h);x.fillStyle='#0e1c28';x.fillRect(0,0,w,64);
@@ -98,96 +110,98 @@ function makeMock(){const w=1024,h=640,cv=document.createElement('canvas');cv.wi
   x.strokeStyle='#7fe3ff';x.lineWidth=3;x.beginPath();for(let i=0;i<40;i++){const px=bx+20+i*18,py=by+120+Math.sin(i*.5)*60;i?x.lineTo(px,py):x.moveTo(px,py);}x.stroke();
   const tx=new THREE.CanvasTexture(cv);tx.colorSpace=THREE.SRGBColorSpace;tx.anisotropy=4;return tx;}
 const PW=92,PH=PW*.625;
-const img=new THREE.Mesh(new THREE.PlaneGeometry(PW,PH),new THREE.MeshBasicMaterial({map:makeMock(),transparent:true,opacity:0}));
-img.position.x=26;project.add(img);
+const img=new THREE.Mesh(new THREE.PlaneGeometry(PW,PH),new THREE.MeshBasicMaterial({map:makeMock(),transparent:true,opacity:0}));img.position.x=26;project.add(img);
 const frame=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(PW,PH)),new THREE.LineBasicMaterial({color:0x4fd2ff,transparent:true,opacity:0}));frame.position.copy(img.position);project.add(frame);
 function radial(c0,c1){const s=256,cv=document.createElement('canvas');cv.width=cv.height=s;const ctx=cv.getContext('2d');const g=ctx.createRadialGradient(s/2,s/2,0,s/2,s/2,s/2);g.addColorStop(0,c0);g.addColorStop(1,c1);ctx.fillStyle=g;ctx.fillRect(0,0,s,s);return new THREE.CanvasTexture(cv);}
-const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:radial('rgba(79,210,255,.55)','rgba(79,210,255,0)'),transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
-glow.scale.set(180,140,1);glow.position.set(26,0,-6);project.add(glow);
-// sweep bar (for the scan-line panel reveal)
-const sweep=new THREE.Mesh(new THREE.PlaneGeometry(3,PH),new THREE.MeshBasicMaterial({color:0xbff0ff,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
-sweep.position.set(26,0,1);project.add(sweep);
+const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:radial('rgba(79,210,255,.55)','rgba(79,210,255,0)'),transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));glow.scale.set(180,140,1);glow.position.set(26,0,-6);project.add(glow);
+const sweep=new THREE.Mesh(new THREE.PlaneGeometry(3,PH),new THREE.MeshBasicMaterial({color:0xbff0ff,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));sweep.position.set(26,0,1);project.add(sweep);
 
-// headline letters
 const title=$('#title');
 title.innerHTML=[...title.textContent].map(c=>`<span class="ch" data-final="${c}">${c}</span>`).join('');
 const chars=[...title.querySelectorAll('.ch')];
 const kicker=$('.kicker'),desc=$('.desc'),meta=$('.meta'),cta=$('.cta');
 
-// ---- headline reveal styles ----
 function headline(style){
   gsap.killTweensOf(chars);
   chars.forEach(c=>{c.textContent=c.dataset.final;c.style.filter='';c.style.transform='';});
   const tl=gsap.timeline({defaults:{ease:'power3.out'}});
-  if(style==='rise'){tl.from(chars,{yPercent:120,opacity:0,duration:.7,stagger:.05});}
-  else if(style==='blur'){tl.from(chars,{opacity:0,filter:'blur(14px)',y:10,duration:.8,stagger:.05});}
+  if(style==='rise')tl.from(chars,{yPercent:120,opacity:0,duration:.7,stagger:.05});
+  else if(style==='blur')tl.from(chars,{opacity:0,filter:'blur(14px)',y:10,duration:.8,stagger:.05});
   else if(style==='flip'){gsap.set(title,{perspective:600});tl.from(chars,{rotationX:-95,opacity:0,transformOrigin:'50% 0%',duration:.7,stagger:.05});}
   else if(style==='wipe'){gsap.set(chars,{opacity:1});tl.from(title,{clipPath:'inset(0 100% 0 0)',duration:1,ease:'power4.inOut'});}
-  else if(style==='decode'){
-    const G='ABCDEFGHJKLMNPQRSTUVWXYZ#%&$@/\\<>0123456789';
-    gsap.set(chars,{opacity:1});
-    chars.forEach((c,i)=>{const o={p:0};gsap.to(o,{p:1,duration:.5+i*.12,ease:'none',
-      onUpdate(){c.textContent=o.p<1?G[(Math.random()*G.length)|0]:c.dataset.final;},
-      onComplete(){c.textContent=c.dataset.final;}});});
-  }
+  else if(style==='decode'){const G='ABCDEFGHJKLMNPQRSTUVWXYZ#%&$@/\\<>0123456789';gsap.set(chars,{opacity:1});
+    chars.forEach((c,i)=>{const o={p:0};gsap.to(o,{p:1,duration:.5+i*.12,ease:'none',onUpdate(){c.textContent=o.p<1?G[(Math.random()*G.length)|0]:c.dataset.final;},onComplete(){c.textContent=c.dataset.final;}});});}
   return tl;
 }
-
-// ---- panel reveal styles ----
 function panel(style){
   const tl=gsap.timeline({defaults:{ease:'power3.out'}});
   gsap.set(img.material,{opacity:0});gsap.set(frame.material,{opacity:0});gsap.set(glow.material,{opacity:0});gsap.set(sweep.material,{opacity:0});
   gsap.set(img.scale,{x:1,y:1});gsap.set(img.position,{x:26,y:0,z:0});
-  tl.to(camera.position,{z:90,duration:1.4,ease:'power2.inOut'},0);
-  tl.to(glow.material,{opacity:.9,duration:1.2},0);
-  if(style==='resolve'){tl.to(img.material,{opacity:1,duration:1},.1).fromTo(img.scale,{x:.85,y:.85},{x:1,y:1,duration:1.2},.1).to(frame.material,{opacity:.9,duration:1},.1);}
-  else if(style==='sweep'){tl.to(frame.material,{opacity:.9,duration:.6},0).set(sweep.position,{x:26-PW/2},0).to(sweep.material,{opacity:1,duration:.2},.2).to(sweep.position,{x:26+PW/2,duration:.9,ease:'power2.inOut'},.2).to(img.material,{opacity:1,duration:.9,ease:'none'},.25).to(sweep.material,{opacity:0,duration:.2},1.1);}
-  else if(style==='drop'){tl.fromTo(img.position,{z:-120},{z:0,duration:1.2,ease:'power2.out'},0).fromTo(project.rotation,{y:.5},{y:0,duration:1.3},0).to(img.material,{opacity:1,duration:.9},.2).to(frame.material,{opacity:.9,duration:.9},.2);}
-  else if(style==='rise'){tl.fromTo(img.position,{y:-PH},{y:0,duration:1.1,ease:'power3.out'},0).to(img.material,{opacity:1,duration:.8},.2).to(frame.material,{opacity:.9,duration:.8},.2);}
+  tl.to(camera.position,{z:90,duration:1.4,ease:'power2.inOut'},0).to(glow.material,{opacity:.9,duration:1.2},0);
+  if(style==='resolve')tl.to(img.material,{opacity:1,duration:1},.1).fromTo(img.scale,{x:.85,y:.85},{x:1,y:1,duration:1.2},.1).to(frame.material,{opacity:.9,duration:1},.1);
+  else if(style==='sweep')tl.to(frame.material,{opacity:.9,duration:.6},0).set(sweep.position,{x:26-PW/2},0).to(sweep.material,{opacity:1,duration:.2},.2).to(sweep.position,{x:26+PW/2,duration:.9,ease:'power2.inOut'},.2).to(img.material,{opacity:1,duration:.9,ease:'none'},.25).to(sweep.material,{opacity:0,duration:.2},1.1);
+  else if(style==='drop')tl.fromTo(img.position,{z:-120},{z:0,duration:1.2},0).fromTo(project.rotation,{y:.5},{y:0,duration:1.3},0).to(img.material,{opacity:1,duration:.9},.2).to(frame.material,{opacity:.9,duration:.9},.2);
+  else if(style==='rise')tl.fromTo(img.position,{y:-PH},{y:0,duration:1.1},0).to(img.material,{opacity:1,duration:.8},.2).to(frame.material,{opacity:.9,duration:.8},.2);
   return tl;
 }
-
 function playAll(){
   gsap.set([kicker,desc,meta,cta],{clearProps:'all'});
-  panel($('#pStyle').value);
-  headline($('#hStyle').value);
+  panel($('#pStyle').value);headline($('#hStyle').value);
   gsap.timeline({defaults:{ease:'power3.out'}})
-    .to(kicker,{opacity:1,duration:.6},.3)
-    .to(desc,{opacity:1,y:0,duration:.7},1.0)
-    .to(meta,{opacity:1,duration:.6},1.15)
-    .to(cta,{opacity:1,duration:.6},1.3)
+    .to(kicker,{opacity:1,duration:.6},.3).to(desc,{opacity:1,y:0,duration:.7},1.0)
+    .to(meta,{opacity:1,duration:.6},1.15).to(cta,{opacity:1,duration:.6},1.3)
     .to(cta,{backgroundColor:'rgba(79,210,255,.16)',boxShadow:'0 0 24px rgba(79,210,255,.3)',duration:.5},1.4);
 }
 $('#replay').onclick=playAll;
 
-// ---- section transition (flash + camera punch + void swirl + recolor) ----
-const brand=new THREE.Color(0xff7a3d);
+const brand=new THREE.Color(0xff7a3d);let swirl=0;
 function transition(){
   gsap.fromTo('#flash',{opacity:0,background:'radial-gradient(circle at 50% 50%,rgba(150,225,255,.9),rgba(150,225,255,0) 60%)'},{opacity:1,duration:.18,yoyo:true,repeat:1,ease:'power2.out'});
-  gsap.fromTo(camera.position,{z:camera.position.z},{z:'+=40',duration:.5,yoyo:true,repeat:1,ease:'power2.inOut'});
-  swirl=1.2;
-  // recolor the void toward a brand hue then back
-  const o={k:0};gsap.to(o,{k:1,duration:1.4,yoyo:true,repeat:1,ease:'sine.inOut',onUpdate(){
-    const col=pg.attributes.color.array;for(let i=0;i<N;i++){col[i*3]=baseCol[i*3]+(brand.r-baseCol[i*3])*o.k;col[i*3+1]=baseCol[i*3+1]+(brand.g-baseCol[i*3+1])*o.k;col[i*3+2]=baseCol[i*3+2]+(brand.b-baseCol[i*3+2])*o.k;}pg.attributes.color.needsUpdate=true;}});
+  gsap.fromTo(camera.position,{z:camera.position.z},{z:'+=40',duration:.5,yoyo:true,repeat:1,ease:'power2.inOut'});swirl=1.2;
+  const o={k:0};gsap.to(o,{k:1,duration:1.4,yoyo:true,repeat:1,ease:'sine.inOut',onUpdate(){const col=pg.attributes.color.array;for(let i=0;i<N;i++){col[i*3]=baseCol[i*3]+(brand.r-baseCol[i*3])*o.k;col[i*3+1]=baseCol[i*3+1]+(brand.g-baseCol[i*3+1])*o.k;col[i*3+2]=baseCol[i*3+2]+(brand.b-baseCol[i*3+2])*o.k;}pg.attributes.color.needsUpdate=true;}});
 }
 $('#trans').onclick=transition;
-
-// toggles
 $('#tScan').onchange=e=>document.body.classList.toggle('scan',e.target.checked);
 $('#tRgb').onchange=e=>title.classList.toggle('rgb',e.target.checked);
 let floatOn=true;$('#tFloat').onchange=e=>floatOn=e.target.checked;
+let magOn=true;$('#tMag').onchange=e=>magOn=e.target.checked;
 
-// parallax + idle
+// ---- CURSOR EFFECTS ----
+const cdot=$('#cdot'),cring=$('#cring');
+let cx=innerWidth/2,cy=innerHeight/2,rx=cx,ry=cy;       // dot tracks instantly, ring lerps
+const cStyle=$('#cStyle');
+function applyCursorStyle(){
+  const v=cStyle.value;
+  document.body.classList.toggle('cursoron', v!=='native');
+  cring.style.display = v==='ring' ? '' : 'none';
+}
+cStyle.onchange=applyCursorStyle;applyCursorStyle();
+addEventListener('pointermove',e=>{
+  cx=e.clientX;cy=e.clientY;
+  cdot.style.transform=`translate(${cx}px,${cy}px) translate(-50%,-50%)`;
+  // ring grows over interactive elements
+  const hit=e.target.closest('button,select,.cta,#panel');
+  cring.classList.toggle('big', !!hit && !e.target.closest('#panel'));
+});
+// magnetic CTA: pulls toward the cursor when near
+addEventListener('pointermove',e=>{
+  if(!magOn){cta.style.transform='';return;}
+  const r=cta.getBoundingClientRect();const mx=r.left+r.width/2,my=r.top+r.height/2;
+  const dx=e.clientX-mx,dy=e.clientY-my,dist=Math.hypot(dx,dy);
+  if(dist<160){cta.style.transform=`translate(${dx*0.3}px,${dy*0.4}px)`;}
+  else cta.style.transform='';
+});
+
 const mouse={x:0,y:0};addEventListener('pointermove',e=>{mouse.x=(e.clientX/innerWidth)*2-1;mouse.y=(e.clientY/innerHeight)*2-1;});
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
-let swirl=0;const clock=new THREE.Clock();
+const clock=new THREE.Clock();
 (function loop(){const e=clock.getElapsedTime();
-  points.rotation.y=e*0.02+ (swirl?swirl*0.15:0); if(swirl>0)swirl*=0.94;
-  project.position.y = floatOn? Math.sin(e*0.8)*1.6 : project.position.y*0.9;
+  rx+=(cx-rx)*0.18;ry+=(cy-ry)*0.18;cring.style.transform=`translate(${rx}px,${ry}px) translate(-50%,-50%)`;
+  points.rotation.y=e*0.02+(swirl?swirl*0.15:0);if(swirl>0)swirl*=0.94;
+  project.position.y=floatOn?Math.sin(e*0.8)*1.6:project.position.y*0.9;
   project.rotation.y+=((mouse.x*.18)-project.rotation.y)*.05;
   project.rotation.x+=((-mouse.y*.12)-project.rotation.x)*.05;
-  camera.lookAt(0,0,0);
-  renderer.render(scene,camera);requestAnimationFrame(loop);})();
+  camera.lookAt(0,0,0);renderer.render(scene,camera);requestAnimationFrame(loop);})();
 playAll();
 </script>
 </body>

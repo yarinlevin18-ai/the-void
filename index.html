@@ -34,6 +34,13 @@
     <!-- Journey waypoint rail (a dot per section, lights up as you arrive) -->
     <nav id="waypoints" hidden aria-label="Sections"></nav>
 
+    <!-- Kinetic section caption (reveals on arrival) -->
+    <div id="caption" aria-hidden="true">
+      <div class="cap-label"></div>
+      <h2 class="cap-title"></h2>
+      <p class="cap-desc"></p>
+    </div>
+
     <!-- Blur controls (toggle with B) -->
     <div id="fxpanel">
       <div class="fx-row"><label>DOF blur</label><input id="fx-maxblur" type="range" min="0" max="0.02" step="0.0005" /><span id="fx-maxblur-v"></span></div>
