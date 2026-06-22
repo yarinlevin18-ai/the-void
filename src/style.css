@@ -121,7 +121,7 @@ html, body {
   position: fixed;
   top: 1rem;
   right: 1rem;
-  z-index: 5;
+  z-index: 60;                 /* above the loader (50) so E never opens it behind a stuck loader */
   width: 260px;
   max-height: 90vh;
   overflow-y: auto;
@@ -229,7 +229,7 @@ html, body {
 
 /* ---- Camera timeline (keyframes = sections) ---- */
 #timeline {
-  position: fixed; left: 1.5rem; right: 320px; bottom: 1rem; z-index: 5;
+  position: fixed; left: 1.5rem; right: 320px; bottom: 1rem; z-index: 60;
   padding: 0.6rem 0.9rem 1.1rem;
   background: rgba(8, 14, 22, 0.82);
   border: 1px solid rgba(79, 210, 255, 0.35);
@@ -335,6 +335,8 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
 #fxpanel .fx-row input[type="range"] { flex: 1; min-width: 0; accent-color: #4fd2ff; }
 #fxpanel .fx-row span { flex: 0 0 44px; text-align: right; color: #4fd2ff; }
 #fxpanel .fx-hint { color: #5b768f; text-align: right; margin-top: 0.45rem; }
+#fxpanel .fx-chk { display: flex; align-items: center; gap: 0.4rem; color: #8fb0cc; cursor: pointer; margin-top: 0.15rem; }
+#fxpanel .fx-chk input { accent-color: #4fd2ff; }
 
 /* ---- Intro loader ---- */
 #loader {

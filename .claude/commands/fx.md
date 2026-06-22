@@ -8,11 +8,11 @@ THREE targets together so the whole scene feels alive: the **cursor**, the
 **content panels**, and the **background void itself**.
 
 ## 1. Load context first
-- `CLAUDE.md`, `ENVIRONMENT.md`, `PRD.md`, `BUILD_PLAN.md` (source of truth).
+- `CLAUDE.md`, `ENVIRONMENT.md`, `BACKGROUND.md`, `PRD.md`, `BUILD_PLAN.md` (source of truth).
 - `src/main.js` (current v0.7 Director Mode build).
 - The two demos define the INTENDED FEEL — mirror them, don't reinvent:
-  `demo-asset-reveal.html` (one project beat) and `demo-effects.html` (the
-  effects playground: headline/panel reveal styles, cursor, section transition).
+  `demo-asset-reveal.html` (one project beat), `demo-effects.html` (reveal/
+  cursor/transition styles), and `demo-living-void.html` (the background — see BACKGROUND.md).
 - `references/` is study-only (git-ignored). `npm install` real packages; never import from `references/`.
 
 ## 2. Locked direction (don't drift)

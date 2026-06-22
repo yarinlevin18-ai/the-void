@@ -15,6 +15,7 @@ import { initMagneticCursor } from './cursor.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 // Only TEXT entry should swallow global hotkeys (E/V/arrows) — not range sliders, checkboxes, etc.
@@ -26,6 +27,7 @@ const FX = {
   panelDimFloor: 0.1, panelLightRange: 300,   // section panels: idle opacity + light-up falloff
   colorIntensity: 1.0, colorReach: 200,       // per-chapter color world
   warpStrength: 0.16, warpLength: 0.1,        // warp streaks
+  bloomStrength: 1.0, nebula: 1.0, driftOn: true, // living-void background
 };
 const fxEl = document.querySelector('#fxpanel');
 const UP_NORMAL = [0, 1, 0];
@@ -36,7 +38,8 @@ const canvas = document.querySelector('#scene');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-let composer = null, bokeh = null;   // DOF (set up below)
+let composer = null, bokeh = null, bloom = null;   // post-FX (set up below)
+let _lastBeatIdx = 0, voidWarp = 0;                // warp burst on chapter change
 const _focusV = new THREE.Vector3();
 
 // ---- Offscreen renderer that draws each shot's thumbnail in the editor list -
@@ -69,7 +72,7 @@ fGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
 fGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
 const pointMat = new THREE.PointsMaterial({
   size: 3, sizeAttenuation: true, vertexColors: true,
-  transparent: true, opacity: 0.95, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, // glowing dust, always behind content
+  transparent: true, opacity: 0.5, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, // faint dust behind the living void (kept low so bloom doesn't haze)
 });
 // Higgsfield-generated soft particle sprite -> alpha mask, so each point is a
 // soft glowing dot (tinted slate by the vertex colors) instead of a hard square
@@ -82,62 +85,122 @@ const pointField = new THREE.Points(fGeo, pointMat);
 pointField.renderOrder = -10;
 scene.add(pointField);
 
-// ---- Faint connecting network lines (the CRM/SaaS "data relationships" nod) --
-// sample ~360 nodes across the field, link each to its 2 nearest -> a delicate web
-// ---- Data-network environment ------------------------------------------------
-// A real 3D web of nodes + glowing edges you fly THROUGH, with bright pulses that
-// flow node-to-node along the edges like data moving through the network.
-const dataNet = (() => {
-  const N = 480, MAXD2 = 150 * 150, K = 2;   // fewer nodes + fewer links = calmer web
-  const nodes = [];
+// ---- Living void (per BACKGROUND.md / demo-living-void.html) -----------------
+// An animated nebula backdrop + twinkling, drifting shader nodes + form/dissolve
+// energy lines whose endpoints follow the moving nodes. All behind the content.
+const livingVoid = (() => {
+  // 1) Animated nebula backdrop — full-screen quad, rendered first, no depth.
+  const bgMat = new THREE.ShaderMaterial({
+    depthTest: false, depthWrite: false, fog: false,
+    uniforms: { uTime: { value: 0 }, uIntensity: { value: FX.nebula }, uAspect: { value: window.innerWidth / window.innerHeight } },
+    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.999, 1.0); }`,
+    fragmentShader: `
+      varying vec2 vUv; uniform float uTime, uIntensity, uAspect;
+      float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); }
+      float noise(vec2 p){ vec2 i=floor(p),f=fract(p); float a=hash(i),b=hash(i+vec2(1,0)),c=hash(i+vec2(0,1)),d=hash(i+vec2(1,1)); vec2 u=f*f*(3.0-2.0*f); return mix(mix(a,b,u.x),mix(c,d,u.x),u.y); }
+      float fbm(vec2 p){ float v=0.0,a=0.5; for(int i=0;i<5;i++){ v+=a*noise(p); p=p*2.02+vec2(1.7); a*=0.5; } return v; }
+      void main(){
+        vec2 uv=vUv; uv.x*=uAspect;
+        float t=uTime*0.03;
+        float n =fbm(uv*2.4+vec2(t,t*0.6));
+        float n2=fbm(uv*1.5-vec2(t*0.5,t*0.2)+5.0);
+        vec3 base=vec3(0.012,0.020,0.030), teal=vec3(0.05,0.17,0.24), violet=vec3(0.11,0.06,0.20), ember=vec3(0.22,0.09,0.03);
+        vec3 col=base;
+        col+=teal  *smoothstep(0.35,0.95,n)*0.9;
+        col+=violet*smoothstep(0.55,1.05,n2)*0.55;
+        col+=ember *smoothstep(0.72,1.05,n*n2)*0.7;
+        float d=distance(vUv,vec2(0.5)); col*=1.0-0.55*smoothstep(0.35,0.95,d);
+        gl_FragColor=vec4(col*uIntensity,1.0);
+      }`,
+  });
+  const bg = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), bgMat);
+  bg.frustumCulled = false; bg.renderOrder = -20;
+  scene.add(bg);
+
+  // 2) Node field along the flight corridor — twinkle + organic drift + ember accents.
+  const N = 480;
+  const base = new Float32Array(N * 3), pos = new Float32Array(N * 3);
+  const amp = new Float32Array(N * 3), fre = new Float32Array(N * 3), pha = new Float32Array(N * 3);
+  const aPhase = new Float32Array(N), aScale = new Float32Array(N), aColor = new Float32Array(N * 3);
+  const cCyan = new THREE.Color(0x6fe0ff), cWhite = new THREE.Color(0xeaf4ff), cOrange = new THREE.Color(0xff7a3d), tc = new THREE.Color();
   for (let i = 0; i < N; i++) {
-    nodes.push(new THREE.Vector3(
-      (Math.random() - 0.5) * 640,            // x corridor
-      (Math.random() - 0.5) * 480 + 80,        // y (biased up, toward the path)
-      150 - Math.random() * 820,               // z corridor the camera flies down
-    ));
+    base[i * 3] = (Math.random() - 0.5) * 640;
+    base[i * 3 + 1] = (Math.random() - 0.5) * 480 + 80;
+    base[i * 3 + 2] = 150 - Math.random() * 820;
+    for (let k = 0; k < 3; k++) { amp[i * 3 + k] = 4 + Math.random() * 14; fre[i * 3 + k] = 0.2 + Math.random() * 0.6; pha[i * 3 + k] = Math.random() * 6.28; }
+    aPhase[i] = Math.random() * 6.28; aScale[i] = 0.6 + Math.random() * 1.8;
+    const r = Math.random(); tc.copy(r < 0.12 ? cOrange : (r < 0.5 ? cWhite : cCyan));
+    aColor[i * 3] = tc.r; aColor[i * 3 + 1] = tc.g; aColor[i * 3 + 2] = tc.b;
   }
-  const adj = Array.from({ length: N }, () => []);
-  const edgePts = [], seen = new Set();
-  for (let a = 0; a < N; a++) {
-    const cand = [];
-    for (let b = 0; b < N; b++) { if (b === a) continue; const d = nodes[a].distanceToSquared(nodes[b]); if (d < MAXD2) cand.push([d, b]); }
-    cand.sort((x, y) => x[0] - y[0]);
-    for (let k = 0; k < Math.min(K, cand.length); k++) {
-      const b = cand[k][1], key = a < b ? a * N + b : b * N + a;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      adj[a].push(b); adj[b].push(a);
-      edgePts.push(nodes[a], nodes[b]);
+  const pgeo = new THREE.BufferGeometry();
+  pgeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  pgeo.setAttribute('aPhase', new THREE.BufferAttribute(aPhase, 1));
+  pgeo.setAttribute('aScale', new THREE.BufferAttribute(aScale, 1));
+  pgeo.setAttribute('aColor', new THREE.BufferAttribute(aColor, 3));
+  const pmat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
+    uniforms: { uTime: { value: 0 }, uSize: { value: 9 }, uTwinkle: { value: 1 }, uWarp: { value: 0 }, uTint: { value: new THREE.Color(0x4fd2ff) }, uTintAmt: { value: 0 } },
+    vertexShader: `attribute float aPhase; attribute float aScale; attribute vec3 aColor;
+      uniform float uTime,uSize,uTwinkle,uWarp,uTintAmt; uniform vec3 uTint; varying vec3 vC; varying float vTw;
+      void main(){ float tw=mix(1.0,0.55+0.45*sin(uTime*1.6+aPhase),uTwinkle); vC=mix(aColor,uTint,uTintAmt); vTw=tw;
+        vec4 mv=modelViewMatrix*vec4(position,1.0); gl_Position=projectionMatrix*mv;
+        gl_PointSize=aScale*uSize*tw*(1.0+uWarp*1.6)*(300.0/ -mv.z); }`,
+    fragmentShader: `varying vec3 vC; varying float vTw;
+      void main(){ float d=length(gl_PointCoord-0.5); if(d>0.5)discard; float a=smoothstep(0.5,0.0,d); gl_FragColor=vec4(vC*(0.7+vTw),a*vTw); }`,
+  });
+  const points = new THREE.Points(pgeo, pmat);
+  points.renderOrder = -8; points.frustumCulled = false;
+  scene.add(points);
+
+  // 3) Energy lines — connect nearby nodes; slow form/dissolve + a travelling pulse.
+  const pairs = [], TH = 150;
+  for (let i = 0; i < N; i++) { let c = 0; for (let j = i + 1; j < N && c < 3; j++) { const dx = base[i * 3] - base[j * 3], dy = base[i * 3 + 1] - base[j * 3 + 1], dz = base[i * 3 + 2] - base[j * 3 + 2]; if (dx * dx + dy * dy + dz * dz < TH * TH) { pairs.push(i, j); c++; } } }
+  const L = pairs.length / 2;
+  const lpos = new Float32Array(L * 2 * 3), lT = new Float32Array(L * 2), lPhase = new Float32Array(L * 2), lCol = new Float32Array(L * 2 * 3);
+  for (let k = 0; k < L; k++) { const ph = Math.random(), a = pairs[k * 2], b = pairs[k * 2 + 1]; lT[k * 2] = 0; lT[k * 2 + 1] = 1; lPhase[k * 2] = lPhase[k * 2 + 1] = ph;
+    for (let v = 0; v < 2; v++) { const idx = v === 0 ? a : b; lCol[(k * 2 + v) * 3] = aColor[idx * 3]; lCol[(k * 2 + v) * 3 + 1] = aColor[idx * 3 + 1]; lCol[(k * 2 + v) * 3 + 2] = aColor[idx * 3 + 2]; } }
+  const lgeo = new THREE.BufferGeometry();
+  lgeo.setAttribute('position', new THREE.BufferAttribute(lpos, 3));
+  lgeo.setAttribute('aT', new THREE.BufferAttribute(lT, 1));
+  lgeo.setAttribute('aLPhase', new THREE.BufferAttribute(lPhase, 1));
+  lgeo.setAttribute('aLColor', new THREE.BufferAttribute(lCol, 3));
+  const lmat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
+    uniforms: { uTime: { value: 0 }, uOn: { value: 1 }, uTint: { value: new THREE.Color(0x4fd2ff) }, uTintAmt: { value: 0 } },
+    vertexShader: `attribute float aT; attribute float aLPhase; attribute vec3 aLColor; uniform float uTintAmt; uniform vec3 uTint; varying float vT; varying float vP; varying vec3 vC;
+      void main(){ vT=aT; vP=aLPhase; vC=mix(aLColor,uTint,uTintAmt); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+    fragmentShader: `varying float vT; varying float vP; varying vec3 vC; uniform float uTime,uOn;
+      void main(){ float life=0.10+0.18*sin(uTime*0.35+vP*6.2831); float head=fract(uTime*0.22+vP); float pulse=smoothstep(0.05,0.0,abs(vT-head));
+        float a=clamp(life+pulse*0.9,0.0,1.0)*uOn; gl_FragColor=vec4(vC+pulse*vec3(0.5),a); }`,
+  });
+  const lines = new THREE.LineSegments(lgeo, lmat);
+  lines.renderOrder = -9; lines.frustumCulled = false;
+  scene.add(lines);
+
+  function update(time, drift) {
+    pmat.uniforms.uTime.value = time; lmat.uniforms.uTime.value = time; bgMat.uniforms.uTime.value = time;
+    const dz = drift ? 1 : 0;
+    for (let i = 0; i < N; i++) {
+      pos[i * 3] = base[i * 3] + dz * amp[i * 3] * Math.sin(time * fre[i * 3] + pha[i * 3]);
+      pos[i * 3 + 1] = base[i * 3 + 1] + dz * amp[i * 3 + 1] * Math.sin(time * fre[i * 3 + 1] + pha[i * 3 + 1]);
+      pos[i * 3 + 2] = base[i * 3 + 2] + dz * amp[i * 3 + 2] * Math.sin(time * fre[i * 3 + 2] + pha[i * 3 + 2]);
     }
+    pgeo.attributes.position.needsUpdate = true;
+    for (let k = 0; k < L; k++) { const a = pairs[k * 2], b = pairs[k * 2 + 1];
+      lpos[(k * 2) * 3] = pos[a * 3]; lpos[(k * 2) * 3 + 1] = pos[a * 3 + 1]; lpos[(k * 2) * 3 + 2] = pos[a * 3 + 2];
+      lpos[(k * 2 + 1) * 3] = pos[b * 3]; lpos[(k * 2 + 1) * 3 + 1] = pos[b * 3 + 1]; lpos[(k * 2 + 1) * 3 + 2] = pos[b * 3 + 2];
+    }
+    lgeo.attributes.position.needsUpdate = true;
   }
-  const group = new THREE.Group();
-  group.renderOrder = -10;                    // whole network sits behind the content panels
-  const lineMat = new THREE.LineBasicMaterial({ color: 0x3fb6e6, transparent: true, opacity: 0.13, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, fog: true });
-  group.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(edgePts), lineMat));
-  const nMat = new THREE.PointsMaterial({ size: 4, sizeAttenuation: true, color: 0x6fd8f5, transparent: true, opacity: 0.45, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending });
-  group.add(new THREE.Points(new THREE.BufferGeometry().setFromPoints(nodes), nMat));
-  // flowing pulses (gentler speeds = smoother)
-  const M = 110, pulses = [], pPos = new Float32Array(M * 3);
-  for (let i = 0; i < M; i++) {
-    const a = (Math.random() * N) | 0, nb = adj[a];
-    pulses.push({ a, b: nb.length ? nb[(Math.random() * nb.length) | 0] : a, p: Math.random(), spd: 0.22 + Math.random() * 0.5 });
-  }
-  const pGeo = new THREE.BufferGeometry();
-  pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
-  const pMat = new THREE.PointsMaterial({ size: 7, sizeAttenuation: true, color: 0xc8f6ff, transparent: true, opacity: 1, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending });
-  new THREE.TextureLoader().load('/particle.png', (tex) => { tex.colorSpace = THREE.SRGBColorSpace; nMat.alphaMap = tex; nMat.needsUpdate = true; pMat.alphaMap = tex; pMat.needsUpdate = true; });
-  group.add(new THREE.Points(pGeo, pMat));
-  scene.add(group);
-  return { nodes, adj, pulses, pPos, pGeo, lineMat, nMat, pMat };
+  const setTint = (hex, amt) => { pmat.uniforms.uTint.value.set(hex); lmat.uniforms.uTint.value.set(hex); pmat.uniforms.uTintAmt.value = amt; lmat.uniforms.uTintAmt.value = amt; };
+  const setWarp = (v) => { pmat.uniforms.uWarp.value = v; };
+  return { bg, bgMat, pmat, lmat, update, setTint, setWarp };
 })();
 
 // Per-chapter "color world": the network recolors toward the nearest section's
 // hue on approach, fading back to neutral cyan between beats. (Placeholder
 // palette — swap to real project brand colors in Phase A/C.)
-const BASE_EDGE = new THREE.Color(0x3fb6e6), BASE_NODE = new THREE.Color(0x6fd8f5), BASE_PULSE = new THREE.Color(0xc8f6ff);
 const CHAPTER_COLORS = [0x4fd2ff, 0x9b8cff, 0x36e0c0, 0xff9e7a, 0x7fb4ff, 0xff8fb0, 0xffd27f];
-const _chapTarget = new THREE.Color();
 
 // Warp streaks: forward-rushing lines that only appear while the camera is
 // flying fast between chapters — a cinematic whoosh, invisible when settled.
@@ -1253,6 +1316,8 @@ try {
   composer.addPass(new RenderPass(scene, camera));
   bokeh = new BokehPass(scene, camera, { focus: 200, aperture: FX.dofAperture, maxblur: FX.dofBlur });
   composer.addPass(bokeh);
+  bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), FX.bloomStrength, 0.7, 0.22); // threshold .22 → only bright nodes glow, not the nebula
+  composer.addPass(bloom);
   composer.setSize(window.innerWidth, window.innerHeight);
 } catch (e) { composer = null; console.warn('Postprocessing disabled:', e); }
 
@@ -1270,6 +1335,8 @@ try {
     ['colreach', () => FX.colorReach, (v) => { FX.colorReach = v; }, f0],
     ['warpstr', () => FX.warpStrength, (v) => { FX.warpStrength = v; }, f2],
     ['warplen', () => FX.warpLength, (v) => { FX.warpLength = v; }, f3],
+    ['bloom', () => FX.bloomStrength, (v) => { FX.bloomStrength = v; }, f2],
+    ['nebula', () => FX.nebula, (v) => { FX.nebula = v; livingVoid.bgMat.uniforms.uIntensity.value = v; }, f2],
   ];
   for (const [id, get, set, fmt] of rows) {
     const inp = document.querySelector('#fx-' + id), out = document.querySelector('#fx-' + id + '-v');
@@ -1278,6 +1345,11 @@ try {
     if (out) out.textContent = fmt(parseFloat(inp.value));
     inp.addEventListener('input', () => { const v = parseFloat(inp.value); set(v); if (out) out.textContent = fmt(v); });
   }
+  const chk = (id, fn) => { const el = document.querySelector('#fx-' + id); if (el) el.addEventListener('change', () => fn(el.checked)); };
+  chk('twinkle', (v) => { livingVoid.pmat.uniforms.uTwinkle.value = v ? 1 : 0; });
+  chk('drift', (v) => { FX.driftOn = v; });
+  chk('lines', (v) => { livingVoid.lmat.uniforms.uOn.value = v ? 1 : 0; });
+  chk('neb', (v) => { livingVoid.bg.visible = v; });
   window.addEventListener('keydown', (e) => {
     if (e.key.toLowerCase() === 'b' && !isTextEntry(e.target) && !editMode) fxEl.hidden = !fxEl.hidden;
   });
@@ -1322,24 +1394,7 @@ function animate() {
   if (editMode) { thumbTimer += dt; if (thumbTimer > 0.8) { thumbTimer = 0; renderAllThumbs(); } }
 
   pointField.rotation.y = t * 0.01;
-  {                                          // flow data pulses along the network edges
-    const { nodes, adj, pulses, pPos, pGeo } = dataNet;
-    for (let i = 0; i < pulses.length; i++) {
-      const pu = pulses[i];
-      pu.p += pu.spd * dt;
-      while (pu.p >= 1) {                    // reached a node -> hop onto a connected edge
-        pu.p -= 1;
-        const nb = adj[pu.b];
-        pu.a = pu.b;
-        pu.b = nb.length ? nb[(Math.random() * nb.length) | 0] : pu.a;
-      }
-      const A = nodes[pu.a], B = nodes[pu.b], q = pu.p;
-      pPos[i * 3] = A.x + (B.x - A.x) * q;
-      pPos[i * 3 + 1] = A.y + (B.y - A.y) * q;
-      pPos[i * 3 + 2] = A.z + (B.z - A.z) * q;
-    }
-    pGeo.attributes.position.needsUpdate = true;
-  }
+  livingVoid.update(t, FX.driftOn);          // nebula time + organic node drift + lines follow
   {                                          // per-chapter color world
     let bi = 0, bd = Infinity;
     for (let i = 0; i < beats.length; i++) {
@@ -1349,10 +1404,7 @@ function animate() {
       if (d < bd) { bd = d; bi = i; }
     }
     const s = clamp(1 - Math.sqrt(bd) / FX.colorReach, 0, 1) * FX.colorIntensity;   // 1 at a section, 0 far between
-    _chapTarget.set(CHAPTER_COLORS[bi % CHAPTER_COLORS.length]);
-    dataNet.lineMat.color.copy(BASE_EDGE).lerp(_chapTarget, s * 0.8);
-    dataNet.nMat.color.copy(BASE_NODE).lerp(_chapTarget, s);
-    dataNet.pMat.color.copy(BASE_PULSE).lerp(_chapTarget, s);
+    livingVoid.setTint(CHAPTER_COLORS[bi % CHAPTER_COLORS.length], s);
   }
   {                                          // kinetic caption: reveal on arrival, hide while moving / in editor
     if (editMode || freeRoam) hideCaption();
@@ -1416,7 +1468,12 @@ function animate() {
     mat.opacity = editMode ? 0 : clamp((camSpeed - 12) / 120, 0, FX.warpStrength);
   }
 
-  if (composer && !editMode && !freeRoam) composer.render(); else renderer.render(scene, camera); // no blur while editing / free-roaming
+  if (index !== _lastBeatIdx) { voidWarp = Math.max(voidWarp, 0.9); _lastBeatIdx = index; } // warp burst on chapter change
+  voidWarp *= 0.94; if (voidWarp < 0.001) voidWarp = 0;
+  livingVoid.setWarp(voidWarp);
+  if (bloom) bloom.strength = FX.bloomStrength + voidWarp * 0.9;
+  if (bokeh) bokeh.enabled = !(editMode || freeRoam);   // DOF only in play; bloom stays on in all modes
+  if (composer) composer.render(); else renderer.render(scene, camera);
   requestAnimationFrame(animate);
 }
 animate();
