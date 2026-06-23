@@ -80,34 +80,7 @@ scene.fog = new THREE.FogExp2(0x06141c, 0.0016);
 
 const camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 5000);
 
-// ---- The void: drifting data-point field -----------------------------------
-const COUNT = 2200, SPREAD = 1400;   // fewer additive dust points = less overdraw + less bloom haze
-const pos = new Float32Array(COUNT * 3), col = new Float32Array(COUNT * 3);
-const cA = new THREE.Color(0x4fd2ff), cB = new THREE.Color(0xeaf4ff), ct = new THREE.Color(); // glowing cyan -> white on dark
-for (let i = 0; i < COUNT; i++) {
-  pos[i*3] = (Math.random()-0.5)*SPREAD;
-  pos[i*3+1] = (Math.random()-0.5)*SPREAD;
-  pos[i*3+2] = (Math.random()-0.5)*SPREAD - 250;
-  ct.copy(cA).lerp(cB, Math.random());
-  col[i*3] = ct.r; col[i*3+1] = ct.g; col[i*3+2] = ct.b;
-}
-const fGeo = new THREE.BufferGeometry();
-fGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-fGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-const pointMat = new THREE.PointsMaterial({
-  size: 3, sizeAttenuation: true, vertexColors: true,
-  transparent: true, opacity: 0.5, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, // faint dust behind the living void (kept low so bloom doesn't haze)
-});
-// Higgsfield-generated soft particle sprite -> alpha mask, so each point is a
-// soft glowing dot (tinted slate by the vertex colors) instead of a hard square
-new THREE.TextureLoader().load('/particle.png', (tex) => {
-  tex.colorSpace = THREE.SRGBColorSpace;
-  pointMat.alphaMap = tex;
-  pointMat.needsUpdate = true;
-});
-const pointField = new THREE.Points(fGeo, pointMat);
-pointField.renderOrder = -10;
-scene.add(pointField);
+// The void's points are now the volumetric starfield inside livingVoid (below).
 
 // ---- Living void (per BACKGROUND.md / demo-living-void.html) -----------------
 // An animated nebula backdrop + twinkling, drifting shader nodes + form/dissolve
@@ -164,87 +137,72 @@ const livingVoid = (() => {
   bg.frustumCulled = false; bg.renderOrder = -20;
   scene.add(bg);
 
-  // 2) Node field along the flight corridor — twinkle + organic drift + ember accents.
-  const N = 480;
-  const base = new Float32Array(N * 3), pos = new Float32Array(N * 3);
-  const amp = new Float32Array(N * 3), fre = new Float32Array(N * 3), pha = new Float32Array(N * 3);
-  const aPhase = new Float32Array(N), aScale = new Float32Array(N), aColor = new Float32Array(N * 3);
-  const cCyan = new THREE.Color(0x6fe0ff), cWhite = new THREE.Color(0xeaf4ff), cOrange = new THREE.Color(0xff7a3d), tc = new THREE.Color();
-  for (let i = 0; i < N; i++) {
-    base[i * 3] = (Math.random() - 0.5) * 640;
-    base[i * 3 + 1] = (Math.random() - 0.5) * 480 + 80;
-    base[i * 3 + 2] = 150 - Math.random() * 820;
-    for (let k = 0; k < 3; k++) { amp[i * 3 + k] = 4 + Math.random() * 14; fre[i * 3 + k] = 0.2 + Math.random() * 0.6; pha[i * 3 + k] = Math.random() * 6.28; }
-    aPhase[i] = Math.random() * 6.28; aScale[i] = 0.6 + Math.random() * 1.8;
-    const r = Math.random(); tc.copy(r < 0.12 ? cOrange : (r < 0.5 ? cWhite : cCyan));
-    aColor[i * 3] = tc.r; aColor[i * 3 + 1] = tc.g; aColor[i * 3 + 2] = tc.b;
+  // 2) Volumetric starfield — a 3D VOLUME you fly through (ported 1:1 from
+  //    demo-nebula.html). Streamed toward the camera and wrapped endlessly in the
+  //    vertex shader; depth-driven size + fade; per-star magnitude spread + colour
+  //    temperature; sharp core + halo + a 4-point spike on the brightest; twinkle.
+  const STAR_N = 1500, DEPTH = 1800;
+  const spos = new Float32Array(STAR_N * 3), sseed = new Float32Array(STAR_N), smag = new Float32Array(STAR_N), stmp = new Float32Array(STAR_N);
+  for (let i = 0; i < STAR_N; i++) {
+    spos[i * 3] = (Math.random() * 2 - 1) * 1200; spos[i * 3 + 1] = (Math.random() * 2 - 1) * 760; spos[i * 3 + 2] = -Math.random() * DEPTH;
+    sseed[i] = Math.random() * 6.28;
+    smag[i] = Math.pow(Math.random(), 3.2);                 // mostly faint, a rare few bright
+    stmp[i] = 0.45 + Math.random() * 0.55 - Math.random() * 0.18;  // warm..white..cool
   }
-  const pgeo = new THREE.BufferGeometry();
-  pgeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  pgeo.setAttribute('aPhase', new THREE.BufferAttribute(aPhase, 1));
-  pgeo.setAttribute('aScale', new THREE.BufferAttribute(aScale, 1));
-  pgeo.setAttribute('aColor', new THREE.BufferAttribute(aColor, 3));
-  const pmat = new THREE.ShaderMaterial({
-    transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
-    uniforms: { uTime: { value: 0 }, uSize: { value: 9 }, uTwinkle: { value: 1 }, uWarp: { value: 0 }, uTint: { value: new THREE.Color(0x4fd2ff) }, uTintAmt: { value: 0 } },
-    vertexShader: `attribute float aPhase; attribute float aScale; attribute vec3 aColor;
-      uniform float uTime,uSize,uTwinkle,uWarp,uTintAmt; uniform vec3 uTint; varying vec3 vC; varying float vTw;
-      void main(){ float tw=mix(1.0,0.55+0.45*sin(uTime*1.6+aPhase),uTwinkle); vC=mix(aColor,uTint,uTintAmt); vTw=tw;
-        vec4 mv=modelViewMatrix*vec4(position,1.0); gl_Position=projectionMatrix*mv;
-        gl_PointSize=aScale*uSize*tw*(1.0+uWarp*1.6)*(300.0/ -mv.z); }`,
-    fragmentShader: `varying vec3 vC; varying float vTw;
-      void main(){ float d=length(gl_PointCoord-0.5); if(d>0.5)discard; float a=smoothstep(0.5,0.0,d); gl_FragColor=vec4(vC*(0.7+vTw),a*vTw); }`,
+  const sgeo = new THREE.BufferGeometry();
+  sgeo.setAttribute('position', new THREE.BufferAttribute(spos, 3));
+  sgeo.setAttribute('seed', new THREE.BufferAttribute(sseed, 1));
+  sgeo.setAttribute('mag', new THREE.BufferAttribute(smag, 1));
+  sgeo.setAttribute('tmp', new THREE.BufferAttribute(stmp, 1));
+  const smat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    uniforms: { uTime: { value: 0 }, uDepth: { value: DEPTH }, uSpeed: { value: 26.0 }, uPtN: { value: new THREE.Vector2(9, 9) }, uVel: { value: 0 }, uStar: { value: 1 }, uTwinkle: { value: 1 }, uWarp: { value: 0 }, uTint: { value: new THREE.Color(0x4fd2ff) }, uTintAmt: { value: 0 } },
+    vertexShader: `attribute float seed; attribute float mag; attribute float tmp;
+      varying float vT; varying float vMag; varying float vTmp; varying float vFade;
+      uniform float uTime,uDepth,uSpeed,uVel,uStar,uTwinkle,uWarp; uniform vec2 uPtN;
+      void main(){
+        float rate=0.5+seed*0.25;
+        float tw=0.7+0.3*sin(uTime*rate+seed)*(1.0-mag*0.7);
+        vT=mix(0.85, tw, uTwinkle);
+        vMag=mag; vTmp=tmp;
+        float z=mod(position.z+uTime*uSpeed, uDepth)-uDepth;
+        vec4 mv=modelViewMatrix*vec4(position.x,position.y,z,1.0);
+        float depth=-mv.z;
+        vFade=smoothstep(uDepth*1.05+360.0,uDepth*0.45,depth);
+        vec4 clip=projectionMatrix*mv;
+        vec2 ndc=clip.xy/clip.w; vec2 toP=ndc-uPtN; float pd=length(toP);
+        float near=smoothstep(0.45,0.0,pd);
+        vT*=1.0+near*2.2*uStar;
+        clip.xy+=normalize(toP+1e-4)*near*(0.015+uVel*0.10)*uStar*clip.w;
+        gl_PointSize=(1.0+mag*7.0)*(520.0/depth)*(1.0+near*0.8*uStar)*(1.0+uWarp*1.2);
+        gl_Position=clip;}`,
+    fragmentShader: `varying float vT; varying float vMag; varying float vTmp; varying float vFade;
+      uniform vec3 uTint; uniform float uTintAmt;
+      void main(){
+        vec2 c=gl_PointCoord-0.5; float r=length(c);
+        float core=1.0-smoothstep(0.0,0.18,r);
+        float halo=(1.0-smoothstep(0.0,0.5,r))*0.55;
+        float spike=max(1.0-abs(c.x)*22.0,0.0)*(1.0-smoothstep(0.0,0.5,abs(c.y)))
+                   +max(1.0-abs(c.y)*22.0,0.0)*(1.0-smoothstep(0.0,0.5,abs(c.x)));
+        spike*=smoothstep(0.55,1.0,vMag)*0.6;
+        float i=(core+halo+spike)*vT*vFade;
+        vec3 warm=vec3(1.0,0.78,0.55), cool=vec3(0.62,0.80,1.0);
+        vec3 col=mix(warm,cool,smoothstep(0.0,1.0,vTmp));
+        col=mix(col,vec3(1.0),core*0.6);
+        col=mix(col,uTint,uTintAmt);                        // per-chapter recolor
+        gl_FragColor=vec4(col*i,i);}`,
   });
-  const points = new THREE.Points(pgeo, pmat);
-  points.renderOrder = -8; points.frustumCulled = false;
-  scene.add(points);
+  const stars = new THREE.Points(sgeo, smat);
+  stars.renderOrder = -8; stars.frustumCulled = false;
+  scene.add(stars);
 
-  // 3) Energy lines — connect nearby nodes; slow form/dissolve + a travelling pulse.
-  const pairs = [], TH = 150;
-  for (let i = 0; i < N; i++) { let c = 0; for (let j = i + 1; j < N && c < 3; j++) { const dx = base[i * 3] - base[j * 3], dy = base[i * 3 + 1] - base[j * 3 + 1], dz = base[i * 3 + 2] - base[j * 3 + 2]; if (dx * dx + dy * dy + dz * dz < TH * TH) { pairs.push(i, j); c++; } } }
-  const L = pairs.length / 2;
-  const lpos = new Float32Array(L * 2 * 3), lT = new Float32Array(L * 2), lPhase = new Float32Array(L * 2), lCol = new Float32Array(L * 2 * 3);
-  for (let k = 0; k < L; k++) { const ph = Math.random(), a = pairs[k * 2], b = pairs[k * 2 + 1]; lT[k * 2] = 0; lT[k * 2 + 1] = 1; lPhase[k * 2] = lPhase[k * 2 + 1] = ph;
-    for (let v = 0; v < 2; v++) { const idx = v === 0 ? a : b; lCol[(k * 2 + v) * 3] = aColor[idx * 3]; lCol[(k * 2 + v) * 3 + 1] = aColor[idx * 3 + 1]; lCol[(k * 2 + v) * 3 + 2] = aColor[idx * 3 + 2]; } }
-  const lgeo = new THREE.BufferGeometry();
-  lgeo.setAttribute('position', new THREE.BufferAttribute(lpos, 3));
-  lgeo.setAttribute('aT', new THREE.BufferAttribute(lT, 1));
-  lgeo.setAttribute('aLPhase', new THREE.BufferAttribute(lPhase, 1));
-  lgeo.setAttribute('aLColor', new THREE.BufferAttribute(lCol, 3));
-  const lmat = new THREE.ShaderMaterial({
-    transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
-    uniforms: { uTime: { value: 0 }, uOn: { value: 1 }, uTint: { value: new THREE.Color(0x4fd2ff) }, uTintAmt: { value: 0 } },
-    vertexShader: `attribute float aT; attribute float aLPhase; attribute vec3 aLColor; uniform float uTintAmt; uniform vec3 uTint; varying float vT; varying float vP; varying vec3 vC;
-      void main(){ vT=aT; vP=aLPhase; vC=mix(aLColor,uTint,uTintAmt); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
-    fragmentShader: `varying float vT; varying float vP; varying vec3 vC; uniform float uTime,uOn;
-      void main(){ float life=0.10+0.18*sin(uTime*0.35+vP*6.2831); float head=fract(uTime*0.22+vP); float pulse=smoothstep(0.05,0.0,abs(vT-head));
-        float a=clamp(life+pulse*0.9,0.0,1.0)*uOn; gl_FragColor=vec4(vC+pulse*vec3(0.5),a); }`,
-  });
-  const lines = new THREE.LineSegments(lgeo, lmat);
-  lines.renderOrder = -9; lines.frustumCulled = false;
-  scene.add(lines);
-
-  let _settled = false;
-  function update(time, drift) {
-    pmat.uniforms.uTime.value = time; lmat.uniforms.uTime.value = time; bgMat.uniforms.uTime.value = time;
-    if (!drift && _settled) return;   // drift off: twinkle/lines still animate via uTime, but skip the CPU rebuild + GPU uploads
-    _settled = !drift;
-    const dz = drift ? 1 : 0;
-    for (let i = 0; i < N; i++) {
-      pos[i * 3] = base[i * 3] + dz * amp[i * 3] * Math.sin(time * fre[i * 3] + pha[i * 3]);
-      pos[i * 3 + 1] = base[i * 3 + 1] + dz * amp[i * 3 + 1] * Math.sin(time * fre[i * 3 + 1] + pha[i * 3 + 1]);
-      pos[i * 3 + 2] = base[i * 3 + 2] + dz * amp[i * 3 + 2] * Math.sin(time * fre[i * 3 + 2] + pha[i * 3 + 2]);
-    }
-    pgeo.attributes.position.needsUpdate = true;
-    for (let k = 0; k < L; k++) { const a = pairs[k * 2], b = pairs[k * 2 + 1];
-      lpos[(k * 2) * 3] = pos[a * 3]; lpos[(k * 2) * 3 + 1] = pos[a * 3 + 1]; lpos[(k * 2) * 3 + 2] = pos[a * 3 + 2];
-      lpos[(k * 2 + 1) * 3] = pos[b * 3]; lpos[(k * 2 + 1) * 3 + 1] = pos[b * 3 + 1]; lpos[(k * 2 + 1) * 3 + 2] = pos[b * 3 + 2];
-    }
-    lgeo.attributes.position.needsUpdate = true;
+  function update(time) {
+    bgMat.uniforms.uTime.value = time;
+    smat.uniforms.uTime.value = time;
   }
-  const setTint = (hex, amt) => { pmat.uniforms.uTint.value.set(hex); lmat.uniforms.uTint.value.set(hex); pmat.uniforms.uTintAmt.value = amt; lmat.uniforms.uTintAmt.value = amt; };
-  const setWarp = (v) => { pmat.uniforms.uWarp.value = v; };
-  return { bg, bgMat, pmat, lmat, update, setTint, setWarp, pgeo, lgeo, N, L };
+  const setTint = (hex, amt) => { smat.uniforms.uTint.value.set(hex); smat.uniforms.uTintAmt.value = amt; };
+  const setWarp = (v) => { smat.uniforms.uWarp.value = v; };           // stars swell on a chapter warp burst
+  return { bg, bgMat, neb, smat, sgeo, STAR_N, update, setTint, setWarp };
 })();
 
 // ---- Placeable extruded 3D text (Ogg) ---------------------------------------
@@ -262,9 +220,7 @@ text3d.loadFont().then((r) => { const el = document.querySelector('#text-status'
 // rebuild) so you can dial the amount of stars / nodes / energy lines / nebula.
 // Runs at startup too, so editing the FX defaults also tunes the published build.
 function applyVoidDensity() {
-  fGeo.setDrawRange(0, Math.max(0, Math.floor(COUNT * FX.starFrac)));
-  livingVoid.pgeo.setDrawRange(0, Math.max(0, Math.floor(livingVoid.N * FX.nodeFrac)));
-  livingVoid.lgeo.setDrawRange(0, Math.max(0, Math.floor(livingVoid.L * FX.lineFrac) * 2));
+  livingVoid.sgeo.setDrawRange(0, Math.max(0, Math.floor(livingVoid.STAR_N * FX.starFrac)));
   livingVoid.bg.visible = FX.nebFrac > 0.02;   // single full-screen nebula now — frac toggles it on/off
 }
 applyVoidDensity();
@@ -387,8 +343,7 @@ function save() {
 // push the global (saved) FX/UX/transition state into the live scene + DOM
 function applyGlobals() {
   applyVoidDensity();
-  livingVoid.pmat.uniforms.uTwinkle.value = FX.twinkleOn ? 1 : 0;
-  livingVoid.lmat.uniforms.uOn.value = FX.linesOn ? 1 : 0;
+  livingVoid.smat.uniforms.uTwinkle.value = FX.twinkleOn ? 1 : 0;
   livingVoid.bg.visible = FX.nebVisible;
   transitionEase = EASINGS[txEaseName] || easeInOut;
   captionsOn = FX.uiCaption;
@@ -1482,8 +1437,6 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
     ['warpstr', () => FX.warpStrength, (v) => { FX.warpStrength = v; }, f2],
     ['warplen', () => FX.warpLength, (v) => { FX.warpLength = v; }, f3],
     ['stars', () => FX.starFrac, (v) => { FX.starFrac = v; applyVoidDensity(); }, f2],
-    ['nodes', () => FX.nodeFrac, (v) => { FX.nodeFrac = v; applyVoidDensity(); }, f2],
-    ['linesd', () => FX.lineFrac, (v) => { FX.lineFrac = v; applyVoidDensity(); }, f2],
     ['clouds', () => FX.nebFrac, (v) => { FX.nebFrac = v; applyVoidDensity(); }, f2],
   ];
   for (const [id, get, set, fmt] of globalRows) {
@@ -1495,9 +1448,8 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
   }
 
   const chk = (id, key, fn) => { const el = document.querySelector('#fx-' + id); if (!el) return; el.checked = !!FX[key]; el.addEventListener('change', () => { FX[key] = el.checked; fn(el.checked); }); };
-  chk('twinkle', 'twinkleOn', (v) => { livingVoid.pmat.uniforms.uTwinkle.value = v ? 1 : 0; });
+  chk('twinkle', 'twinkleOn', (v) => { livingVoid.smat.uniforms.uTwinkle.value = v ? 1 : 0; });
   chk('drift', 'driftOn', () => {});
-  chk('energylines', 'linesOn', (v) => { livingVoid.lmat.uniforms.uOn.value = v ? 1 : 0; });
   chk('neb', 'nebVisible', (v) => { livingVoid.bg.visible = v; });
   window.addEventListener('keydown', (e) => {
     if (e.key.toLowerCase() === 'b' && !isTextEntry(e.target) && !editMode) togglePanel(fxEl);
@@ -1669,7 +1621,6 @@ function animate() {
 
   resolveFX();                               // per-beat FX keyframes → interpolated live values
   livingVoid.bgMat.uniforms.uDens.value = curFX.nebula;   // per-section nebula density (keyframed)
-  pointField.rotation.y = t * 0.01;
   livingVoid.update(t, FX.driftOn);          // nebula time + organic node drift + lines follow
   {                                          // per-chapter color world
     let bi = 0, bd = Infinity;
