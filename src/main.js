@@ -121,16 +121,16 @@ const livingVoid = (() => {
         float f=fbm(uv*1.6+warp*r);
         vec3 base=vec3(0.012,0.020,0.030), teal=vec3(0.05,0.17,0.24), viol=vec3(0.12,0.06,0.22);
         vec3 climate=mix(teal,viol,clamp(uHue+0.25*sin(uTime*0.05),0.0,1.0));
-        vec3 col=base + climate*smoothstep(0.35,1.0,f)*(0.6+uDens);
+        vec3 col=base + climate*0.18 + climate*smoothstep(0.12,0.95,f)*(0.7+uDens);   // ambient floor + wide coverage = fills the frame
         float veins=smoothstep(0.55,0.9,r.x*r.y+0.5*f);
         col+=vec3(0.22,0.09,0.03)*veins*uEmber*1.6;
-        col+=climate*1.4*smoothstep(0.78,1.0,f)*(0.4+uDens);
+        col+=climate*1.4*smoothstep(0.6,1.0,f)*(0.4+uDens);
         col+=climate*prox*(0.18+uVel*0.8)*uFlow;
         float rt=uTime-uRipT;
         if(rt<2.5){ vec2 rd=(uRipC-v); rd.x*=uA; float rr=length(rd);
           float ring=sin(rr*26.0-rt*7.0)*exp(-rt*2.2)*smoothstep(0.55,0.0,rr);
           col+=climate*ring*0.5*uRip; }
-        col*=mix(1.0,1.0-0.6*smoothstep(0.25,0.95,distance(v,vec2(0.5))),uVig);
+        col*=mix(1.0,1.0-0.3*smoothstep(0.55,1.15,distance(v,vec2(0.5))),uVig);   // gentle vignette so it reaches the edges
         gl_FragColor=vec4(col,1.0);
       }`,
   });
