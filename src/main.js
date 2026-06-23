@@ -42,7 +42,7 @@ const UP_VERTICAL = [0, 0, -1]; // "look straight up" orientation
 
 // ---- Renderer / scene / camera --------------------------------------------
 const canvas = document.querySelector('#scene');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: false }); // composer renders the scene to its own targets — MSAA on the canvas is wasted
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // cap retina: fewer fragments, big fill-rate win
 let composer = null, bokeh = null, bloom = null;   // post-FX (set up below)
@@ -64,7 +64,7 @@ scene.fog = new THREE.FogExp2(0x06141c, 0.0016);
 const camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 5000);
 
 // ---- The void: drifting data-point field -----------------------------------
-const COUNT = 4500, SPREAD = 1400;
+const COUNT = 2200, SPREAD = 1400;   // fewer additive dust points = less overdraw + less bloom haze
 const pos = new Float32Array(COUNT * 3), col = new Float32Array(COUNT * 3);
 const cA = new THREE.Color(0x4fd2ff), cB = new THREE.Color(0xeaf4ff), ct = new THREE.Color(); // glowing cyan -> white on dark
 for (let i = 0; i < COUNT; i++) {
@@ -200,8 +200,11 @@ const livingVoid = (() => {
   lines.renderOrder = -9; lines.frustumCulled = false;
   scene.add(lines);
 
+  let _settled = false;
   function update(time, drift) {
     pmat.uniforms.uTime.value = time; lmat.uniforms.uTime.value = time; bgMat.uniforms.uTime.value = time;
+    if (!drift && _settled) return;   // drift off: twinkle/lines still animate via uTime, but skip the CPU rebuild + GPU uploads
+    _settled = !drift;
     const dz = drift ? 1 : 0;
     for (let i = 0; i < N; i++) {
       pos[i * 3] = base[i * 3] + dz * amp[i * 3] * Math.sin(time * fre[i * 3] + pha[i * 3]);
@@ -1371,6 +1374,7 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // cap retina: fewer fragments, big fill-rate win
   if (composer) composer.setSize(window.innerWidth, window.innerHeight);
+  if (bloom) bloom.setSize((window.innerWidth / 2) | 0, (window.innerHeight / 2) | 0);
 });
 
 // ---- Depth-of-field + gentle motion blur (kept subtle to avoid sickness) ----
@@ -1382,6 +1386,7 @@ try {
   bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), FX.bloomStrength, 0.7, 0.22); // threshold .22 → only bright nodes glow, not the nebula
   composer.addPass(bloom);
   composer.setSize(window.innerWidth, window.innerHeight);
+  bloom.setSize((window.innerWidth / 2) | 0, (window.innerHeight / 2) | 0);  // half-res bloom — ~4x cheaper, looks ~identical (it's blurred anyway)
 } catch (e) { composer = null; console.warn('Postprocessing disabled:', e); }
 
 // ---- Dev profiling handle + ?prof FPS/drawcall probe ------------------------
