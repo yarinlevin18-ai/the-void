@@ -100,48 +100,47 @@ const livingVoid = (() => {
     uRipC: { value: new THREE.Vector2(0.5, 0.5) }, uRipT: { value: -9 },
     uFlow: { value: 0 }, uRip: { value: 0 },
   };
+  // A 3D VOLUME of soft cloud puffs you fly THROUGH — same technique as the
+  //  starfield (world-anchored points, depth-sized), so the nebula is a real
+  //  volume in the void, not flat cards. Additive puffs overlap into a cloud.
+  const NEB_N = 320;
+  const np = new Float32Array(NEB_N * 3), nseed = new Float32Array(NEB_N), nsize = new Float32Array(NEB_N), nhue = new Float32Array(NEB_N), nmag = new Float32Array(NEB_N);
+  for (let i = 0; i < NEB_N; i++) {
+    np[i * 3] = (Math.random() - 0.5) * 1000; np[i * 3 + 1] = (Math.random() - 0.5) * 520 + 70; np[i * 3 + 2] = 180 - Math.random() * 1160;
+    nseed[i] = Math.random() * 6.28;
+    nsize[i] = 240 + Math.random() * 460;                       // big soft puffs (depth-attenuated below)
+    nhue[i] = Math.random();                                    // teal..violet per puff
+    nmag[i] = 0.25 + Math.pow(Math.random(), 1.7) * 0.75;       // brightness spread -> clustered structure
+  }
+  const ngeo = new THREE.BufferGeometry();
+  ngeo.setAttribute('position', new THREE.BufferAttribute(np, 3));
+  ngeo.setAttribute('nseed', new THREE.BufferAttribute(nseed, 1));
+  ngeo.setAttribute('nsize', new THREE.BufferAttribute(nsize, 1));
+  ngeo.setAttribute('nhue', new THREE.BufferAttribute(nhue, 1));
+  ngeo.setAttribute('nmag', new THREE.BufferAttribute(nmag, 1));
   const bgMat = new THREE.ShaderMaterial({
     transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: neb,
-    vertexShader: `varying vec2 vUv; varying vec3 vW;
-      void main(){ vUv = uv; vec4 wp = modelMatrix * vec4(position,1.0); vW = wp.xyz; gl_Position = projectionMatrix * viewMatrix * wp; }`,
-    fragmentShader: `varying vec2 vUv; varying vec3 vW;
-      uniform float uTime,uDens,uSpd,uWarp,uHue,uEmber;
-      float h(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
-      float n(vec2 p){ vec2 i=floor(p),f=fract(p); float a=h(i),b=h(i+vec2(1,0)),c=h(i+vec2(0,1)),d=h(i+vec2(1,1));
-        vec2 u=f*f*(3.-2.*f); return mix(mix(a,b,u.x),mix(c,d,u.x),u.y); }
-      float fbm(vec2 p){ float s=0.,m=.5; for(int i=0;i<3;i++){ s+=m*n(p); p=p*2.03+vec2(1.7,9.2); m*=.5; } return s; }
-      void main(){
-        vec2 p = vW.xy * 0.0016;                     // sample by WORLD position -> nebula is fixed in the environment
-        float t=uTime*0.05*uSpd, warp=uWarp;
-        vec2 q=vec2(fbm(p+vec2(0.0,t)), fbm(p+vec2(5.2,-t)));
-        float f=fbm(p+warp*q);                        // domain-warped (folded) fbm
+    vertexShader: `attribute float nseed; attribute float nsize; attribute float nhue; attribute float nmag;
+      uniform float uTime,uSpd,uDens,uWarp; varying float vH; varying float vMag;
+      void main(){ vH=nhue; vMag=nmag;
+        vec3 wp=position;
+        wp.x+=sin(uTime*0.05*uSpd+nseed)*24.0*uWarp;          // slow drift (turbulence = Neb warp); stays anchored in the void
+        wp.y+=cos(uTime*0.04*uSpd+nseed*1.3)*16.0*uWarp;
+        vec4 mv=modelViewMatrix*vec4(wp,1.0);
+        gl_PointSize=nsize*(1.0+uDens*0.3)*(300.0/max(1.0,-mv.z));
+        gl_Position=projectionMatrix*mv; }`,
+    fragmentShader: `varying float vH; varying float vMag;
+      uniform float uHue,uEmber,uDens;
+      void main(){ float d=length(gl_PointCoord-0.5); if(d>0.5)discard;
+        float a=smoothstep(0.5,0.0,d); a*=a;                  // very soft puff falloff
         vec3 teal=vec3(0.05,0.17,0.24), viol=vec3(0.12,0.06,0.22);
-        vec3 climate=mix(teal,viol,clamp(uHue+0.25*sin(uTime*0.05),0.0,1.0));
-        vec3 col=climate*smoothstep(0.30,1.0,f)*(0.7+uDens);
-        float veins=smoothstep(0.55,0.92,q.x*q.y+0.5*f);
-        col+=vec3(0.22,0.09,0.03)*veins*uEmber*1.4;
-        col+=climate*1.3*smoothstep(0.7,1.0,f)*(0.4+uDens);
-        float radial=smoothstep(0.5,0.04,distance(vUv,vec2(0.5)));   // soft card edges -> reads as gas, not planes
-        float a=radial*(0.16+0.7*smoothstep(0.22,0.95,f))*(0.5+uDens*0.4);
-        col += (h(gl_FragCoord.xy)-0.5)/255.0;        // dither: kill 8-bit banding
-        gl_FragColor=vec4(col,a);
-      }`,
+        vec3 climate=mix(teal,viol, clamp(vH*0.7+uHue*0.4,0.0,1.0));
+        vec3 col=climate + vec3(0.22,0.09,0.03)*uEmber*smoothstep(0.8,1.0,vH);   // ember on the violet-end puffs
+        float bright=vMag*(0.5+uDens)*0.5;
+        gl_FragColor=vec4(col*bright, a*bright); }`,
   });
-  // A world-anchored VOLUME of cloud cards through the corridor — the camera flies
-  // THROUGH them (parallax), so the nebula is fixed in the void, not on the screen.
-  const bg = new THREE.Group();
-  bg.renderOrder = -20;
-  const nebGeo = new THREE.PlaneGeometry(1, 1);
-  const NEB_CARDS = 8;
-  for (let i = 0; i < NEB_CARDS; i++) {
-    const card = new THREE.Mesh(nebGeo, bgMat);
-    card.position.set((Math.random() - 0.5) * 900, (Math.random() - 0.5) * 460 + 70, 160 - (i / (NEB_CARDS - 1)) * 1040);
-    const s = 720 + Math.random() * 820;
-    card.scale.set(s, s * (0.7 + Math.random() * 0.5), 1);
-    card.rotation.z = Math.random() * Math.PI;
-    card.frustumCulled = false;
-    bg.add(card);
-  }
+  const bg = new THREE.Points(ngeo, bgMat);
+  bg.renderOrder = -20; bg.frustumCulled = false;
   scene.add(bg);
 
   // 2) Volumetric starfield — a 3D VOLUME you fly through (ported 1:1 from
@@ -284,7 +283,7 @@ text3d.loadFont().then((r) => { const el = document.querySelector('#text-status'
 // Runs at startup too, so editing the FX defaults also tunes the published build.
 function applyVoidDensity() {
   livingVoid.sgeo.setDrawRange(0, Math.max(0, Math.floor(livingVoid.STAR_N * FX.starFrac)));
-  { const cards = livingVoid.bg.children, k = Math.round(cards.length * FX.nebFrac); cards.forEach((c, i) => { c.visible = i < k; }); }
+  { const g = livingVoid.bg.geometry, nn = g.attributes.position.count; g.setDrawRange(0, Math.max(0, Math.floor(nn * FX.nebFrac))); }
 }
 applyVoidDensity();
 
