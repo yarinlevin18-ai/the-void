@@ -34,6 +34,7 @@ const FX = {
   twinkleOn: true, linesOn: true, nebVisible: true,                           // living-void toggles
   uiHud: true, uiWaypoints: true, uiCaption: true, uiHint: true, uiScale: 1,  // UX panel state
   waveAmp: 26, waveSpd: 1, waveCoil: 34, waveOn: true, waveGrid: false,        // neon wave ribbon
+  nebSpd: 0.6, nebWarp: 1.4, nebHue: 0.5, nebEmber: 0.25, nebVig: true,         // nebula climate (drift/warp/hue/ember/vignette)
 };
 const fxEl = document.querySelector('#fxpanel');
 // FX keyframes: these params live PER BEAT (beat.fx) and are interpolated across
@@ -121,16 +122,16 @@ const livingVoid = (() => {
         float f=fbm(uv*1.6+warp*r);
         vec3 base=vec3(0.012,0.020,0.030), teal=vec3(0.05,0.17,0.24), viol=vec3(0.12,0.06,0.22);
         vec3 climate=mix(teal,viol,clamp(uHue+0.25*sin(uTime*0.05),0.0,1.0));
-        vec3 col=base + climate*0.18 + climate*smoothstep(0.12,0.95,f)*(0.7+uDens);   // ambient floor + wide coverage = fills the frame
+        vec3 col=base + climate*smoothstep(0.35,1.0,f)*(0.6+uDens);
         float veins=smoothstep(0.55,0.9,r.x*r.y+0.5*f);
         col+=vec3(0.22,0.09,0.03)*veins*uEmber*1.6;
-        col+=climate*1.4*smoothstep(0.6,1.0,f)*(0.4+uDens);
+        col+=climate*1.4*smoothstep(0.78,1.0,f)*(0.4+uDens);
         col+=climate*prox*(0.18+uVel*0.8)*uFlow;
         float rt=uTime-uRipT;
         if(rt<2.5){ vec2 rd=(uRipC-v); rd.x*=uA; float rr=length(rd);
           float ring=sin(rr*26.0-rt*7.0)*exp(-rt*2.2)*smoothstep(0.55,0.0,rr);
           col+=climate*ring*0.5*uRip; }
-        col*=mix(1.0,1.0-0.3*smoothstep(0.55,1.15,distance(v,vec2(0.5))),uVig);   // gentle vignette so it reaches the edges
+        col*=mix(1.0,1.0-0.6*smoothstep(0.25,0.95,distance(v,vec2(0.5))),uVig);
         gl_FragColor=vec4(col,1.0);
       }`,
   });
@@ -346,7 +347,7 @@ const EASINGS = {
 let transitionEase = easeInOut;
 let txEaseName = 'easeInOut';
 // global (non-keyframed) state that Save must persist alongside the beats
-const GLOBAL_KEYS = ['starFrac', 'nodeFrac', 'lineFrac', 'nebFrac', 'driftOn', 'fovPunch', 'warpStrength', 'warpLength', 'twinkleOn', 'linesOn', 'nebVisible', 'uiHud', 'uiWaypoints', 'uiCaption', 'uiHint', 'uiScale', 'waveAmp', 'waveSpd', 'waveCoil', 'waveOn', 'waveGrid'];
+const GLOBAL_KEYS = ['starFrac', 'nodeFrac', 'lineFrac', 'nebFrac', 'driftOn', 'fovPunch', 'warpStrength', 'warpLength', 'twinkleOn', 'linesOn', 'nebVisible', 'uiHud', 'uiWaypoints', 'uiCaption', 'uiHint', 'uiScale', 'waveAmp', 'waveSpd', 'waveCoil', 'waveOn', 'waveGrid', 'nebSpd', 'nebWarp', 'nebHue', 'nebEmber', 'nebVig'];
 let activePunch = 0;   // 0..1 across a transition, peaks at the midpoint (for FOV punch)
 const DEF_FOV = 68, DEF_DUR = 1.6;
 // a sensible starter panel for a section: sits at its aim point, fixed orientation
@@ -402,6 +403,11 @@ function applyGlobals() {
   applyVoidDensity();
   livingVoid.smat.uniforms.uTwinkle.value = FX.twinkleOn ? 1 : 0;
   livingVoid.bg.visible = FX.nebVisible;
+  livingVoid.bgMat.uniforms.uSpd.value = FX.nebSpd;
+  livingVoid.bgMat.uniforms.uWarp.value = FX.nebWarp;
+  livingVoid.bgMat.uniforms.uHue.value = FX.nebHue;
+  livingVoid.bgMat.uniforms.uEmber.value = FX.nebEmber;
+  livingVoid.bgMat.uniforms.uVig.value = FX.nebVig ? 1 : 0;
   transitionEase = EASINGS[txEaseName] || easeInOut;
   captionsOn = FX.uiCaption;
   const hud = document.querySelector('#hud'); if (hud) hud.style.display = FX.uiHud ? '' : 'none';
@@ -1503,6 +1509,10 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
     ['wavecoil', () => FX.waveCoil, (v) => { FX.waveCoil = v; }, f0],
     ['stars', () => FX.starFrac, (v) => { FX.starFrac = v; applyVoidDensity(); }, f2],
     ['clouds', () => FX.nebFrac, (v) => { FX.nebFrac = v; applyVoidDensity(); }, f2],
+    ['nebspd', () => FX.nebSpd, (v) => { FX.nebSpd = v; livingVoid.bgMat.uniforms.uSpd.value = v; }, f2],
+    ['nebwarp', () => FX.nebWarp, (v) => { FX.nebWarp = v; livingVoid.bgMat.uniforms.uWarp.value = v; }, f2],
+    ['nebhue', () => FX.nebHue, (v) => { FX.nebHue = v; livingVoid.bgMat.uniforms.uHue.value = v; }, f2],
+    ['nebember', () => FX.nebEmber, (v) => { FX.nebEmber = v; livingVoid.bgMat.uniforms.uEmber.value = v; }, f2],
   ];
   for (const [id, get, set, fmt] of globalRows) {
     const inp = document.querySelector('#fx-' + id), out = document.querySelector('#fx-' + id + '-v');
@@ -1517,6 +1527,7 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
   chk('drift', 'driftOn', () => {});
   chk('waveon', 'waveOn', () => {});
   chk('wavegrid', 'waveGrid', () => {});
+  chk('nebvig', 'nebVig', (v) => { livingVoid.bgMat.uniforms.uVig.value = v ? 1 : 0; });
   chk('neb', 'nebVisible', (v) => { livingVoid.bg.visible = v; });
   window.addEventListener('keydown', (e) => {
     if (e.key.toLowerCase() === 'b' && !isTextEntry(e.target) && !editMode) togglePanel(fxEl);
