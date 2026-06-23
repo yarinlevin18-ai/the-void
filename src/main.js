@@ -33,6 +33,7 @@ const FX = {
   fovPunch: 0,                                 // transient FOV widening mid-transition (whoosh)
   twinkleOn: true, linesOn: true, nebVisible: true,                           // living-void toggles
   uiHud: true, uiWaypoints: true, uiCaption: true, uiHint: true, uiScale: 1,  // UX panel state
+  waveAmp: 26, waveSpd: 1, waveCoil: 34, waveOn: true, waveGrid: false,        // neon wave ribbon
 };
 const fxEl = document.querySelector('#fxpanel');
 // FX keyframes: these params live PER BEAT (beat.fx) and are interpolated across
@@ -205,6 +206,64 @@ const livingVoid = (() => {
   return { bg, bgMat, neb, smat, sgeo, STAR_N, update, setTint, setWarp };
 })();
 
+// ---- Neon wave ribbon (ported 1:1 from demo-wave-ribbon.APPROVED.html) -------
+// A contained chrome / liquid-glass band: traveling-sine displacement with an
+// analytic normal (fresnel rim + thin-film iridescence + sweeping glint), drifting
+// in a bounded Lissajous path around one section. Optional crisp neon grid.
+const waveRibbon = (() => {
+  const uniforms = { uTime: { value: 0 }, uAmp: { value: FX.waveAmp }, uSpd: { value: FX.waveSpd }, uCoil: { value: FX.waveCoil } };
+  const VERT = `uniform float uTime,uAmp,uSpd,uCoil;varying float vH;varying vec2 vUv;varying vec3 vN;varying vec3 vVP;
+    void main(){vUv=uv;vec3 p=position;float t=uTime*uSpd;
+      float w=sin(p.x*0.018+t*1.8)*uAmp + sin(p.x*0.05-t*1.3)*uAmp*0.45 + sin(p.y*0.06+t)*5.0;
+      float wx=cos(p.x*0.018+t*1.8)*uAmp*0.018 + cos(p.x*0.05-t*1.3)*uAmp*0.45*0.05;
+      float wy=cos(p.y*0.06+t)*5.0*0.06;
+      float cx=cos(p.x*0.012+t*0.9)*uCoil*0.012;
+      p.z+=w;
+      p.y+=sin(p.x*0.012+t*0.9)*uCoil;
+      vH=w;
+      vec3 nrm=normalize(cross(vec3(1.0,cx,wx),vec3(0.0,1.0,wy)));
+      vN=normalize(normalMatrix*nrm);
+      vec4 mv=modelViewMatrix*vec4(p,1.0); vVP=mv.xyz;
+      gl_Position=projectionMatrix*mv;}`;
+  const FRAG = `uniform float uTime;varying float vH;varying vec2 vUv;
+    void main(){
+      vec3 cy=vec3(0.28,0.92,1.0), vi=vec3(0.55,0.40,1.0), mg=vec3(0.92,0.40,0.85);
+      float m=fract(vUv.x*1.3 - uTime*0.45);
+      vec3 col = m<0.5 ? mix(cy,vi,m*2.0) : mix(vi,mg,(m-0.5)*2.0);
+      float crest=smoothstep(0.3,1.0,vH/34.0); col+=crest*0.45;
+      float edge=smoothstep(0.0,0.18,vUv.y)*smoothstep(1.0,0.82,vUv.y);
+      float ends=smoothstep(0.0,0.16,vUv.x)*smoothstep(1.0,0.84,vUv.x);
+      gl_FragColor=vec4(col, 0.5*edge*ends);}`;
+  const FILL_FRAG = `uniform float uTime;varying float vH;varying vec2 vUv;varying vec3 vN;varying vec3 vVP;
+    void main(){
+      vec3 n=normalize(vN), v=normalize(-vVP);
+      float fres=pow(1.0-max(dot(n,v),0.0),2.4);
+      float hue=fres*0.8 + vUv.x*0.5 + vH*0.012 + uTime*0.04;
+      vec3 irid=0.5+0.5*cos(6.28318*(hue+vec3(0.0,0.35,0.62))); irid.r*=0.85;
+      float streak=fract(vUv.x*1.2 - uTime*0.12);
+      float spec=smoothstep(0.05,0.0,abs(streak-0.5))*0.9;
+      vec3 chrome=vec3(0.09,0.15,0.23);
+      vec3 col=mix(chrome,irid,0.7)+fres*vec3(0.5,0.7,1.0)*0.6+spec;
+      float edge=smoothstep(0.0,0.16,vUv.y)*smoothstep(1.0,0.84,vUv.y);
+      float ends=smoothstep(0.0,0.16,vUv.x)*smoothstep(1.0,0.84,vUv.x);
+      float a=(0.42+fres*0.5+spec)*edge*ends;
+      gl_FragColor=vec4(col,a);}`;
+  const rgeo = new THREE.PlaneGeometry(620, 80, 240, 14);
+  const fillMat = new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FILL_FRAG, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.FrontSide });
+  const lineMat = new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, wireframe: true });
+  const group = new THREE.Group();
+  const fill = new THREE.Mesh(rgeo, fillMat), grid = new THREE.Mesh(rgeo, lineMat);
+  grid.visible = false;
+  group.add(fill, grid);
+  group.scale.setScalar(0.2);                                  // fit the 620-wide band to a section's scale
+  const _ai = Math.max(0, beats.findIndex((b) => /projects/i.test(b.name)));  // anchor around "My Projects"
+  const a = beats[_ai] ? beats[_ai].look : [0, 0, -120];
+  group.userData.anchor = new THREE.Vector3(a[0], a[1], a[2]);
+  group.position.copy(group.userData.anchor);
+  scene.add(group);
+  return { uniforms, group, fill, grid };
+})();
+
 // ---- Placeable extruded 3D text (Ogg) ---------------------------------------
 // Lights are added only for the standard-material text — the particle shaders
 // ignore them. Emissive + bloom make the letters glow; the directional light
@@ -289,7 +348,7 @@ const EASINGS = {
 let transitionEase = easeInOut;
 let txEaseName = 'easeInOut';
 // global (non-keyframed) state that Save must persist alongside the beats
-const GLOBAL_KEYS = ['starFrac', 'nodeFrac', 'lineFrac', 'nebFrac', 'driftOn', 'fovPunch', 'warpStrength', 'warpLength', 'twinkleOn', 'linesOn', 'nebVisible', 'uiHud', 'uiWaypoints', 'uiCaption', 'uiHint', 'uiScale'];
+const GLOBAL_KEYS = ['starFrac', 'nodeFrac', 'lineFrac', 'nebFrac', 'driftOn', 'fovPunch', 'warpStrength', 'warpLength', 'twinkleOn', 'linesOn', 'nebVisible', 'uiHud', 'uiWaypoints', 'uiCaption', 'uiHint', 'uiScale', 'waveAmp', 'waveSpd', 'waveCoil', 'waveOn', 'waveGrid'];
 let activePunch = 0;   // 0..1 across a transition, peaks at the midpoint (for FOV punch)
 const DEF_FOV = 68, DEF_DUR = 1.6;
 // a sensible starter panel for a section: sits at its aim point, fixed orientation
@@ -1436,6 +1495,9 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
   const globalRows = [
     ['warpstr', () => FX.warpStrength, (v) => { FX.warpStrength = v; }, f2],
     ['warplen', () => FX.warpLength, (v) => { FX.warpLength = v; }, f3],
+    ['waveamp', () => FX.waveAmp, (v) => { FX.waveAmp = v; }, f0],
+    ['wavespd', () => FX.waveSpd, (v) => { FX.waveSpd = v; }, f2],
+    ['wavecoil', () => FX.waveCoil, (v) => { FX.waveCoil = v; }, f0],
     ['stars', () => FX.starFrac, (v) => { FX.starFrac = v; applyVoidDensity(); }, f2],
     ['clouds', () => FX.nebFrac, (v) => { FX.nebFrac = v; applyVoidDensity(); }, f2],
   ];
@@ -1450,6 +1512,8 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
   const chk = (id, key, fn) => { const el = document.querySelector('#fx-' + id); if (!el) return; el.checked = !!FX[key]; el.addEventListener('change', () => { FX[key] = el.checked; fn(el.checked); }); };
   chk('twinkle', 'twinkleOn', (v) => { livingVoid.smat.uniforms.uTwinkle.value = v ? 1 : 0; });
   chk('drift', 'driftOn', () => {});
+  chk('waveon', 'waveOn', () => {});
+  chk('wavegrid', 'waveGrid', () => {});
   chk('neb', 'nebVisible', (v) => { livingVoid.bg.visible = v; });
   window.addEventListener('keydown', (e) => {
     if (e.key.toLowerCase() === 'b' && !isTextEntry(e.target) && !editMode) togglePanel(fxEl);
@@ -1621,7 +1685,17 @@ function animate() {
 
   resolveFX();                               // per-beat FX keyframes → interpolated live values
   livingVoid.bgMat.uniforms.uDens.value = curFX.nebula;   // per-section nebula density (keyframed)
-  livingVoid.update(t, FX.driftOn);          // nebula time + organic node drift + lines follow
+  livingVoid.update(t);                      // advance nebula + starfield time
+  {                                          // neon wave ribbon — drift + warp around its section
+    const w = waveRibbon;
+    w.uniforms.uTime.value = t; w.uniforms.uAmp.value = FX.waveAmp; w.uniforms.uSpd.value = FX.waveSpd; w.uniforms.uCoil.value = FX.waveCoil;
+    w.group.visible = FX.waveOn; w.grid.visible = FX.waveOn && FX.waveGrid;
+    if (FX.waveOn) {
+      const an = w.group.userData.anchor;
+      w.group.position.set(an.x + Math.sin(t * 0.18) * 18, an.y + Math.cos(t * 0.15) * 9 + 2, an.z + Math.sin(t * 0.12) * 9 - 8);
+      w.group.rotation.set(Math.cos(t * 0.09) * 0.12, Math.sin(t * 0.10) * 0.5, Math.sin(t * 0.07) * 0.22);
+    }
+  }
   {                                          // per-chapter color world
     let bi = 0, bd = Infinity;
     for (let i = 0; i < beats.length; i++) {
