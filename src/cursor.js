@@ -41,10 +41,17 @@ export function initMagneticCursor() {
   window.addEventListener('pointerdown', () => ring.classList.add('cursor-press'));
   window.addEventListener('pointerup', () => ring.classList.remove('cursor-press'));
 
+  let prx = rx, pry = ry;
   (function loop() {
     rx += (mx - rx) * 0.18;
     ry += (my - ry) * 0.18;
-    ring.style.transform = `translate3d(${rx}px, ${ry}px, 0)`;
+    const vx = rx - prx, vy = ry - pry; prx = rx; pry = ry;
+    let fx = '';
+    if (document.body.classList.contains('cursor-liquid')) {       // elastic liquid stretch over sections
+      const sp = Math.min(Math.hypot(vx, vy) * 0.05, 0.55);
+      fx = ` rotate(${Math.atan2(vy, vx)}rad) scale(${1 + sp}, ${1 - sp * 0.6})`;
+    }
+    ring.style.transform = `translate3d(${rx}px, ${ry}px, 0)${fx}`;
     requestAnimationFrame(loop);
   })();
 }

@@ -71,6 +71,7 @@ let _lastBeatIdx = 0, voidWarp = 0;                // warp burst on chapter chan
 let _flash = 0, _nextFlash = 2.5;                  // nebula lightning strikes
 let _cVel = 0, _cVelRaw = 0, _flickCD = 0, _pPX = null, _pPY = null;   // smoothed cursor velocity
 const _cN = new THREE.Vector2(9, 9), _cWorld = new THREE.Vector3();    // pointer NDC + world-ray scratch
+const _ray = new THREE.Raycaster();                                   // cursor → section hit-test (liquid cursor)
 const _focusV = new THREE.Vector3();
 
 // ---- Offscreen renderer that draws each shot's thumbnail in the editor list -
@@ -1824,6 +1825,11 @@ function animate() {
   }
   updateWaypoints();
   fxMaybeSync();                              // FX panel mirrors the focused section's keyframe
+  if (!editMode && !freeRoam) {              // liquid cursor only while hovering a lit section panel
+    _ray.setFromCamera(_cN, camera);
+    const hit = _ray.intersectObjects(panelMeshes.filter(Boolean), false);
+    document.body.classList.toggle('cursor-liquid', hit.length > 0 && hit[0].object.material.opacity > 0.4);
+  } else { document.body.classList.remove('cursor-liquid'); }
 
   hudBeat.textContent = editMode ? 'Director mode' : (freeRoam ? 'Free roam' : (beats[index]?.name ?? ''));
   hudProgress.textContent = (editMode ? (sel + 1) : (index + 1)) + ' / ' + beats.length;
