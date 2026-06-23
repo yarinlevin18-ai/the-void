@@ -115,7 +115,7 @@ const livingVoid = (() => {
       float fbm(vec3 p){ float s=0.0,a=0.5; for(int i=0;i<4;i++){ s+=a*noise(p); p=p*2.03+vec3(1.7,9.2,4.3); a*=0.5; } return s; }
       float density(vec3 P){ vec3 q=P*0.004+vec3(0.0,uTime*0.02*uSpd,uTime*0.012*uSpd);
         vec3 w=vec3(fbm(q+1.3),fbm(q+5.1),fbm(q+9.2)); float f=fbm(q+uWarp*w);
-        return smoothstep(0.5-uDens*0.4,0.9,f); }
+        return smoothstep(0.6-uDens*0.28,0.95,f); }   // higher floor -> dark void gaps, not full coverage
       void main(){
         vec4 clip=vec4(vUv*2.0-1.0,-1.0,1.0); vec4 vh=uInvProj*clip; vec3 viewDir=normalize(vh.xyz/vh.w);
         vec3 rd=normalize(mat3(uCamWorld)*viewDir); vec3 ro=uCamPos;
@@ -127,8 +127,8 @@ const livingVoid = (() => {
         for(int i=0;i<64;i++){ if(i>=STEPS||alpha>0.97) break;
           float d=density(ro+rd*t);
           if(d>0.01){ float fade=smoothstep(tEnd,tStart,t);
-            vec3 emit=climate*1.8+ember*smoothstep(0.5,1.0,d)*uEmber*2.5;
-            float a=clamp(d*(stepLen*0.006)*(0.7+uDens)*fade,0.0,1.0);
+            vec3 emit=climate*(0.7+d*0.9)+ember*smoothstep(0.5,1.0,d)*uEmber*2.5;  // dim haze stays under bloom (0.22); only dense cores bloom
+            float a=clamp(d*(stepLen*0.006)*(0.6+uDens*0.5)*fade,0.0,1.0);
             acc+=emit*a*(1.0-alpha); alpha+=a*(1.0-alpha); }
           t+=stepLen; }
         vec3 col=vec3(0.012,0.020,0.030)+acc;
