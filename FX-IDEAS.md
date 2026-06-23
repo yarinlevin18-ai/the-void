@@ -20,3 +20,10 @@ content. See `demo-wave-ribbon.html`. If adopted, fold into `BACKGROUND.md` /
 
 ## Rejected
 - Flat glowing-sprite "core" (too simple).
+
+## ✅ APPROVED — Neon wave ribbon (liquid-glass / holographic chrome)
+- File: `demo-wave-ribbon.html` (locked snapshot: `demo-wave-ribbon.APPROVED.html`)
+- Look: single-sided additive chrome band — analytic surface normals, fresnel rim,
+  thin-film iridescence, sweeping specular glint. Neon wireframe grid optional (off by default).
+- Blends into the void: feathered edges+ends, palette tied to nebula, calm drift, bloom 1.1/0.7.
+- Next: fold into BACKGROUND.md once the nebula it sits in is locked.

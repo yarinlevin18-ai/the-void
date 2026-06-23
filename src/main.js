@@ -113,48 +113,55 @@ scene.add(pointField);
 // An animated nebula backdrop + twinkling, drifting shader nodes + form/dissolve
 // energy lines whose endpoints follow the moving nodes. All behind the content.
 const livingVoid = (() => {
-  // 1) Volumetric nebula — WORLD-ANCHORED cloud cards scattered through the
-  //    corridor (not a screen-locked backdrop), so they sit IN the void at real
-  //    depths and you gain parallax as you fly past and through them. They share
-  //    one material; each samples a coherent noise field by its world position,
-  //    and a soft radial alpha hides the plane edges so they read as gas, not cards.
+  // 1) Nebula — full-screen domain-warped fbm backdrop (ported 1:1 from
+  //    demo-nebula.html, APPROVED). Screen-locked; the fly-through depth comes
+  //    from the volumetric starfield (next layer). Cursor-reactive uniforms live
+  //    here but stay OFF (uFlow/uRip = 0) until the cursor-reactivity layer.
+  const neb = {
+    uTime: { value: 0 }, uA: { value: window.innerWidth / window.innerHeight },
+    uDens: { value: FX.nebula }, uSpd: { value: 0.6 }, uWarp: { value: 1.4 },
+    uHue: { value: 0.5 }, uEmber: { value: 0.25 }, uVig: { value: 1 },
+    uPt: { value: new THREE.Vector2(0.5, 0.5) }, uVel: { value: 0 },
+    uRipC: { value: new THREE.Vector2(0.5, 0.5) }, uRipT: { value: -9 },
+    uFlow: { value: 0 }, uRip: { value: 0 },
+  };
   const bgMat = new THREE.ShaderMaterial({
-    transparent: true, depthTest: false, depthWrite: false, fog: false,
-    blending: THREE.AdditiveBlending,
-    uniforms: { uTime: { value: 0 }, uIntensity: { value: FX.nebula } },
-    vertexShader: `
-      varying vec2 vUv; varying vec3 vW;
-      void main(){ vUv = uv; vec4 wp = modelMatrix * vec4(position,1.0); vW = wp.xyz; gl_Position = projectionMatrix * viewMatrix * wp; }`,
-    fragmentShader: `
-      varying vec2 vUv; varying vec3 vW; uniform float uTime, uIntensity;
-      float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); }
-      float noise(vec2 p){ vec2 i=floor(p),f=fract(p); float a=hash(i),b=hash(i+vec2(1,0)),c=hash(i+vec2(0,1)),d=hash(i+vec2(1,1)); vec2 u=f*f*(3.0-2.0*f); return mix(mix(a,b,u.x),mix(c,d,u.x),u.y); }
-      float fbm(vec2 p){ float v=0.0,a=0.5; for(int i=0;i<3;i++){ v+=a*noise(p); p=p*2.02+vec2(1.7); a*=0.5; } return v; }
+    depthTest: false, depthWrite: false, uniforms: neb,
+    vertexShader: `varying vec2 v; void main(){ v = uv; gl_Position = vec4(position.xy, 0.999, 1.0); }`,
+    fragmentShader: `varying vec2 v;
+      uniform float uTime,uA,uDens,uSpd,uWarp,uHue,uEmber,uVig,uVel,uRipT,uFlow,uRip;
+      uniform vec2 uPt,uRipC;
+      float h(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+      float n(vec2 p){ vec2 i=floor(p),f=fract(p); float a=h(i),b=h(i+vec2(1,0)),c=h(i+vec2(0,1)),d=h(i+vec2(1,1));
+        vec2 u=f*f*(3.-2.*f); return mix(mix(a,b,u.x),mix(c,d,u.x),u.y); }
+      float fbm(vec2 p){ float s=0.,m=.5; for(int i=0;i<6;i++){ s+=m*n(p); p=p*2.03+vec2(1.7,9.2); m*=.5; } return s; }
       void main(){
-        vec2 p = vW.xy * 0.0017 + vec2(uTime*0.01, uTime*0.006);   // sample by WORLD position
-        float n = fbm(p*2.2);                                       // single 3-octave fbm (was 2×5-octave)
-        vec3 teal=vec3(0.05,0.17,0.24), violet=vec3(0.11,0.06,0.20);
-        vec3 col = teal*smoothstep(0.35,0.95,n)*0.9 + violet*smoothstep(0.6,1.05,n)*0.5;
-        float radial = smoothstep(0.5, 0.06, distance(vUv, vec2(0.5)));  // soft cloud edges
-        float a = radial * (0.25 + 0.75*smoothstep(0.3,0.95,n)) * uIntensity;
-        gl_FragColor = vec4(col * uIntensity, a);
+        vec2 uv=v; uv.x*=uA;
+        vec2 pd=(uPt-v); pd.x*=uA; float pdist=length(pd);
+        float prox=smoothstep(0.5,0.0,pdist);
+        uv += pd*prox*(0.18+uVel*0.9)*uFlow;
+        float warp=uWarp + uVel*1.6*uFlow;
+        float t=uTime*0.05*uSpd;
+        vec2 q=vec2(fbm(uv*1.6+vec2(0.0,t)), fbm(uv*1.6+vec2(5.2,-t)));
+        vec2 r=vec2(fbm(uv*1.6+warp*q+vec2(1.7,9.2)+t*0.6), fbm(uv*1.6+warp*q+vec2(8.3,2.8)-t*0.5));
+        float f=fbm(uv*1.6+warp*r);
+        vec3 base=vec3(0.012,0.020,0.030), teal=vec3(0.05,0.17,0.24), viol=vec3(0.12,0.06,0.22);
+        vec3 climate=mix(teal,viol,clamp(uHue+0.25*sin(uTime*0.05),0.0,1.0));
+        vec3 col=base + climate*smoothstep(0.35,1.0,f)*(0.6+uDens);
+        float veins=smoothstep(0.55,0.9,r.x*r.y+0.5*f);
+        col+=vec3(0.22,0.09,0.03)*veins*uEmber*1.6;
+        col+=climate*1.4*smoothstep(0.78,1.0,f)*(0.4+uDens);
+        col+=climate*prox*(0.18+uVel*0.8)*uFlow;
+        float rt=uTime-uRipT;
+        if(rt<2.5){ vec2 rd=(uRipC-v); rd.x*=uA; float rr=length(rd);
+          float ring=sin(rr*26.0-rt*7.0)*exp(-rt*2.2)*smoothstep(0.55,0.0,rr);
+          col+=climate*ring*0.5*uRip; }
+        col*=mix(1.0,1.0-0.6*smoothstep(0.25,0.95,distance(v,vec2(0.5))),uVig);
+        gl_FragColor=vec4(col,1.0);
       }`,
   });
-  // a Group of cloud cards placed through the corridor at varied depth/offset
-  const bg = new THREE.Group();
-  bg.renderOrder = -20;
-  const nebGeo = new THREE.PlaneGeometry(1, 1);
-  const NEB_CARDS = 8;
-  for (let i = 0; i < NEB_CARDS; i++) {
-    const card = new THREE.Mesh(nebGeo, bgMat);
-    const z = 140 - (i / (NEB_CARDS - 1)) * 980;            // spread from +140 to -840 along travel
-    card.position.set((Math.random() - 0.5) * 760, (Math.random() - 0.5) * 360 + 70, z);
-    const s = 560 + Math.random() * 620;
-    card.scale.set(s, s * (0.7 + Math.random() * 0.5), 1);
-    card.rotation.z = Math.random() * Math.PI;              // vary so they don't look like a deck of cards
-    card.frustumCulled = false;
-    bg.add(card);
-  }
+  const bg = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), bgMat);
+  bg.frustumCulled = false; bg.renderOrder = -20;
   scene.add(bg);
 
   // 2) Node field along the flight corridor — twinkle + organic drift + ember accents.
@@ -258,8 +265,7 @@ function applyVoidDensity() {
   fGeo.setDrawRange(0, Math.max(0, Math.floor(COUNT * FX.starFrac)));
   livingVoid.pgeo.setDrawRange(0, Math.max(0, Math.floor(livingVoid.N * FX.nodeFrac)));
   livingVoid.lgeo.setDrawRange(0, Math.max(0, Math.floor(livingVoid.L * FX.lineFrac) * 2));
-  const cards = livingVoid.bg.children, k = Math.round(cards.length * FX.nebFrac);
-  cards.forEach((c, i) => { c.visible = i < k; });
+  livingVoid.bg.visible = FX.nebFrac > 0.02;   // single full-screen nebula now — frac toggles it on/off
 }
 applyVoidDensity();
 
@@ -1414,6 +1420,7 @@ window.addEventListener('resize', () => {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // cap retina: fewer fragments, big fill-rate win
   if (composer) composer.setSize(window.innerWidth, window.innerHeight);
   if (bloom) bloom.setSize((window.innerWidth / 2) | 0, (window.innerHeight / 2) | 0);
+  livingVoid.bgMat.uniforms.uA.value = window.innerWidth / window.innerHeight;   // nebula aspect
 });
 
 // ---- Depth-of-field + gentle motion blur (kept subtle to avoid sickness) ----
@@ -1661,7 +1668,7 @@ function animate() {
   if (editMode) { thumbTimer += dt; if (thumbTimer > 0.8) { thumbTimer = 0; renderAllThumbs(); } }
 
   resolveFX();                               // per-beat FX keyframes → interpolated live values
-  livingVoid.bgMat.uniforms.uIntensity.value = curFX.nebula;
+  livingVoid.bgMat.uniforms.uDens.value = curFX.nebula;   // per-section nebula density (keyframed)
   pointField.rotation.y = t * 0.01;
   livingVoid.update(t, FX.driftOn);          // nebula time + organic node drift + lines follow
   {                                          // per-chapter color world

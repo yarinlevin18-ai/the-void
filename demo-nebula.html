@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Void — Nebula playground</title>
+<link rel="stylesheet" href="https://use.typekit.net/xan5bdy.css"/>
+<script type="importmap">
+{ "imports": {
+  "three":"https://unpkg.com/three@0.169.0/build/three.module.js",
+  "three/addons/":"https://unpkg.com/three@0.169.0/examples/jsm/"
+}}
+</script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:#03040a;font-family:"acumin-pro",system-ui,sans-serif;color:#cfe8ff}
+  #scene{position:fixed;inset:0;display:block}
+  #content{position:fixed;inset:0;z-index:2;pointer-events:none;display:flex;flex-direction:column;justify-content:center;padding-left:9vw}
+  .kick{font-family:"source-code-pro",monospace;color:#7fe0ff;font-size:.72rem;letter-spacing:.28em;text-transform:uppercase;margin-bottom:.8rem}
+  h1{font-family:"ogg",serif;font-weight:600;font-size:clamp(3rem,7vw,6rem);color:#fff;line-height:1;text-shadow:0 0 30px rgba(120,200,255,.3)}
+  .desc{max-width:38ch;margin-top:1rem;color:#8fb0cc;line-height:1.6}
+  #panel{position:fixed;top:1rem;right:1rem;z-index:5;width:210px;background:rgba(8,8,18,.85);border:1px solid rgba(150,160,255,.3);border-radius:12px;padding:.8rem .9rem;backdrop-filter:blur(8px);font-size:.66rem;font-family:"source-code-pro",monospace}
+  #panel h3{color:#9fd0ff;letter-spacing:.2em;text-transform:uppercase;font-size:.6rem;margin-bottom:.6rem}
+  #panel label{display:block;color:#9bb0cc;text-transform:uppercase;margin:.5rem 0 .2rem;font-size:.57rem}
+  #panel input[type=range]{width:100%;accent-color:#9fd0ff}
+  #panel .chk{display:flex;gap:.5rem;align-items:center;color:#9bb0cc;margin:.45rem 0;text-transform:uppercase;cursor:pointer}
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div id="content">
+  <div class="kick">CH.00 — The Void</div>
+  <h1>Nebula</h1>
+  <div class="desc">A living cloud of light. Tune density, drift and the colour climate of the void.</div>
+</div>
+<div id="panel">
+  <h3>Nebula</h3>
+  <label>density</label><input type="range" id="dens" min="0" max="1" step="0.01" value="0.55">
+  <label>drift speed</label><input type="range" id="spd" min="0" max="2" step="0.02" value="0.6">
+  <label>warp / turbulence</label><input type="range" id="warp" min="0" max="3" step="0.05" value="1.4">
+  <label>colour mix (teal↔violet)</label><input type="range" id="hue" min="0" max="1" step="0.01" value="0.5">
+  <label>ember veins</label><input type="range" id="ember" min="0" max="1" step="0.01" value="0.25">
+  <label>bloom</label><input type="range" id="bStr" min="0" max="2" step="0.05" value="0.6">
+  <div class="chk"><input type="checkbox" id="dust" checked> drifting dust</div>
+  <div class="chk"><input type="checkbox" id="vig" checked> vignette</div>
+  <h3 style="margin-top:.9rem">Cursor FX</h3>
+  <div class="chk"><input type="checkbox" id="curOn" checked> cursor reactive</div>
+  <label>cloud flow + glow</label><input type="range" id="flow" min="0" max="2.5" step="0.05" value="1">
+  <label>star reaction</label><input type="range" id="star" min="0" max="2.5" step="0.05" value="1">
+  <label>ripple on flick</label><input type="range" id="rip" min="0" max="2" step="0.05" value="1">
+  <label>parallax / shake</label><input type="range" id="plx" min="0" max="2" step="0.05" value="1">
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+const canvas=document.querySelector('#scene');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,0.1,4000);camera.position.set(0,0,360);
+
+// ---- full-screen NEBULA shader (domain-warped fbm, layered colour climate) ----
+const neb={uTime:{value:0},uA:{value:innerWidth/innerHeight},
+  uDens:{value:0.55},uSpd:{value:0.6},uWarp:{value:1.4},uHue:{value:0.5},
+  uEmber:{value:0.25},uVig:{value:1},uMouse:{value:new THREE.Vector2(0,0)},
+  uPt:{value:new THREE.Vector2(0.5,0.5)},uVel:{value:0},uRipC:{value:new THREE.Vector2(0.5,0.5)},uRipT:{value:-9},
+  uFlow:{value:1},uRip:{value:1}};
+const bgMat=new THREE.ShaderMaterial({depthTest:false,depthWrite:false,uniforms:neb,
+  vertexShader:`varying vec2 v;void main(){v=uv;gl_Position=vec4(position.xy,0.999,1.0);}`,
+  fragmentShader:`varying vec2 v;
+   uniform float uTime,uA,uDens,uSpd,uWarp,uHue,uEmber,uVig,uVel,uRipT,uFlow,uRip;
+   uniform vec2 uMouse,uPt,uRipC;
+   float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+   float n(vec2 p){vec2 i=floor(p),f=fract(p);float a=h(i),b=h(i+vec2(1,0)),c=h(i+vec2(0,1)),d=h(i+vec2(1,1));
+     vec2 u=f*f*(3.-2.*f);return mix(mix(a,b,u.x),mix(c,d,u.x),u.y);}
+   float fbm(vec2 p){float s=0.,m=.5;for(int i=0;i<6;i++){s+=m*n(p);p=p*2.03+vec2(1.7,9.2);m*=.5;}return s;}
+   void main(){
+     vec2 uv=v;uv.x*=uA;
+     // ---- cursor field: vector toward pointer + proximity ----
+     vec2 pd=(uPt-v); pd.x*=uA; float pdist=length(pd);
+     float prox=smoothstep(0.5,0.0,pdist);
+     // the cloud FLOWS toward the cursor, harder when you move fast
+     uv += pd*prox*(0.18+uVel*0.9)*uFlow;
+     // velocity raises turbulence everywhere
+     float warp=uWarp + uVel*1.6*uFlow;
+     float t=uTime*0.05*uSpd;
+     vec2 q=vec2(fbm(uv*1.6+vec2(0.0,t)), fbm(uv*1.6+vec2(5.2,-t)));
+     vec2 r=vec2(fbm(uv*1.6+warp*q+vec2(1.7,9.2)+t*0.6),
+                 fbm(uv*1.6+warp*q+vec2(8.3,2.8)-t*0.5));
+     float f=fbm(uv*1.6+warp*r);
+     vec3 base =vec3(0.012,0.020,0.030);
+     vec3 teal =vec3(0.05,0.17,0.24);
+     vec3 viol =vec3(0.12,0.06,0.22);
+     vec3 climate=mix(teal,viol,clamp(uHue+0.25*sin(uTime*0.05),0.0,1.0));
+     vec3 col=base + climate*smoothstep(0.35,1.0,f)*(0.6+uDens);
+     float veins=smoothstep(0.55,0.9,r.x*r.y+0.5*f);
+     col+=vec3(0.22,0.09,0.03)*veins*uEmber*1.6;
+     col+=climate*1.4*smoothstep(0.78,1.0,f)*(0.4+uDens);
+     // ---- real glow toward the cursor, stronger on movement ----
+     col+=climate*prox*(0.18+uVel*0.8)*uFlow;
+     // ---- ripple: an expanding ring from the last fast move ----
+     float rt=uTime-uRipT;
+     if(rt<2.5){vec2 rd=(uRipC-v); rd.x*=uA; float rr=length(rd);
+       float ring=sin(rr*26.0-rt*7.0)*exp(-rt*2.2)*smoothstep(0.55,0.0,rr);
+       col+=climate*ring*0.5*uRip;}
+     col*=mix(1.0,1.0-0.6*smoothstep(0.25,0.95,distance(v,vec2(0.5))),uVig);
+     gl_FragColor=vec4(col,1.0);}`});
+const bg=new THREE.Mesh(new THREE.PlaneGeometry(2,2),bgMat);bg.frustumCulled=false;bg.renderOrder=-10;scene.add(bg);
+
+// ---- drifting dust (parallax points that twinkle) ----
+const DEPTH=1800;
+const N=1500,pos=new Float32Array(N*3),seed=new Float32Array(N),mag=new Float32Array(N),tmp=new Float32Array(N);
+for(let i=0;i<N;i++){pos[i*3]=(Math.random()*2-1)*1200;pos[i*3+1]=(Math.random()*2-1)*760;pos[i*3+2]=-Math.random()*DEPTH;
+  seed[i]=Math.random()*6.28;
+  // brightness: mostly faint, a rare few bright (pow skews low) -> real magnitude spread
+  mag[i]=Math.pow(Math.random(),3.2);
+  // colour temperature: 0=warm amber .. 0.5=white .. 1=cool blue (most cool-white)
+  tmp[i]=0.45+Math.random()*0.55-Math.random()*0.18;}
+const dgeo=new THREE.BufferGeometry();
+dgeo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+dgeo.setAttribute('seed',new THREE.BufferAttribute(seed,1));
+dgeo.setAttribute('mag',new THREE.BufferAttribute(mag,1));
+dgeo.setAttribute('tmp',new THREE.BufferAttribute(tmp,1));
+const dustMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
+  uniforms:{uTime:{value:0},uDepth:{value:DEPTH},uSpeed:{value:26.0},uPtN:{value:new THREE.Vector2(0,0)},uVel:{value:0},uStar:{value:1}},
+  vertexShader:`attribute float seed;attribute float mag;attribute float tmp;
+    varying float vT;varying float vMag;varying float vTmp;varying float vFade;
+    uniform float uTime,uDepth,uSpeed,uVel,uStar;uniform vec2 uPtN;
+    void main(){
+      float rate=0.5+seed*0.25;
+      vT=0.7+0.3*sin(uTime*rate+seed)*(1.0-mag*0.7);
+      vMag=mag;vTmp=tmp;
+      float z=mod(position.z+uTime*uSpeed, uDepth)-uDepth;
+      vec4 mv=modelViewMatrix*vec4(position.x,position.y,z,1.0);
+      float depth=-mv.z;
+      vFade=smoothstep(uDepth*1.05+360.0,uDepth*0.45,depth);
+      vec4 clip=projectionMatrix*mv;
+      // stars near the cursor light up and scatter outward from it
+      vec2 ndc=clip.xy/clip.w; vec2 toP=ndc-uPtN; float pd=length(toP);
+      float near=smoothstep(0.45,0.0,pd);
+      vT*=1.0+near*2.2*uStar;                                   // brighten near pointer
+      clip.xy+=normalize(toP+1e-4)*near*(0.015+uVel*0.10)*uStar*clip.w; // scatter on movement
+      gl_PointSize=(1.0+mag*7.0)*(520.0/depth)*(1.0+near*0.8*uStar);
+      gl_Position=clip;}`,
+  fragmentShader:`varying float vT;varying float vMag;varying float vTmp;varying float vFade;
+    void main(){
+      vec2 c=gl_PointCoord-0.5;float r=length(c);
+      float core=1.0-smoothstep(0.0,0.18,r);          // tight bright core
+      float halo=(1.0-smoothstep(0.0,0.5,r))*0.55;     // soft surrounding glow
+      // 4-point diffraction spike, only meaningful on the brightest stars
+      float spike=max(1.0-abs(c.x)*22.0,0.0)*(1.0-smoothstep(0.0,0.5,abs(c.y)))
+                 +max(1.0-abs(c.y)*22.0,0.0)*(1.0-smoothstep(0.0,0.5,abs(c.x)));
+      spike*=smoothstep(0.55,1.0,vMag)*0.6;
+      float i=(core+halo+spike)*vT*vFade;
+      // colour by temperature: warm amber -> white -> cool blue
+      vec3 warm=vec3(1.0,0.78,0.55), cool=vec3(0.62,0.80,1.0);
+      vec3 col=mix(warm,cool,smoothstep(0.0,1.0,vTmp));
+      col=mix(col,vec3(1.0),core*0.6);                 // hot white centre
+      gl_FragColor=vec4(col*i,i);}`});
+const dust=new THREE.Points(dgeo,dustMat);scene.add(dust);
+
+const composer=new EffectComposer(renderer);composer.addPass(new RenderPass(scene,camera));
+const bloom=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),0.6,0.7,0.22);composer.addPass(bloom);composer.setSize(innerWidth,innerHeight);
+
+const $=s=>document.querySelector(s);
+$('#dens').oninput =e=>neb.uDens.value=+e.target.value;
+$('#spd').oninput  =e=>neb.uSpd.value=+e.target.value;
+$('#warp').oninput =e=>neb.uWarp.value=+e.target.value;
+$('#hue').oninput  =e=>neb.uHue.value=+e.target.value;
+$('#ember').oninput=e=>neb.uEmber.value=+e.target.value;
+$('#bStr').oninput =e=>bloom.strength=+e.target.value;
+$('#dust').onchange=e=>dust.visible=e.target.checked;
+$('#vig').onchange =e=>neb.uVig.value=e.target.checked?1:0;
+$('#curOn').onchange=e=>curOn=e.target.checked;
+$('#flow').oninput =e=>flowAmt=+e.target.value;
+$('#star').oninput =e=>starAmt=+e.target.value;
+$('#rip').oninput  =e=>ripAmt=+e.target.value;
+$('#plx').oninput  =e=>plxAmt=+e.target.value;
+
+const mouse={x:0,y:0};       // NDC pointer (-1..1)
+let pUV={x:0.5,y:0.5};        // pointer in 0..1 uv space (for the nebula field)
+let lastUV={x:0.5,y:0.5}, rawVel=0, vel=0;
+let curOn=true, flowAmt=1, starAmt=1, ripAmt=1, plxAmt=1;
+addEventListener('pointermove',e=>{
+  mouse.x=(e.clientX/innerWidth)*2-1; mouse.y=-(e.clientY/innerHeight)*2+1;
+  const nx=e.clientX/innerWidth, ny=1.0-e.clientY/innerHeight;
+  rawVel=Math.min(Math.hypot(nx-pUV.x,ny-pUV.y)*9.0, 2.5);  // instantaneous speed
+  pUV.x=nx; pUV.y=ny;
+  neb.uMouse.value.set(mouse.x*0.5,mouse.y*0.5);
+  if(curOn && ripAmt>0 && rawVel>1.2){ neb.uRipC.value.set(nx,ny); neb.uRipT.value=clock.getElapsedTime(); } // fire ripple on a fast flick
+});
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);composer.setSize(innerWidth,innerHeight);neb.uA.value=innerWidth/innerHeight;});
+
+const clock=new THREE.Clock();
+function frame(){const t=clock.getElapsedTime();
+  // smooth + decay velocity so the field eases back to calm
+  vel += (rawVel-vel)*0.12; rawVel*=0.90;
+  neb.uTime.value=t; dustMat.uniforms.uTime.value=t;
+  const g=curOn?1:0;
+  neb.uPt.value.set(pUV.x,pUV.y); neb.uVel.value=vel*g;
+  neb.uFlow.value=flowAmt*g; neb.uRip.value=ripAmt*g;
+  dustMat.uniforms.uPtN.value.set(mouse.x,mouse.y); dustMat.uniforms.uVel.value=vel*g; dustMat.uniforms.uStar.value=starAmt*g;
+  // camera parallax (+ a hint of shake on fast motion)
+  camera.position.x+=((mouse.x*40*plxAmt)-camera.position.x)*0.03 + (Math.random()-0.5)*vel*1.2*plxAmt*g;
+  camera.position.y+=((mouse.y*26*plxAmt)-camera.position.y)*0.03 + (Math.random()-0.5)*vel*1.2*plxAmt*g;
+  camera.lookAt(0,0,0);
+  composer.render();requestAnimationFrame(frame);}
+frame();
+</script>
+</body>
+</html>
