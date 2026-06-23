@@ -1760,9 +1760,18 @@ function animate() {
   if (!editMode && !freeRoam && cur && cur.link) { visitBtn.hidden = false; visitBtn.href = cur.link; }
   else visitBtn.hidden = true;
 
-  if (bokeh && bokeh.uniforms && bokeh.uniforms.focus) {   // keep the focused section sharp
+  if (bokeh && bokeh.uniforms && bokeh.uniforms.focus) {   // lock focus onto the NEAREST section
     if (editMode || freeRoam) _focusV.copy(controls.target);
-    else _focusV.set(beats[index].look[0], beats[index].look[1], beats[index].look[2]);
+    else {
+      let bi = 0, bd = Infinity;
+      for (let i = 0; i < beats.length; i++) {
+        const lk = beats[i].look;
+        const dx = camera.position.x - lk[0], dy = camera.position.y - lk[1], dz = camera.position.z - lk[2];
+        const d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 < bd) { bd = d2; bi = i; }
+      }
+      _focusV.set(beats[bi].look[0], beats[bi].look[1], beats[bi].look[2]);   // smooth rack-focus to the closest one
+    }
     bokeh.uniforms.focus.value = Math.max(1, camera.position.distanceTo(_focusV));
     bokeh.uniforms.maxblur.value = curFX.dofBlur;        // per-section blur (keyframed)
     bokeh.uniforms.aperture.value = curFX.dofAperture;
