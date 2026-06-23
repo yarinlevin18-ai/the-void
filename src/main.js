@@ -11,6 +11,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
+import { createText3D, defaultText } from './text3d.js';
 import { initMagneticCursor } from './cursor.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -23,13 +24,19 @@ const isTextEntry = (el) => el instanceof HTMLTextAreaElement || (el instanceof 
 // Live-tunable effect parameters — the FX panel (press B) edits these in place,
 // and the render loop reads them every frame, so every effect is adjustable.
 const FX = {
-  dofBlur: 0.006, dofAperture: 0.0005,        // depth of field
+  dofBlur: 0.003, dofAperture: 0.0004,        // depth of field — lighter blur (cheaper fill-rate, gentler)
+  starFrac: 1, nodeFrac: 1, lineFrac: 1, nebFrac: 1,   // density of each void layer (0..1) — also affects the published build
   panelDimFloor: 0.1, panelLightRange: 300,   // section panels: idle opacity + light-up falloff
   colorIntensity: 1.0, colorReach: 200,       // per-chapter color world
   warpStrength: 0.16, warpLength: 0.1,        // warp streaks
   bloomStrength: 1.0, nebula: 1.0, driftOn: true, // living-void background
+  fovPunch: 0,                                 // transient FOV widening mid-transition (whoosh)
 };
 const fxEl = document.querySelector('#fxpanel');
+// Dev tooling (all panels + Director Mode) is available in `npm run dev`, and on
+// a published build ONLY when the URL carries ?edit. The plain published site is
+// preview-only — visitors get the flythrough with no editor surface.
+const DEV_TOOLS = import.meta.env.DEV || new URLSearchParams(location.search).has('edit');
 const UP_NORMAL = [0, 1, 0];
 const UP_VERTICAL = [0, 0, -1]; // "look straight up" orientation
 
@@ -37,7 +44,7 @@ const UP_VERTICAL = [0, 0, -1]; // "look straight up" orientation
 const canvas = document.querySelector('#scene');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // cap retina: fewer fragments, big fill-rate win
 let composer = null, bokeh = null, bloom = null;   // post-FX (set up below)
 let _lastBeatIdx = 0, voidWarp = 0;                // warp burst on chapter change
 const _focusV = new THREE.Vector3();
@@ -89,32 +96,48 @@ scene.add(pointField);
 // An animated nebula backdrop + twinkling, drifting shader nodes + form/dissolve
 // energy lines whose endpoints follow the moving nodes. All behind the content.
 const livingVoid = (() => {
-  // 1) Animated nebula backdrop — full-screen quad, rendered first, no depth.
+  // 1) Volumetric nebula — WORLD-ANCHORED cloud cards scattered through the
+  //    corridor (not a screen-locked backdrop), so they sit IN the void at real
+  //    depths and you gain parallax as you fly past and through them. They share
+  //    one material; each samples a coherent noise field by its world position,
+  //    and a soft radial alpha hides the plane edges so they read as gas, not cards.
   const bgMat = new THREE.ShaderMaterial({
-    depthTest: false, depthWrite: false, fog: false,
-    uniforms: { uTime: { value: 0 }, uIntensity: { value: FX.nebula }, uAspect: { value: window.innerWidth / window.innerHeight } },
-    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.999, 1.0); }`,
+    transparent: true, depthTest: false, depthWrite: false, fog: false,
+    blending: THREE.AdditiveBlending,
+    uniforms: { uTime: { value: 0 }, uIntensity: { value: FX.nebula } },
+    vertexShader: `
+      varying vec2 vUv; varying vec3 vW;
+      void main(){ vUv = uv; vec4 wp = modelMatrix * vec4(position,1.0); vW = wp.xyz; gl_Position = projectionMatrix * viewMatrix * wp; }`,
     fragmentShader: `
-      varying vec2 vUv; uniform float uTime, uIntensity, uAspect;
+      varying vec2 vUv; varying vec3 vW; uniform float uTime, uIntensity;
       float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); }
       float noise(vec2 p){ vec2 i=floor(p),f=fract(p); float a=hash(i),b=hash(i+vec2(1,0)),c=hash(i+vec2(0,1)),d=hash(i+vec2(1,1)); vec2 u=f*f*(3.0-2.0*f); return mix(mix(a,b,u.x),mix(c,d,u.x),u.y); }
-      float fbm(vec2 p){ float v=0.0,a=0.5; for(int i=0;i<5;i++){ v+=a*noise(p); p=p*2.02+vec2(1.7); a*=0.5; } return v; }
+      float fbm(vec2 p){ float v=0.0,a=0.5; for(int i=0;i<3;i++){ v+=a*noise(p); p=p*2.02+vec2(1.7); a*=0.5; } return v; }
       void main(){
-        vec2 uv=vUv; uv.x*=uAspect;
-        float t=uTime*0.03;
-        float n =fbm(uv*2.4+vec2(t,t*0.6));
-        float n2=fbm(uv*1.5-vec2(t*0.5,t*0.2)+5.0);
-        vec3 base=vec3(0.012,0.020,0.030), teal=vec3(0.05,0.17,0.24), violet=vec3(0.11,0.06,0.20), ember=vec3(0.22,0.09,0.03);
-        vec3 col=base;
-        col+=teal  *smoothstep(0.35,0.95,n)*0.9;
-        col+=violet*smoothstep(0.55,1.05,n2)*0.55;
-        col+=ember *smoothstep(0.72,1.05,n*n2)*0.7;
-        float d=distance(vUv,vec2(0.5)); col*=1.0-0.55*smoothstep(0.35,0.95,d);
-        gl_FragColor=vec4(col*uIntensity,1.0);
+        vec2 p = vW.xy * 0.0017 + vec2(uTime*0.01, uTime*0.006);   // sample by WORLD position
+        float n = fbm(p*2.2);                                       // single 3-octave fbm (was 2×5-octave)
+        vec3 teal=vec3(0.05,0.17,0.24), violet=vec3(0.11,0.06,0.20);
+        vec3 col = teal*smoothstep(0.35,0.95,n)*0.9 + violet*smoothstep(0.6,1.05,n)*0.5;
+        float radial = smoothstep(0.5, 0.06, distance(vUv, vec2(0.5)));  // soft cloud edges
+        float a = radial * (0.25 + 0.75*smoothstep(0.3,0.95,n)) * uIntensity;
+        gl_FragColor = vec4(col * uIntensity, a);
       }`,
   });
-  const bg = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), bgMat);
-  bg.frustumCulled = false; bg.renderOrder = -20;
+  // a Group of cloud cards placed through the corridor at varied depth/offset
+  const bg = new THREE.Group();
+  bg.renderOrder = -20;
+  const nebGeo = new THREE.PlaneGeometry(1, 1);
+  const NEB_CARDS = 8;
+  for (let i = 0; i < NEB_CARDS; i++) {
+    const card = new THREE.Mesh(nebGeo, bgMat);
+    const z = 140 - (i / (NEB_CARDS - 1)) * 980;            // spread from +140 to -840 along travel
+    card.position.set((Math.random() - 0.5) * 760, (Math.random() - 0.5) * 360 + 70, z);
+    const s = 560 + Math.random() * 620;
+    card.scale.set(s, s * (0.7 + Math.random() * 0.5), 1);
+    card.rotation.z = Math.random() * Math.PI;              // vary so they don't look like a deck of cards
+    card.frustumCulled = false;
+    bg.add(card);
+  }
   scene.add(bg);
 
   // 2) Node field along the flight corridor — twinkle + organic drift + ember accents.
@@ -194,8 +217,31 @@ const livingVoid = (() => {
   }
   const setTint = (hex, amt) => { pmat.uniforms.uTint.value.set(hex); lmat.uniforms.uTint.value.set(hex); pmat.uniforms.uTintAmt.value = amt; lmat.uniforms.uTintAmt.value = amt; };
   const setWarp = (v) => { pmat.uniforms.uWarp.value = v; };
-  return { bg, bgMat, pmat, lmat, update, setTint, setWarp };
+  return { bg, bgMat, pmat, lmat, update, setTint, setWarp, pgeo, lgeo, N, L };
 })();
+
+// ---- Placeable extruded 3D text (Ogg) ---------------------------------------
+// Lights are added only for the standard-material text — the particle shaders
+// ignore them. Emissive + bloom make the letters glow; the directional light
+// catches the bevels/extrusion so they read as solid 3D.
+scene.add(new THREE.AmbientLight(0x4a5a6a, 1.1));
+const _textKey = new THREE.DirectionalLight(0xbfe6ff, 1.6); _textKey.position.set(40, 80, 120); scene.add(_textKey);
+const text3d = createText3D();
+scene.add(text3d.group);
+text3d.restore();                 // re-place saved texts (meshes build once the font loads)
+text3d.loadFont().then((r) => { const el = document.querySelector('#text-status'); if (el) el.textContent = r.ogg ? 'Ogg loaded ✓' : 'Fallback serif (drop Ogg in public/fonts/)'; });
+
+// Live density control for every void layer — uses draw ranges (instant, no
+// rebuild) so you can dial the amount of stars / nodes / energy lines / nebula.
+// Runs at startup too, so editing the FX defaults also tunes the published build.
+function applyVoidDensity() {
+  fGeo.setDrawRange(0, Math.max(0, Math.floor(COUNT * FX.starFrac)));
+  livingVoid.pgeo.setDrawRange(0, Math.max(0, Math.floor(livingVoid.N * FX.nodeFrac)));
+  livingVoid.lgeo.setDrawRange(0, Math.max(0, Math.floor(livingVoid.L * FX.lineFrac) * 2));
+  const cards = livingVoid.bg.children, k = Math.round(cards.length * FX.nebFrac);
+  cards.forEach((c, i) => { c.visible = i < k; });
+}
+applyVoidDensity();
 
 // Per-chapter "color world": the network recolors toward the nearest section's
 // hue on approach, fading back to neutral cyan between beats. (Placeholder
@@ -251,6 +297,15 @@ let editMode = false;
 let sel = 0;         // selected section in editor
 let lastNav = 0;
 const easeInOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+// selectable transition easing (driven by the Transitions panel)
+const EASINGS = {
+  easeInOut,
+  easeOut: (x) => 1 - Math.pow(1 - x, 3),
+  easeInOutQuint: (x) => (x < 0.5 ? 16 * x * x * x * x * x : 1 - Math.pow(-2 * x + 2, 5) / 2),
+  linear: (x) => x,
+};
+let transitionEase = easeInOut;
+let activePunch = 0;   // 0..1 across a transition, peaks at the midpoint (for FOV punch)
 const DEF_FOV = 68, DEF_DUR = 1.6;
 // a sensible starter panel for a section: sits at its aim point, fixed orientation
 const defaultPanelFor = (b) => ({ pos: b.look.slice(), size: [70, 44], rot: [0, 0, 0], billboard: false });
@@ -723,26 +778,32 @@ const freeBtn = document.querySelector('#freeroam');
 function lastIdx() { return Math.max(0, beats.length - 1); }
 function step(dir) {
   if (editMode || freeRoam) return;
-  const now = performance.now();
-  if (now - lastNav < 350) return;
   const n = clamp(index + dir, 0, lastIdx());
   if (n === index) return;
-  index = n; lastNav = now;
+  index = n; lastNav = performance.now();
   // start a timed flight into the new section (per-shot duration, scaled by speed)
   const target = index / Math.max(1, lastIdx());
   const dur = (beats[index]?.dur ?? DEF_DUR) / Math.max(0.05, speedMul);
   tween = { from: progress, to: target, t: 0, dur: Math.max(0.15, dur) };
   freeBtn.hidden = index !== lastIdx();
 }
+// One section per scroll GESTURE: a trackpad swipe fires dozens of wheel events,
+// so we step once on the first event, then stay locked until the scroll has
+// fully stopped (no wheel events for `idle` ms). You must scroll again to advance.
+let navLock = false, wheelIdle = null;
 window.addEventListener('wheel', (e) => {
   if (editMode || freeRoam) return;   // editor uses orbit zoom
   e.preventDefault();
-  if (Math.abs(e.deltaY) < 8) return;
+  if (Math.abs(e.deltaY) < 6) return;
+  clearTimeout(wheelIdle);
+  wheelIdle = setTimeout(() => { navLock = false; }, 180);  // gesture ended → re-arm
+  if (navLock) return;                                       // already stepped this gesture
+  navLock = true;
   step(e.deltaY > 0 ? 1 : -1);
 }, { passive: false });
 window.addEventListener('keydown', (e) => {
   if (isTextEntry(e.target)) return;
-  if (editMode) return;
+  if (editMode || e.repeat) return;   // ignore key auto-repeat → one section per press
   if (['ArrowDown','PageDown',' ','Spacebar'].includes(e.key)) { e.preventDefault(); step(1); }
   else if (['ArrowUp','PageUp'].includes(e.key)) { e.preventDefault(); step(-1); }
 });
@@ -809,8 +870,9 @@ const DEMO_CAPTIONS = beats.map((b, i) => ({
   desc: 'Placeholder copy — this is where the real section content will drop in.',
 }));
 let _capShown = -1;
+let captionsOn = true;   // UI/UX panel toggle
 function setCaption(i) {
-  if (!capEl || i === _capShown) return;
+  if (!capEl || !captionsOn || i === _capShown) return;
   _capShown = i;
   const c = DEMO_CAPTIONS[i] || { label: '', title: '', desc: '' };
   capEl.classList.remove('show');
@@ -1261,6 +1323,7 @@ function setEdit(on) {
   timelineEl.hidden = !on;
   if (wpEl) wpEl.hidden = on;
   if (fxEl) fxEl.hidden = on;        // hide the FX panel in Director Mode (no overlap with the editor)
+  if (on) { if (txEl) txEl.hidden = true; if (uxEl) uxEl.hidden = true; if (textEl) textEl.hidden = true; }  // hide the extra panels too
   pathGroup.visible = on;
   controls.enabled = on;
   clearFly();
@@ -1290,7 +1353,7 @@ window.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
   if ((e.ctrlKey || e.metaKey) && k === 'y') { e.preventDefault(); redo(); return; }
   const typing = isTextEntry(e.target);
-  if (k === 'e' && !typing) { setEdit(!editMode); }
+  if (k === 'e' && !typing && DEV_TOOLS) { setEdit(!editMode); }   // preview-only: no Director Mode
   if (k === 'v' && !typing) {                    // V = drop into / out of noclip free-fly
     if (editMode) { setEdit(false); setFreeRoam(true); }
     else setFreeRoam(!freeRoam);
@@ -1306,7 +1369,7 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // cap retina: fewer fragments, big fill-rate win
   if (composer) composer.setSize(window.innerWidth, window.innerHeight);
 });
 
@@ -1321,9 +1384,15 @@ try {
   composer.setSize(window.innerWidth, window.innerHeight);
 } catch (e) { composer = null; console.warn('Postprocessing disabled:', e); }
 
+// ---- Dev profiling handle + ?prof FPS/drawcall probe ------------------------
+const PROF = new URLSearchParams(location.search).has('prof');
+let _pf = { n: 0, t: 0, last: 0 };
+if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom, livingVoid, get info() { return renderer.info; } };
+
 // ---- FX control panel (toggle with B) — live-edits every effect -------------
 (() => {
-  if (!fxEl) return;
+  if (!fxEl || !DEV_TOOLS) return;          // preview-only build: no FX panel for visitors
+  fxEl.hidden = false;                       // dev: show it by default as before
   const f4 = (v) => v.toFixed(4), f3 = (v) => v.toFixed(3), f2 = (v) => v.toFixed(2), f0 = (v) => String(Math.round(v));
   // each row: [id, getter, setter, formatter]
   const rows = [
@@ -1337,6 +1406,10 @@ try {
     ['warplen', () => FX.warpLength, (v) => { FX.warpLength = v; }, f3],
     ['bloom', () => FX.bloomStrength, (v) => { FX.bloomStrength = v; }, f2],
     ['nebula', () => FX.nebula, (v) => { FX.nebula = v; livingVoid.bgMat.uniforms.uIntensity.value = v; }, f2],
+    ['stars', () => FX.starFrac, (v) => { FX.starFrac = v; applyVoidDensity(); }, f2],
+    ['nodes', () => FX.nodeFrac, (v) => { FX.nodeFrac = v; applyVoidDensity(); }, f2],
+    ['lines', () => FX.lineFrac, (v) => { FX.lineFrac = v; applyVoidDensity(); }, f2],
+    ['clouds', () => FX.nebFrac, (v) => { FX.nebFrac = v; applyVoidDensity(); }, f2],
   ];
   for (const [id, get, set, fmt] of rows) {
     const inp = document.querySelector('#fx-' + id), out = document.querySelector('#fx-' + id + '-v');
@@ -1351,7 +1424,118 @@ try {
   chk('lines', (v) => { livingVoid.lmat.uniforms.uOn.value = v ? 1 : 0; });
   chk('neb', (v) => { livingVoid.bg.visible = v; });
   window.addEventListener('keydown', (e) => {
-    if (e.key.toLowerCase() === 'b' && !isTextEntry(e.target) && !editMode) fxEl.hidden = !fxEl.hidden;
+    if (e.key.toLowerCase() === 'b' && !isTextEntry(e.target) && !editMode) togglePanel(fxEl);
+  });
+})();
+
+// only one side-panel open at a time (they live in overlapping corners)
+function togglePanel(target) {
+  if (!target) return;
+  const willShow = target.hidden;
+  for (const p of [fxEl, txEl, uxEl, textEl]) { if (p) p.hidden = true; }
+  if (willShow) target.hidden = false;
+}
+
+// ---- Transitions panel (toggle with T) — flight feel between sections --------
+const txEl = document.querySelector('#txpanel');
+(() => {
+  if (!txEl || !DEV_TOOLS) return;          // preview-only build
+  const bind = (id, get, set, fmt) => {
+    const inp = document.querySelector('#tx-' + id), out = document.querySelector('#tx-' + id + '-v');
+    if (!inp) return;
+    inp.value = get();
+    if (out) out.textContent = fmt(parseFloat(inp.value));
+    inp.addEventListener('input', () => { const v = parseFloat(inp.value); set(v); if (out) out.textContent = fmt(v); });
+  };
+  const f2 = (v) => v.toFixed(2), f3 = (v) => v.toFixed(3), f0 = (v) => String(Math.round(v));
+  bind('speed', () => speedMul, (v) => { speedMul = v; if (typeof edSpeed !== 'undefined' && edSpeed) { edSpeed.value = v; edSpeedVal.textContent = v.toFixed(2) + '×'; } }, (v) => v.toFixed(2) + '×');
+  bind('fov', () => FX.fovPunch, (v) => { FX.fovPunch = v; }, f0);
+  bind('warpstr', () => FX.warpStrength, (v) => { FX.warpStrength = v; }, f2);
+  bind('warplen', () => FX.warpLength, (v) => { FX.warpLength = v; }, f3);
+  const sel = document.querySelector('#tx-ease');
+  if (sel) { sel.value = 'easeInOut'; sel.addEventListener('change', () => { transitionEase = EASINGS[sel.value] || easeInOut; }); }
+  window.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() === 't' && !isTextEntry(e.target) && !editMode) togglePanel(txEl);
+  });
+})();
+
+// ---- UI / UX panel (toggle with U) — the interface layer --------------------
+const uxEl = document.querySelector('#uxpanel');
+(() => {
+  if (!uxEl || !DEV_TOOLS) return;          // preview-only build
+  const hud = document.querySelector('#hud');
+  const overlayHint = document.querySelector('#overlay .hint');
+  const chk = (id, fn) => { const el = document.querySelector('#ux-' + id); if (el) el.addEventListener('change', () => fn(el.checked)); };
+  chk('hud', (v) => { if (hud) hud.style.display = v ? '' : 'none'; });
+  chk('waypoints', (v) => { if (wpEl) wpEl.style.display = v ? '' : 'none'; });
+  chk('caption', (v) => { captionsOn = v; if (!v) hideCaption(); });
+  chk('hint', (v) => { if (overlayHint) overlayHint.style.display = v ? '' : 'none'; });
+  const scale = document.querySelector('#ux-scale'), scaleOut = document.querySelector('#ux-scale-v');
+  if (scale) {
+    scale.value = 1; if (scaleOut) scaleOut.textContent = '1.00×';
+    scale.addEventListener('input', () => { const v = parseFloat(scale.value); document.documentElement.style.fontSize = (16 * v) + 'px'; if (scaleOut) scaleOut.textContent = v.toFixed(2) + '×'; });
+  }
+  window.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() === 'u' && !isTextEntry(e.target) && !editMode) togglePanel(uxEl);
+  });
+})();
+
+// ---- 3D Text panel (toggle with Y) — place & style extruded Ogg text ---------
+const textEl = document.querySelector('#textpanel');
+(() => {
+  if (!textEl || !DEV_TOOLS) return;        // preview-only build (placed text still renders for visitors)
+  let curId = null;
+  const $ = (id) => document.querySelector('#text-' + id);
+  const listEl = $('list');
+  // [field, geometry-changing?] — geometry fields rebuild the mesh; others just re-apply
+  const FIELDS = [['size', true], ['depth', true], ['bevel', true], ['glow', false], ['x', false], ['y', false], ['z', false], ['rx', false], ['ry', false], ['rz', false]];
+
+  function renderList() {
+    const items = text3d.list();
+    listEl.innerHTML = items.map((d) => `<option value="${d.id}">${d.id}: ${(d.text || '').slice(0, 12) || '(empty)'}</option>`).join('');
+    if (items.length && (curId == null || !items.some((d) => d.id === curId))) curId = items[items.length - 1].id;
+    listEl.value = curId ?? '';
+  }
+  function loadFields() {
+    const d = text3d.get(curId); if (!d) return;
+    $('content').value = d.text;
+    for (const [f] of FIELDS) { const inp = $(f), out = $(f + '-v'); if (inp) inp.value = d[f]; if (out) out.textContent = d[f]; }
+    $('color').value = d.color;
+  }
+  function bindField(f, geo) {
+    const inp = $(f), out = $(f + '-v');
+    if (!inp) return;
+    inp.addEventListener('input', () => {
+      const d = text3d.get(curId); if (!d) return;
+      d[f] = parseFloat(inp.value); if (out) out.textContent = inp.value;
+      geo ? text3d.rebuild(curId) : text3d.apply(curId);
+    });
+    inp.addEventListener('change', () => text3d.save());
+  }
+  for (const [f, geo] of FIELDS) bindField(f, geo);
+  $('content').addEventListener('input', () => { const d = text3d.get(curId); if (!d) return; d.text = $('content').value; text3d.rebuild(curId); renderList(); });
+  $('content').addEventListener('change', () => text3d.save());
+  $('color').addEventListener('input', () => { const d = text3d.get(curId); if (!d) return; d.color = $('color').value; text3d.apply(curId); });
+  $('color').addEventListener('change', () => text3d.save());
+
+  listEl.addEventListener('change', () => { curId = parseInt(listEl.value, 10); loadFields(); });
+  $('add').addEventListener('click', () => { const d = text3d.add(defaultText()); curId = d.id; renderList(); loadFields(); });
+  $('del').addEventListener('click', () => { if (curId == null) return; text3d.remove(curId); curId = null; renderList(); loadFields(); });
+  $('place').addEventListener('click', () => {
+    const d = text3d.get(curId); if (!d) return;
+    const fwd = new THREE.Vector3(); camera.getWorldDirection(fwd);
+    const p = camera.position.clone().addScaledVector(fwd, 70);
+    d.x = Math.round(p.x); d.y = Math.round(p.y); d.z = Math.round(p.z);
+    const tmp = new THREE.Object3D(); tmp.position.copy(p); tmp.lookAt(camera.position);   // face the camera
+    d.rx = Math.round(THREE.MathUtils.radToDeg(tmp.rotation.x));
+    d.ry = Math.round(THREE.MathUtils.radToDeg(tmp.rotation.y));
+    d.rz = Math.round(THREE.MathUtils.radToDeg(tmp.rotation.z));
+    text3d.apply(curId); text3d.save(); loadFields();
+  });
+
+  renderList(); loadFields();
+  window.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() === 'y' && !isTextEntry(e.target) && !editMode) { togglePanel(textEl); renderList(); loadFields(); }
   });
 })();
 
@@ -1373,9 +1557,10 @@ function animate() {
     if (tween) {                       // time-based flight between shots
       tween.t += dt;
       const k = clamp(tween.t / tween.dur, 0, 1);
-      progress = tween.from + (tween.to - tween.from) * easeInOut(k);
-      if (k >= 1) { progress = tween.to; tween = null; }
-    }
+      progress = tween.from + (tween.to - tween.from) * transitionEase(k);
+      activePunch = Math.sin(Math.PI * k);   // 0 at ends, 1 at the midpoint
+      if (k >= 1) { progress = tween.to; tween = null; activePunch = 0; }
+    } else activePunch = 0;
     const seg = progress * last;
     const i0 = clamp(Math.floor(seg), 0, lastIdx());
     const i1 = clamp(i0 + 1, 0, lastIdx());
@@ -1384,9 +1569,9 @@ function animate() {
     const mx = mouse.x * 3, my = mouse.y * 3;
     camera.position.set(cp.x + mx, cp.y - my, cp.z);
     camera.quaternion.copy(beatQuats[i0]).slerp(beatQuats[i1], f);
-    // per-shot field-of-view (zoom), interpolated across the segment
+    // per-shot field-of-view (zoom), interpolated across the segment, + transition punch
     const fa = beats[i0]?.fov ?? DEF_FOV, fb = beats[i1]?.fov ?? DEF_FOV;
-    const nf = fa + (fb - fa) * f;
+    const nf = fa + (fb - fa) * f + FX.fovPunch * activePunch;
     if (Math.abs(camera.fov - nf) > 0.01) { camera.fov = nf; camera.updateProjectionMatrix(); }
   }
 
@@ -1474,6 +1659,16 @@ function animate() {
   if (bloom) bloom.strength = FX.bloomStrength + voidWarp * 0.9;
   if (bokeh) bokeh.enabled = !(editMode || freeRoam);   // DOF only in play; bloom stays on in all modes
   if (composer) composer.render(); else renderer.render(scene, camera);
+  if (PROF) {
+    const now = performance.now();
+    if (_pf.last) { _pf.t += now - _pf.last; _pf.n++; }
+    _pf.last = now;
+    if (_pf.t >= 1000) {
+      const r = renderer.info.render, m = renderer.info.memory;
+      console.log(`PROF fps=${(_pf.n / _pf.t * 1000).toFixed(1)} calls=${r.calls} tris=${r.triangles} geos=${m.geometries} texs=${m.textures} progs=${renderer.info.programs?.length}`);
+      _pf.t = 0; _pf.n = 0;
+    }
+  }
   requestAnimationFrame(animate);
 }
 animate();

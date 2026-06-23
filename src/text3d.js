@@ -1,0 +1,125 @@
+// ============================================================================
+//  TEXT 3D — placeable, truly-extruded text in the void.
+//  Loads a font Ogg-first (real Adobe Ogg if a file is dropped into
+//  public/fonts/, otherwise a bundled serif stand-in), builds beveled
+//  TextGeometry meshes with an emissive material that blooms, and persists
+//  every placed text to localStorage. All 3D options are per-item data.
+// ============================================================================
+import * as THREE from 'three';
+import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+
+// Ogg is tried first; drop any of these into public/fonts/ to upgrade instantly.
+const OGG_CANDIDATES = [
+  { url: '/fonts/ogg.typeface.json', type: 'json' },
+  { url: '/fonts/Ogg-Roman.otf', type: 'ttf' },
+  { url: '/fonts/Ogg-Roman.ttf', type: 'ttf' },
+  { url: '/fonts/Ogg.otf', type: 'ttf' },
+  { url: '/fonts/Ogg.ttf', type: 'ttf' },
+];
+const FALLBACK = { url: '/fonts/fallback-serif.typeface.json', type: 'json' };
+const STORE_KEY = 'voidTexts';
+
+let _uid = 1;
+export const defaultText = () => ({
+  id: _uid++, text: 'OGG',
+  size: 26, depth: 7, bevel: 1.2,           // 3D options
+  x: 0, y: 12, z: -40, rx: 0, ry: 0, rz: 0,  // placement
+  color: '#eaf4ff', glow: 1.5,               // look
+});
+
+export function createText3D() {
+  const group = new THREE.Group();
+  group.renderOrder = 3;                       // in front of the background, with the panels
+  let font = null;
+  let usingOgg = false;
+  const items = [];                            // { data, mesh }
+
+  // Fetch + VALIDATE before parsing. The Vite dev server answers missing files
+  // with index.html (not a 404), so a naive FontLoader.load would try to parse
+  // HTML as JSON and throw uncaught — we sniff the payload and reject instead.
+  async function tryLoad(c) {
+    const res = await fetch(c.url);
+    if (!res.ok) throw new Error('not found');
+    if (c.type === 'json') {
+      const txt = await res.text();
+      if (!txt.trimStart().startsWith('{')) throw new Error('not a typeface.json');  // HTML fallback
+      return new FontLoader().parse(JSON.parse(txt));
+    }
+    const buf = await res.arrayBuffer();
+    if (new Uint8Array(buf)[0] === 0x3C) throw new Error('not a font file');           // '<' → HTML fallback
+    const { TTFLoader } = await import('three/addons/loaders/TTFLoader.js');            // lazy (pulls opentype)
+    return new FontLoader().parse(new TTFLoader().parse(buf));
+  }
+  async function loadFont() {
+    for (const c of OGG_CANDIDATES) {
+      try { font = await tryLoad(c); usingOgg = true; rebuildAll(); return { ogg: true, url: c.url }; } catch (e) { /* try next */ }
+    }
+    try { font = await tryLoad(FALLBACK); usingOgg = false; rebuildAll(); return { ogg: false, url: FALLBACK.url }; }
+    catch (e) { console.warn('[text3d] no font could be loaded', e); return { ogg: false, url: null }; }
+  }
+
+  function buildMesh(d) {
+    const geo = new TextGeometry(d.text || ' ', {
+      font, size: d.size, depth: d.depth, curveSegments: 6,
+      bevelEnabled: d.bevel > 0, bevelThickness: d.bevel * 0.6, bevelSize: d.bevel, bevelSegments: 3,
+    });
+    geo.center();                              // pivot at the text's centre
+    const col = new THREE.Color(d.color);
+    const mat = new THREE.MeshStandardMaterial({
+      color: col, emissive: col, emissiveIntensity: d.glow,
+      metalness: 0.35, roughness: 0.35,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(d.x, d.y, d.z);
+    mesh.rotation.set(THREE.MathUtils.degToRad(d.rx), THREE.MathUtils.degToRad(d.ry), THREE.MathUtils.degToRad(d.rz));
+    mesh.userData = { type: 'text3d', id: d.id };
+    return mesh;
+  }
+  function rebuild(id) {
+    const it = items.find((x) => x.data.id === id);
+    if (!it || !font) return;
+    group.remove(it.mesh);
+    it.mesh.geometry.dispose(); it.mesh.material.dispose();
+    it.mesh = buildMesh(it.data);
+    group.add(it.mesh);
+  }
+  function rebuildAll() { for (const it of items) { if (it.mesh) { group.remove(it.mesh); it.mesh.geometry.dispose(); it.mesh.material.dispose(); } if (font) { it.mesh = buildMesh(it.data); group.add(it.mesh); } } }
+
+  // cheap in-place transform/look update (no geometry rebuild) for slider drags
+  function apply(id) {
+    const it = items.find((x) => x.data.id === id);
+    if (!it || !it.mesh) return;
+    const d = it.data;
+    it.mesh.position.set(d.x, d.y, d.z);
+    it.mesh.rotation.set(THREE.MathUtils.degToRad(d.rx), THREE.MathUtils.degToRad(d.ry), THREE.MathUtils.degToRad(d.rz));
+    it.mesh.material.emissiveIntensity = d.glow;
+    it.mesh.material.color.set(d.color); it.mesh.material.emissive.set(d.color);
+  }
+
+  function add(data) {
+    const d = data || defaultText();
+    if (d.id >= _uid) _uid = d.id + 1;
+    const it = { data: d, mesh: font ? buildMesh(d) : null };
+    if (it.mesh) group.add(it.mesh);
+    items.push(it);
+    save();
+    return d;
+  }
+  function remove(id) {
+    const i = items.findIndex((x) => x.data.id === id);
+    if (i < 0) return;
+    const it = items[i];
+    if (it.mesh) { group.remove(it.mesh); it.mesh.geometry.dispose(); it.mesh.material.dispose(); }
+    items.splice(i, 1); save();
+  }
+  const get = (id) => items.find((x) => x.data.id === id)?.data || null;
+  const list = () => items.map((x) => x.data);
+
+  function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(items.map((x) => x.data))); } catch (e) { /* ignore */ } }
+  function restore() {
+    try { const raw = localStorage.getItem(STORE_KEY); if (raw) for (const d of JSON.parse(raw)) add(d); } catch (e) { /* ignore */ }
+  }
+
+  return { group, loadFont, add, remove, get, list, rebuild, apply, save, restore, usingOgg: () => usingOgg };
+}
