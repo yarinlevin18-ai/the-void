@@ -132,6 +132,7 @@ const livingVoid = (() => {
           float ring=sin(rr*26.0-rt*7.0)*exp(-rt*2.2)*smoothstep(0.55,0.0,rr);
           col+=climate*ring*0.5*uRip; }
         col*=mix(1.0,1.0-0.6*smoothstep(0.25,0.95,distance(v,vec2(0.5))),uVig);
+        col += (h(gl_FragCoord.xy) - 0.5) / 255.0;   // dither: break 8-bit banding so the gradient blends smoothly
         gl_FragColor=vec4(col,1.0);
       }`,
   });
