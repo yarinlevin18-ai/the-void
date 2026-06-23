@@ -1235,6 +1235,8 @@ function mkBtn(txt, fn, title) { const b = document.createElement('button'); b.t
 
 function loadFields() {
   edName.value = beats[sel].name;
+  edDofBlur.value = beatFX(sel, 'dofBlur'); edDofBlurV.textContent = (+edDofBlur.value).toFixed(3);
+  edDofAp.value = beatFX(sel, 'dofAperture'); edDofApV.textContent = (+edDofAp.value).toFixed(4);
   for (const f of fieldInputs) { const v = beats[sel][f.key][f.axis]; f.rng.value = v; f.num.value = v; }
   for (const s of scalarInputs) { const v = beats[sel][s.prop] ?? s.def; s.rng.value = v; s.num.value = v; }
   edVertical.checked = beats[sel].up[1] === 0; // vertical look uses up=[0,0,-1]
@@ -1259,6 +1261,15 @@ function refreshEditor() {
 // name
 edName.addEventListener('input', () => { beats[sel].name = edName.value; renderList(); });
 edName.addEventListener('change', () => commit(''));
+// Depth of field — edits the SELECTED section's keyframe (previews in play; DOF is off in Director Mode)
+const edDofBlur = document.querySelector('#ed-dofblur'), edDofBlurV = document.querySelector('#ed-dofblur-v');
+const edDofAp = document.querySelector('#ed-dofap'), edDofApV = document.querySelector('#ed-dofap-v');
+const _edDof = (inp, key, out, dp) => {
+  inp.addEventListener('input', () => { const v = parseFloat(inp.value); const b = beats[sel]; if (b) { if (!b.fx) ensureBeatFX(b); b.fx[key] = v; } if (out) out.textContent = v.toFixed(dp); });
+  inp.addEventListener('change', () => commit(''));
+};
+_edDof(edDofBlur, 'dofBlur', edDofBlurV, 3);
+_edDof(edDofAp, 'dofAperture', edDofApV, 4);
 // vertical look toggle
 edVertical.addEventListener('change', () => {
   beats[sel].up = (edVertical.checked ? UP_VERTICAL : UP_NORMAL).slice();
