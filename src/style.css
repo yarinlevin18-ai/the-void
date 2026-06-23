@@ -330,6 +330,23 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
 #fxpanel .fx-head { display: flex; justify-content: space-between; align-items: center; color: #eaf4ff; letter-spacing: 0.16em; margin-bottom: 0.2rem; }
 #fxpanel .fx-head span { color: #5b768f; border: 1px solid rgba(143, 176, 204, 0.3); border-radius: 3px; padding: 0 5px; }
 #fxpanel .fx-sec { color: #4fd2ff; letter-spacing: 0.14em; font-size: 0.6rem; margin: 0 0 0.2rem; }
+
+/* ---- Hotkeys legend (?) ---- */
+#hotkeys {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 70;
+  width: min(460px, 92vw); max-height: 86vh; overflow-y: auto;
+  padding: 1.1rem 1.3rem; border-radius: 12px;
+  background: rgba(6, 20, 28, 0.95); border: 1px solid rgba(79, 210, 255, 0.3); backdrop-filter: blur(10px);
+  font-family: "source-code-pro", ui-monospace, monospace; color: #cfe8ff; font-size: 0.66rem; letter-spacing: 0.03em;
+}
+#hotkeys[hidden] { display: none; }
+#hotkeys .fx-head { display: flex; justify-content: space-between; align-items: center; color: #eaf4ff; letter-spacing: 0.16em; text-transform: uppercase; margin-bottom: 0.4rem; }
+#hotkeys .fx-head span { color: #5b768f; border: 1px solid rgba(143, 176, 204, 0.3); border-radius: 3px; padding: 0 5px; }
+#hotkeys .hk-sec { color: #4fd2ff; letter-spacing: 0.2em; text-transform: uppercase; margin: 0.85rem 0 0.3rem; font-size: 0.56rem; }
+#hotkeys .hk { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: baseline; padding: 0.2rem 0; color: #9fc2e0; }
+#hotkeys .hk span { color: #8fb0cc; flex: 1 1 auto; }
+#hotkeys kbd { font-family: inherit; background: rgba(79, 210, 255, 0.12); border: 1px solid rgba(79, 210, 255, 0.4); border-radius: 4px; padding: 1px 5px; color: #eaf4ff; font-size: 0.6rem; }
+#hotkeys .fx-hint { color: #5b768f; text-align: right; margin-top: 0.6rem; }
 #fxpanel .fx-group { color: #4fd2ff; letter-spacing: 0.18em; margin-top: 0.55rem; padding-top: 0.35rem; border-top: 1px solid rgba(79, 210, 255, 0.14); }
 #fxpanel .fx-row { display: flex; align-items: center; gap: 0.4rem; }
 #fxpanel .fx-row label { flex: 0 0 66px; }

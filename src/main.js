@@ -31,12 +31,14 @@ const FX = {
   warpStrength: 0.16, warpLength: 0.1,        // warp streaks
   bloomStrength: 1.0, nebula: 1.0, driftOn: true, // living-void background
   fovPunch: 0,                                 // transient FOV widening mid-transition (whoosh)
+  twinkleOn: true, linesOn: true, nebVisible: true,                           // living-void toggles
+  uiHud: true, uiWaypoints: true, uiCaption: true, uiHint: true, uiScale: 1,  // UX panel state
 };
 const fxEl = document.querySelector('#fxpanel');
 // FX keyframes: these params live PER BEAT (beat.fx) and are interpolated across
 // the active camera segment every frame, so e.g. DOF blur can differ section to
 // section and blend over the flight. The toggles below stay global.
-const KEYED = ['dofBlur', 'dofAperture', 'panelDimFloor', 'panelLightRange', 'colorIntensity', 'colorReach', 'warpStrength', 'warpLength', 'bloomStrength', 'nebula'];
+const KEYED = ['dofBlur', 'dofAperture', 'panelDimFloor', 'panelLightRange', 'colorIntensity', 'colorReach', 'bloomStrength', 'nebula']; // warp is global (a transition effect), edited in the FX/TX panels
 const curFX = { ...FX };                       // resolved live values the render loop reads
 const beatFX = (i, k) => (beats[i] && beats[i].fx && beats[i].fx[k] != null) ? beats[i].fx[k] : FX[k];
 function ensureBeatFX(b) { const src = b.fx || {}; const out = {}; for (const k of KEYED) out[k] = (src[k] != null) ? src[k] : FX[k]; b.fx = out; }
@@ -323,6 +325,9 @@ const EASINGS = {
   linear: (x) => x,
 };
 let transitionEase = easeInOut;
+let txEaseName = 'easeInOut';
+// global (non-keyframed) state that Save must persist alongside the beats
+const GLOBAL_KEYS = ['starFrac', 'nodeFrac', 'lineFrac', 'nebFrac', 'driftOn', 'fovPunch', 'warpStrength', 'warpLength', 'twinkleOn', 'linesOn', 'nebVisible', 'uiHud', 'uiWaypoints', 'uiCaption', 'uiHint', 'uiScale'];
 let activePunch = 0;   // 0..1 across a transition, peaks at the midpoint (for FOV punch)
 const DEF_FOV = 68, DEF_DUR = 1.6;
 // a sensible starter panel for a section: sits at its aim point, fixed orientation
@@ -351,6 +356,7 @@ function load() {
         speedMul = d.speed ?? 1;
         smooth = d.smooth ?? 0.5;
         beats.forEach(backfillBeat); // bring older saves up to the current schema
+        if (d.g) { for (const k of GLOBAL_KEYS) if (d.g[k] != null) FX[k] = d.g[k]; if (d.g.ease) txEaseName = d.g.ease; } // restore global FX/UX/transition state
         let migrated = false;
         if (!(d.version >= 2)) { beats.forEach((b) => { if (b.panel) b.panel.billboard = false; }); migrated = true; } // stop the old auto-facing default
         if (!(d.version >= 3)) { beats.unshift(makeHeroBeat()); migrated = true; }      // add a hero opening shot before everything
@@ -368,7 +374,23 @@ function load() {
   beats = structuredClone(DEFAULT_BEATS);
   speedMul = 1; smooth = 0.5;
 }
-function save() { localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, version: 4 })); }
+function save() {
+  const g = {}; for (const k of GLOBAL_KEYS) g[k] = FX[k]; g.ease = txEaseName;
+  localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 5 }));
+}
+// push the global (saved) FX/UX/transition state into the live scene + DOM
+function applyGlobals() {
+  applyVoidDensity();
+  livingVoid.pmat.uniforms.uTwinkle.value = FX.twinkleOn ? 1 : 0;
+  livingVoid.lmat.uniforms.uOn.value = FX.linesOn ? 1 : 0;
+  livingVoid.bg.visible = FX.nebVisible;
+  transitionEase = EASINGS[txEaseName] || easeInOut;
+  captionsOn = FX.uiCaption;
+  const hud = document.querySelector('#hud'); if (hud) hud.style.display = FX.uiHud ? '' : 'none';
+  if (wpEl) wpEl.style.display = FX.uiWaypoints ? '' : 'none';
+  const hint = document.querySelector('#overlay .hint'); if (hint) hint.style.display = FX.uiHint ? '' : 'none';
+  document.documentElement.style.fontSize = (16 * (FX.uiScale || 1)) + 'px';
+}
 load();
 beats.forEach(ensureBeatFX);   // ensure every beat (incl. defaults) carries a full FX keyframe set
 
@@ -1238,7 +1260,7 @@ document.querySelector('#ed-add').addEventListener('click', addFromView);
 document.querySelector('#ed-jump').addEventListener('click', () => { jumpToSelected(); flash('Jumped'); });
 document.querySelector('#ed-undo').addEventListener('click', undo);
 document.querySelector('#ed-redo').addEventListener('click', redo);
-document.querySelector('#ed-save').addEventListener('click', () => { save(); flash('Saved'); });
+document.querySelector('#ed-save').addEventListener('click', () => { save(); text3d.save(); flash('Saved — everything'); });
 document.querySelector('#ed-reset').addEventListener('click', () => {
   if (!confirm('Reset the whole path to defaults? This clears your saved edits.')) return;
   beats = structuredClone(DEFAULT_BEATS); speedMul = 1; smooth = 0.5; sel = 0;
@@ -1424,7 +1446,6 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
     ['dofblur', 'dofBlur', f4], ['dofap', 'dofAperture', f4],
     ['dim', 'panelDimFloor', f2], ['range', 'panelLightRange', f0],
     ['colint', 'colorIntensity', f2], ['colreach', 'colorReach', f0],
-    ['warpstr', 'warpStrength', f2], ['warplen', 'warpLength', f3],
     ['bloom', 'bloomStrength', f2], ['nebula', 'nebula', f2],
   ];
   const refs = [];
@@ -1451,6 +1472,8 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
 
   // GLOBAL sliders — structural density (not keyframed; also bakes into the published build).
   const globalRows = [
+    ['warpstr', () => FX.warpStrength, (v) => { FX.warpStrength = v; }, f2],
+    ['warplen', () => FX.warpLength, (v) => { FX.warpLength = v; }, f3],
     ['stars', () => FX.starFrac, (v) => { FX.starFrac = v; applyVoidDensity(); }, f2],
     ['nodes', () => FX.nodeFrac, (v) => { FX.nodeFrac = v; applyVoidDensity(); }, f2],
     ['linesd', () => FX.lineFrac, (v) => { FX.lineFrac = v; applyVoidDensity(); }, f2],
@@ -1464,11 +1487,11 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
     inp.addEventListener('input', () => { const v = parseFloat(inp.value); set(v); if (out) out.textContent = fmt(v); });
   }
 
-  const chk = (id, fn) => { const el = document.querySelector('#fx-' + id); if (el) el.addEventListener('change', () => fn(el.checked)); };
-  chk('twinkle', (v) => { livingVoid.pmat.uniforms.uTwinkle.value = v ? 1 : 0; });
-  chk('drift', (v) => { FX.driftOn = v; });
-  chk('energylines', (v) => { livingVoid.lmat.uniforms.uOn.value = v ? 1 : 0; });
-  chk('neb', (v) => { livingVoid.bg.visible = v; });
+  const chk = (id, key, fn) => { const el = document.querySelector('#fx-' + id); if (!el) return; el.checked = !!FX[key]; el.addEventListener('change', () => { FX[key] = el.checked; fn(el.checked); }); };
+  chk('twinkle', 'twinkleOn', (v) => { livingVoid.pmat.uniforms.uTwinkle.value = v ? 1 : 0; });
+  chk('drift', 'driftOn', () => {});
+  chk('energylines', 'linesOn', (v) => { livingVoid.lmat.uniforms.uOn.value = v ? 1 : 0; });
+  chk('neb', 'nebVisible', (v) => { livingVoid.bg.visible = v; });
   window.addEventListener('keydown', (e) => {
     if (e.key.toLowerCase() === 'b' && !isTextEntry(e.target) && !editMode) togglePanel(fxEl);
   });
@@ -1499,7 +1522,7 @@ const txEl = document.querySelector('#txpanel');
   bind('warpstr', () => FX.warpStrength, (v) => { FX.warpStrength = v; }, f2);
   bind('warplen', () => FX.warpLength, (v) => { FX.warpLength = v; }, f3);
   const sel = document.querySelector('#tx-ease');
-  if (sel) { sel.value = 'easeInOut'; sel.addEventListener('change', () => { transitionEase = EASINGS[sel.value] || easeInOut; }); }
+  if (sel) { sel.value = txEaseName; sel.addEventListener('change', () => { txEaseName = sel.value; transitionEase = EASINGS[sel.value] || easeInOut; }); }
   window.addEventListener('keydown', (e) => {
     if (e.key.toLowerCase() === 't' && !isTextEntry(e.target) && !editMode) togglePanel(txEl);
   });
@@ -1511,15 +1534,15 @@ const uxEl = document.querySelector('#uxpanel');
   if (!uxEl || !DEV_TOOLS) return;          // preview-only build
   const hud = document.querySelector('#hud');
   const overlayHint = document.querySelector('#overlay .hint');
-  const chk = (id, fn) => { const el = document.querySelector('#ux-' + id); if (el) el.addEventListener('change', () => fn(el.checked)); };
-  chk('hud', (v) => { if (hud) hud.style.display = v ? '' : 'none'; });
-  chk('waypoints', (v) => { if (wpEl) wpEl.style.display = v ? '' : 'none'; });
-  chk('caption', (v) => { captionsOn = v; if (!v) hideCaption(); });
-  chk('hint', (v) => { if (overlayHint) overlayHint.style.display = v ? '' : 'none'; });
+  const chk = (id, key, fn) => { const el = document.querySelector('#ux-' + id); if (!el) return; el.checked = !!FX[key]; el.addEventListener('change', () => { FX[key] = el.checked; fn(el.checked); }); };
+  chk('hud', 'uiHud', (v) => { if (hud) hud.style.display = v ? '' : 'none'; });
+  chk('waypoints', 'uiWaypoints', (v) => { if (wpEl) wpEl.style.display = v ? '' : 'none'; });
+  chk('caption', 'uiCaption', (v) => { captionsOn = v; if (!v) hideCaption(); });
+  chk('hint', 'uiHint', (v) => { if (overlayHint) overlayHint.style.display = v ? '' : 'none'; });
   const scale = document.querySelector('#ux-scale'), scaleOut = document.querySelector('#ux-scale-v');
   if (scale) {
-    scale.value = 1; if (scaleOut) scaleOut.textContent = '1.00×';
-    scale.addEventListener('input', () => { const v = parseFloat(scale.value); document.documentElement.style.fontSize = (16 * v) + 'px'; if (scaleOut) scaleOut.textContent = v.toFixed(2) + '×'; });
+    scale.value = FX.uiScale; if (scaleOut) scaleOut.textContent = (+FX.uiScale).toFixed(2) + '×';
+    scale.addEventListener('input', () => { const v = parseFloat(scale.value); FX.uiScale = v; document.documentElement.style.fontSize = (16 * v) + 'px'; if (scaleOut) scaleOut.textContent = v.toFixed(2) + '×'; });
   }
   window.addEventListener('keydown', (e) => {
     if (e.key.toLowerCase() === 'u' && !isTextEntry(e.target) && !editMode) togglePanel(uxEl);
@@ -1584,6 +1607,19 @@ const textEl = document.querySelector('#textpanel');
     if (e.key.toLowerCase() === 'y' && !isTextEntry(e.target) && !editMode) { togglePanel(textEl); renderList(); loadFields(); }
   });
 })();
+
+// ---- Hotkeys legend (toggle with ?) ----------------------------------------
+(() => {
+  const hk = document.querySelector('#hotkeys');
+  if (!hk) return;
+  window.addEventListener('keydown', (e) => {
+    if (isTextEntry(e.target)) return;
+    if (e.key === '?') hk.hidden = !hk.hidden;
+    else if (e.key === 'Escape') hk.hidden = true;
+  });
+})();
+
+applyGlobals();   // apply the loaded global FX/UX/transition state before the loop starts
 
 // ---- Animation loop ---------------------------------------------------------
 const clock = new THREE.Clock();
@@ -1688,7 +1724,7 @@ function animate() {
     const camSpeed = _vel.length() / Math.max(dt, 0.0001);
     _prevCamPos.copy(camera.position);
     if (_vel.lengthSq() > 1e-8) _dir.copy(_vel).normalize();
-    const len = clamp(camSpeed * curFX.warpLength, 0, 60);  // longer streaks the faster you move
+    const len = clamp(camSpeed * FX.warpLength, 0, 60);  // longer streaks the faster you move (global)
     for (let i = 0; i < data.length; i++) {
       const p = data[i].p;
       if (camera.position.distanceTo(p) > R) p.set(      // recycle points that fall out of range around the camera
@@ -1701,7 +1737,7 @@ function animate() {
       pos[o + 3] = p.x - _dir.x * len; pos[o + 4] = p.y - _dir.y * len; pos[o + 5] = p.z - _dir.z * len;
     }
     geo.attributes.position.needsUpdate = true;
-    mat.opacity = editMode ? 0 : clamp((camSpeed - 12) / 120, 0, curFX.warpStrength);
+    mat.opacity = editMode ? 0 : clamp((camSpeed - 12) / 120, 0, FX.warpStrength);
   }
 
   if (index !== _lastBeatIdx) { voidWarp = Math.max(voidWarp, 0.9); _lastBeatIdx = index; } // warp burst on chapter change
