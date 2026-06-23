@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Void — Intro sequence (warp → film → live nebula)</title>
+<link rel="stylesheet" href="https://use.typekit.net/xan5bdy.css"/>
+<script type="importmap">
+{ "imports": {
+  "three":"https://unpkg.com/three@0.169.0/build/three.module.js",
+  "three/addons/":"https://unpkg.com/three@0.169.0/examples/jsm/"
+}}
+</script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:#03040a;font-family:"acumin-pro",system-ui,sans-serif;color:#cfe8ff}
+  .layer{position:fixed;inset:0}
+  #warp,#nebcv{display:block;width:100%;height:100%}
+  #bridge{width:100%;height:100%;object-fit:cover}
+  /* fade stack */
+  #L1{z-index:1;opacity:1;transition:opacity .6s}
+  #L2{z-index:2;opacity:0;transition:opacity .7s}
+  #L3{z-index:1;opacity:0;transition:opacity 1.0s}
+  #hud{position:fixed;inset:0;z-index:4;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;transition:opacity .5s}
+  .mono{font-family:"source-code-pro",monospace;color:#7fe0ff;letter-spacing:.34em;text-transform:uppercase;font-size:.72rem}
+  #pct{font-family:"ogg",serif;color:#eaf6ff;font-weight:600;font-size:clamp(4rem,16vw,11rem);line-height:.9;text-shadow:0 0 40px rgba(120,200,255,.45);font-variant-numeric:tabular-nums}
+  #bar{width:min(46vw,360px);height:1px;background:rgba(150,180,220,.18);margin-top:1.4rem;position:relative;overflow:hidden}
+  #bar i{position:absolute;inset:0 100% 0 0;background:linear-gradient(90deg,#1ad9ff,#a06bff);box-shadow:0 0 14px #1ad9ff}
+  #sub{margin-top:1rem;color:#5f7da0}
+  #mark{position:fixed;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none}
+  #mark h1{font-family:"ogg",serif;font-weight:600;color:#fff;font-size:clamp(3.4rem,12vw,11rem);line-height:1;clip-path:inset(0 0 100% 0);text-shadow:0 0 50px rgba(150,200,255,.4)}
+  #flash{position:fixed;inset:0;z-index:6;background:#dff2ff;opacity:0;pointer-events:none;mix-blend-mode:screen;transition:opacity .12s}
+  #replay{position:fixed;right:1rem;bottom:1rem;z-index:9;font-family:"source-code-pro",monospace;font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:#9fd0ff;background:rgba(10,12,24,.8);border:1px solid rgba(150,160,255,.3);border-radius:30px;padding:.5rem 1rem;cursor:pointer}
+  #stage{position:fixed;left:1rem;bottom:1rem;z-index:9;font-family:"source-code-pro",monospace;font-size:.58rem;letter-spacing:.18em;text-transform:uppercase;color:#5f7da0}
+  @keyframes glitch{0%{transform:translate(0)}25%{transform:translate(-3px,1px)}50%{transform:translate(2px,-2px)}75%{transform:translate(-2px,-1px)}100%{transform:translate(0)}}
+</style>
+</head>
+<body>
+<!-- L1 = live WebGL warp loader -->
+<div class="layer" id="L1"><canvas id="warp"></canvas></div>
+<!-- L2 = Higgsfield film bridge -->
+<div class="layer" id="L2"><video id="bridge" muted playsinline preload="auto"></video></div>
+<!-- L3 = live interactive nebula (handoff target) -->
+<div class="layer" id="L3"><canvas id="nebcv"></canvas></div>
+
+<div id="hud">
+  <div class="mono">Entering the void</div>
+  <div id="pct">0</div>
+  <div id="bar"><i></i></div>
+  <div class="mono" id="sub">calibrating flight path</div>
+</div>
+<div id="mark"><h1>YARIN</h1></div>
+<div id="flash"></div>
+<button id="replay">↻ replay</button>
+<div id="stage">stage: warp</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+const $=s=>document.querySelector(s);
+// Higgsfield bridge clip. For production: save to public/video/warp-to-nebula.mp4 and use that path.
+const VID="https://d8j0ntlcm91z4.cloudfront.net/user_3EckCCV1wJOdG1hUe9zUdsK2yuU/hf_20260623_170020_927ff506-b5a5-4b4a-9cd6-5547f299ee76.mp4";
+const video=$('#bridge'); video.src=VID;
+
+/* ---------------- L1: WebGL warp ---------------- */
+const wc=$('#warp'); const wr=new THREE.WebGLRenderer({canvas:wc,antialias:true});
+wr.setPixelRatio(Math.min(devicePixelRatio,1.75));
+const ws=new THREE.Scene(); ws.fog=new THREE.FogExp2(0x03040a,0.0009);
+const wcam=new THREE.PerspectiveCamera(72,1,0.1,6000);
+const N=1100, head=new Float32Array(N*3), wv=new Float32Array(N*6), wcol=new Float32Array(N*6);
+function rs(i,far){const a=Math.random()*6.283,rad=20+Math.random()*240;head[i*3]=Math.cos(a)*rad;head[i*3+1]=Math.sin(a)*rad;head[i*3+2]=far?-1600-Math.random()*1400:-Math.random()*1600;}
+for(let i=0;i<N;i++)rs(i,false);
+const wg=new THREE.BufferGeometry();
+wg.setAttribute('position',new THREE.BufferAttribute(wv,3));wg.setAttribute('color',new THREE.BufferAttribute(wcol,3));
+const warp=new THREE.LineSegments(wg,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));ws.add(warp);
+const wcomp=new EffectComposer(wr);wcomp.addPass(new RenderPass(ws,wcam));
+const wbloom=new UnrealBloomPass(new THREE.Vector2(1,1),1.1,0.8,0.0);wcomp.addPass(wbloom);
+
+/* ---------------- L3: live nebula ---------------- */
+const nc=$('#nebcv'); const nr=new THREE.WebGLRenderer({canvas:nc,antialias:true});
+nr.setPixelRatio(Math.min(devicePixelRatio,1.75));
+const ns=new THREE.Scene(); const ncam=new THREE.PerspectiveCamera(60,1,0.1,4000);ncam.position.set(0,0,360);
+const neb={uTime:{value:0},uA:{value:1}};
+const nMat=new THREE.ShaderMaterial({depthTest:false,depthWrite:false,uniforms:neb,
+  vertexShader:`varying vec2 v;void main(){v=uv;gl_Position=vec4(position.xy,0.999,1.0);}`,
+  fragmentShader:`varying vec2 v;uniform float uTime,uA;
+   float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5);}
+   float n(vec2 p){vec2 i=floor(p),f=fract(p);float a=h(i),b=h(i+vec2(1,0)),c=h(i+vec2(0,1)),d=h(i+vec2(1,1));vec2 u=f*f*(3.-2.*f);return mix(mix(a,b,u.x),mix(c,d,u.x),u.y);}
+   float fbm(vec2 p){float s=0.,m=.5;for(int i=0;i<5;i++){s+=m*n(p);p=p*2.03+1.7;m*=.5;}return s;}
+   void main(){vec2 uv=v;uv.x*=uA;
+     vec2 q=vec2(fbm(uv*2.0+vec2(0.,uTime*0.03)),fbm(uv*2.0+vec2(5.2,-uTime*0.03)));
+     float f=fbm(uv*2.0+1.4*q);
+     vec3 col=vec3(0.012,0.020,0.030)+mix(vec3(0.05,0.17,0.24),vec3(0.12,0.06,0.22),0.5+0.5*sin(uTime*0.07))*smoothstep(0.4,1.0,f);
+     col+=vec3(0.22,0.09,0.03)*smoothstep(0.7,1.0,q.x*q.y+0.4*f)*0.4;
+     col*=1.0-0.6*smoothstep(0.3,0.95,distance(v,vec2(0.5)));
+     gl_FragColor=vec4(col,1.0);}`});
+const nbg=new THREE.Mesh(new THREE.PlaneGeometry(2,2),nMat);nbg.frustumCulled=false;ns.add(nbg);
+
+function size(){const w=innerWidth,h=innerHeight;
+  wr.setSize(w,h);wcomp.setSize(w,h);wcam.aspect=w/h;wcam.updateProjectionMatrix();wbloom.resolution.set(w,h);
+  nr.setSize(w,h);ncam.aspect=w/h;ncam.updateProjectionMatrix();neb.uA.value=w/h;}
+addEventListener('resize',size);size();
+
+/* ---------------- sequence ---------------- */
+let stage='warp', prog=0, speed=6, started=performance.now();
+const subs=['calibrating flight path','charging data-streams','aligning the void','engaging warp'];
+function setStage(s){stage=s;$('#stage').textContent='stage: '+s;}
+function tick(){ if(stage!=='warp')return;
+  prog=Math.min(100,prog+Math.random()*7+1.5);
+  $('#pct').textContent=Math.floor(prog);$('#bar i').style.inset=`0 ${100-prog}% 0 0`;
+  $('#sub').textContent=subs[Math.min(3,Math.floor(prog/26))];
+  if(prog>=100){jump();return;} setTimeout(tick,90+Math.random()*220);}
+setTimeout(tick,500);
+
+function jump(){
+  const fl=$('#flash');fl.style.opacity='.9';speed=140;
+  setTimeout(()=>{fl.style.transition='opacity .8s';fl.style.opacity='0';},120);
+  $('#hud').style.opacity='0';
+  // wordmark flash
+  const m=$('#mark'),h=m.querySelector('h1');
+  m.style.transition='opacity .5s';m.style.opacity='1';
+  h.style.transition='clip-path 1s cubic-bezier(.16,1,.3,1)';h.style.clipPath='inset(0 0 0% 0)';h.style.animation='glitch .4s steps(2) 2';
+  // crossfade L1 -> L2 (film) under the flash
+  setTimeout(()=>{ setStage('film');
+    video.play().catch(()=>{});
+    $('#L2').style.opacity='1'; $('#L1').style.opacity='0';
+    setTimeout(()=>{ m.style.opacity='0'; },700);
+  },140);
+}
+// when the film nears its end, crossfade L2 -> L3 (live nebula) for the interactive handoff
+video.addEventListener('timeupdate',()=>{
+  if(stage==='film' && video.duration && video.currentTime>video.duration-1.1){
+    setStage('live nebula');
+    $('#L3').style.opacity='1';
+    setTimeout(()=>{ $('#L2').style.opacity='0'; },800);
+  }
+});
+
+$('#replay').onclick=()=>{
+  setStage('warp'); prog=0; speed=6;
+  $('#L1').style.opacity='1';$('#L2').style.opacity='0';$('#L3').style.opacity='0';
+  $('#hud').style.opacity='1';$('#pct').textContent='0';$('#bar i').style.inset='0 100% 0 0';
+  $('#mark').style.opacity='0';
+  for(let i=0;i<N;i++)rs(i,false);
+  try{video.pause();video.currentTime=0;}catch(e){}
+  setTimeout(tick,400);
+};
+
+/* ---------------- render loops ---------------- */
+const clock=new THREE.Clock();
+function loop(){const dt=Math.min(clock.getDelta(),0.05),t=clock.elapsedTime;
+  // warp only while visible-ish (stages warp/film start)
+  if(stage==='warp'||stage==='film'){
+    const target = stage==='warp' ? (6+prog*1.1) : 150;
+    speed += (target-speed)*0.06;
+    const len=1.5+speed*0.9, p=wg.attributes.position.array, c=wg.attributes.color.array;
+    for(let i=0;i<N;i++){head[i*3+2]+=speed*dt*60; if(head[i*3+2]>40)rs(i,true);
+      const x=head[i*3],y=head[i*3+1],z=head[i*3+2];
+      p[i*6]=x;p[i*6+1]=y;p[i*6+2]=z;p[i*6+3]=x;p[i*6+4]=y;p[i*6+5]=z-len;
+      const b=Math.min(1,(z+1600)/1600);
+      c[i*6]=0.5*b;c[i*6+1]=0.85*b;c[i*6+2]=1.0*b;c[i*6+3]=0.35*b;c[i*6+4]=0.2*b;c[i*6+5]=0.7*b;}
+    wg.attributes.position.needsUpdate=true;wg.attributes.color.needsUpdate=true;
+    wcam.rotation.z=Math.sin(t*0.1)*0.04;
+    wcomp.render();
+  }
+  // nebula renders once it's the handoff target
+  if(stage==='live nebula'){neb.uTime.value=t;nr.render(ns,ncam);}
+  requestAnimationFrame(loop);}
+loop();
+</script>
+</body>
+</html>

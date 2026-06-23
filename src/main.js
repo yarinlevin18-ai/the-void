@@ -101,43 +101,47 @@ const livingVoid = (() => {
     uFlow: { value: 0 }, uRip: { value: 0 },
   };
   const bgMat = new THREE.ShaderMaterial({
-    depthTest: false, depthWrite: false, uniforms: neb,
-    vertexShader: `varying vec2 v; void main(){ v = uv; gl_Position = vec4(position.xy, 0.999, 1.0); }`,
-    fragmentShader: `varying vec2 v;
-      uniform float uTime,uA,uDens,uSpd,uWarp,uHue,uEmber,uVig,uVel,uRipT,uFlow,uRip;
-      uniform vec2 uPt,uRipC;
+    transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: neb,
+    vertexShader: `varying vec2 vUv; varying vec3 vW;
+      void main(){ vUv = uv; vec4 wp = modelMatrix * vec4(position,1.0); vW = wp.xyz; gl_Position = projectionMatrix * viewMatrix * wp; }`,
+    fragmentShader: `varying vec2 vUv; varying vec3 vW;
+      uniform float uTime,uDens,uSpd,uWarp,uHue,uEmber;
       float h(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
       float n(vec2 p){ vec2 i=floor(p),f=fract(p); float a=h(i),b=h(i+vec2(1,0)),c=h(i+vec2(0,1)),d=h(i+vec2(1,1));
         vec2 u=f*f*(3.-2.*f); return mix(mix(a,b,u.x),mix(c,d,u.x),u.y); }
-      float fbm(vec2 p){ float s=0.,m=.5; for(int i=0;i<6;i++){ s+=m*n(p); p=p*2.03+vec2(1.7,9.2); m*=.5; } return s; }
+      float fbm(vec2 p){ float s=0.,m=.5; for(int i=0;i<3;i++){ s+=m*n(p); p=p*2.03+vec2(1.7,9.2); m*=.5; } return s; }
       void main(){
-        vec2 uv=v; uv.x*=uA;
-        vec2 pd=(uPt-v); pd.x*=uA; float pdist=length(pd);
-        float prox=smoothstep(0.5,0.0,pdist);
-        uv += pd*prox*(0.18+uVel*0.9)*uFlow;
-        float warp=uWarp + uVel*1.6*uFlow;
-        float t=uTime*0.05*uSpd;
-        vec2 q=vec2(fbm(uv*1.6+vec2(0.0,t)), fbm(uv*1.6+vec2(5.2,-t)));
-        vec2 r=vec2(fbm(uv*1.6+warp*q+vec2(1.7,9.2)+t*0.6), fbm(uv*1.6+warp*q+vec2(8.3,2.8)-t*0.5));
-        float f=fbm(uv*1.6+warp*r);
-        vec3 base=vec3(0.012,0.020,0.030), teal=vec3(0.05,0.17,0.24), viol=vec3(0.12,0.06,0.22);
+        vec2 p = vW.xy * 0.0016;                     // sample by WORLD position -> nebula is fixed in the environment
+        float t=uTime*0.05*uSpd, warp=uWarp;
+        vec2 q=vec2(fbm(p+vec2(0.0,t)), fbm(p+vec2(5.2,-t)));
+        float f=fbm(p+warp*q);                        // domain-warped (folded) fbm
+        vec3 teal=vec3(0.05,0.17,0.24), viol=vec3(0.12,0.06,0.22);
         vec3 climate=mix(teal,viol,clamp(uHue+0.25*sin(uTime*0.05),0.0,1.0));
-        vec3 col=base + climate*smoothstep(0.35,1.0,f)*(0.6+uDens);
-        float veins=smoothstep(0.55,0.9,r.x*r.y+0.5*f);
-        col+=vec3(0.22,0.09,0.03)*veins*uEmber*1.6;
-        col+=climate*1.4*smoothstep(0.78,1.0,f)*(0.4+uDens);
-        col+=climate*prox*(0.18+uVel*0.8)*uFlow;
-        float rt=uTime-uRipT;
-        if(rt<2.5){ vec2 rd=(uRipC-v); rd.x*=uA; float rr=length(rd);
-          float ring=sin(rr*26.0-rt*7.0)*exp(-rt*2.2)*smoothstep(0.55,0.0,rr);
-          col+=climate*ring*0.5*uRip; }
-        col*=mix(1.0,1.0-0.6*smoothstep(0.25,0.95,distance(v,vec2(0.5))),uVig);
-        col += (h(gl_FragCoord.xy) - 0.5) / 255.0;   // dither: break 8-bit banding so the gradient blends smoothly
-        gl_FragColor=vec4(col,1.0);
+        vec3 col=climate*smoothstep(0.30,1.0,f)*(0.7+uDens);
+        float veins=smoothstep(0.55,0.92,q.x*q.y+0.5*f);
+        col+=vec3(0.22,0.09,0.03)*veins*uEmber*1.4;
+        col+=climate*1.3*smoothstep(0.7,1.0,f)*(0.4+uDens);
+        float radial=smoothstep(0.5,0.04,distance(vUv,vec2(0.5)));   // soft card edges -> reads as gas, not planes
+        float a=radial*(0.16+0.7*smoothstep(0.22,0.95,f))*(0.5+uDens*0.4);
+        col += (h(gl_FragCoord.xy)-0.5)/255.0;        // dither: kill 8-bit banding
+        gl_FragColor=vec4(col,a);
       }`,
   });
-  const bg = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), bgMat);
-  bg.frustumCulled = false; bg.renderOrder = -20;
+  // A world-anchored VOLUME of cloud cards through the corridor — the camera flies
+  // THROUGH them (parallax), so the nebula is fixed in the void, not on the screen.
+  const bg = new THREE.Group();
+  bg.renderOrder = -20;
+  const nebGeo = new THREE.PlaneGeometry(1, 1);
+  const NEB_CARDS = 8;
+  for (let i = 0; i < NEB_CARDS; i++) {
+    const card = new THREE.Mesh(nebGeo, bgMat);
+    card.position.set((Math.random() - 0.5) * 900, (Math.random() - 0.5) * 460 + 70, 160 - (i / (NEB_CARDS - 1)) * 1040);
+    const s = 720 + Math.random() * 820;
+    card.scale.set(s, s * (0.7 + Math.random() * 0.5), 1);
+    card.rotation.z = Math.random() * Math.PI;
+    card.frustumCulled = false;
+    bg.add(card);
+  }
   scene.add(bg);
 
   // 2) Volumetric starfield — a 3D VOLUME you fly through (ported 1:1 from
@@ -280,7 +284,7 @@ text3d.loadFont().then((r) => { const el = document.querySelector('#text-status'
 // Runs at startup too, so editing the FX defaults also tunes the published build.
 function applyVoidDensity() {
   livingVoid.sgeo.setDrawRange(0, Math.max(0, Math.floor(livingVoid.STAR_N * FX.starFrac)));
-  livingVoid.bg.visible = FX.nebFrac > 0.02;   // single full-screen nebula now — frac toggles it on/off
+  { const cards = livingVoid.bg.children, k = Math.round(cards.length * FX.nebFrac); cards.forEach((c, i) => { c.visible = i < k; }); }
 }
 applyVoidDensity();
 
