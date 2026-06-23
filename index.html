@@ -44,6 +44,7 @@
     <!-- FX control panel (toggle with B) — live-edits every effect -->
     <div id="fxpanel" hidden>
       <div class="fx-head">FX Controls <span>B</span></div>
+      <div class="fx-sec" id="fx-sec"></div>
 
       <div class="fx-group">Depth of field</div>
       <div class="fx-row"><label>Blur</label><input id="fx-dofblur" type="range" min="0" max="0.02" step="0.0005" /><span id="fx-dofblur-v"></span></div>
@@ -68,15 +69,15 @@
       <div class="fx-group">Density</div>
       <div class="fx-row"><label>Stars</label><input id="fx-stars" type="range" min="0" max="1" step="0.05" /><span id="fx-stars-v"></span></div>
       <div class="fx-row"><label>Nodes</label><input id="fx-nodes" type="range" min="0" max="1" step="0.05" /><span id="fx-nodes-v"></span></div>
-      <div class="fx-row"><label>Lines</label><input id="fx-lines" type="range" min="0" max="1" step="0.05" /><span id="fx-lines-v"></span></div>
+      <div class="fx-row"><label>Lines</label><input id="fx-linesd" type="range" min="0" max="1" step="0.05" /><span id="fx-linesd-v"></span></div>
       <div class="fx-row"><label>Clouds</label><input id="fx-clouds" type="range" min="0" max="1" step="0.05" /><span id="fx-clouds-v"></span></div>
 
       <label class="fx-chk"><input id="fx-twinkle" type="checkbox" checked /> Twinkle</label>
       <label class="fx-chk"><input id="fx-drift" type="checkbox" checked /> Organic drift</label>
-      <label class="fx-chk"><input id="fx-lines" type="checkbox" checked /> Energy lines</label>
+      <label class="fx-chk"><input id="fx-energylines" type="checkbox" checked /> Energy lines</label>
       <label class="fx-chk"><input id="fx-neb" type="checkbox" checked /> Nebula clouds</label>
 
-      <div class="fx-hint">B to hide · live · play mode</div>
+      <div class="fx-hint">sliders edit this section's keyframe · B to hide</div>
     </div>
 
     <!-- TRANSITIONS panel (toggle with T) — tune the flight between sections -->

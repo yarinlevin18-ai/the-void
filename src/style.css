@@ -329,6 +329,7 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
 #fxpanel[hidden] { display: none; }
 #fxpanel .fx-head { display: flex; justify-content: space-between; align-items: center; color: #eaf4ff; letter-spacing: 0.16em; margin-bottom: 0.2rem; }
 #fxpanel .fx-head span { color: #5b768f; border: 1px solid rgba(143, 176, 204, 0.3); border-radius: 3px; padding: 0 5px; }
+#fxpanel .fx-sec { color: #4fd2ff; letter-spacing: 0.14em; font-size: 0.6rem; margin: 0 0 0.2rem; }
 #fxpanel .fx-group { color: #4fd2ff; letter-spacing: 0.18em; margin-top: 0.55rem; padding-top: 0.35rem; border-top: 1px solid rgba(79, 210, 255, 0.14); }
 #fxpanel .fx-row { display: flex; align-items: center; gap: 0.4rem; }
 #fxpanel .fx-row label { flex: 0 0 66px; }

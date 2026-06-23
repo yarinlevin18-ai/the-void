@@ -33,6 +33,21 @@ const FX = {
   fovPunch: 0,                                 // transient FOV widening mid-transition (whoosh)
 };
 const fxEl = document.querySelector('#fxpanel');
+// FX keyframes: these params live PER BEAT (beat.fx) and are interpolated across
+// the active camera segment every frame, so e.g. DOF blur can differ section to
+// section and blend over the flight. The toggles below stay global.
+const KEYED = ['dofBlur', 'dofAperture', 'panelDimFloor', 'panelLightRange', 'colorIntensity', 'colorReach', 'warpStrength', 'warpLength', 'bloomStrength', 'nebula'];
+const curFX = { ...FX };                       // resolved live values the render loop reads
+const beatFX = (i, k) => (beats[i] && beats[i].fx && beats[i].fx[k] != null) ? beats[i].fx[k] : FX[k];
+function ensureBeatFX(b) { const src = b.fx || {}; const out = {}; for (const k of KEYED) out[k] = (src[k] != null) ? src[k] : FX[k]; b.fx = out; }
+function resolveFX() {
+  if (editMode) { const i = clamp(sel, 0, Math.max(0, beats.length - 1)); for (const k of KEYED) curFX[k] = beatFX(i, k); return; }
+  const last = Math.max(1, beats.length - 1);
+  const seg = clamp(progress, 0, 1) * last;
+  const i0 = clamp(Math.floor(seg), 0, last), i1 = clamp(i0 + 1, 0, last), f = seg - i0;
+  for (const k of KEYED) { const a = beatFX(i0, k), b = beatFX(i1, k); curFX[k] = a + (b - a) * f; }
+}
+let fxSync = () => {}, fxMaybeSync = () => {};  // assigned by the FX panel wiring below
 // Dev tooling (all panels + Director Mode) is available in `npm run dev`, and on
 // a published build ONLY when the URL carries ?edit. The plain published site is
 // preview-only — visitors get the flythrough with no editor surface.
@@ -324,6 +339,7 @@ function backfillBeat(b) {
     b.panel.rot ??= [0, 0, 0];
     b.panel.billboard ??= false;
   }
+  ensureBeatFX(b);
 }
 function load() {
   try {
@@ -354,6 +370,7 @@ function load() {
 }
 function save() { localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, version: 4 })); }
 load();
+beats.forEach(ensureBeatFX);   // ensure every beat (incl. defaults) carries a full FX keyframe set
 
 // ---- Derived per-section position + orientation -----------------------------
 const beatPos = [];
@@ -953,7 +970,7 @@ function applySnapshot(str) {
 }
 function undo() { if (hPtr > 0) { hPtr--; applySnapshot(history[hPtr]); flash('Undo'); } }
 function redo() { if (hPtr < history.length - 1) { hPtr++; applySnapshot(history[hPtr]); flash('Redo'); } }
-function commit(msg) { rebuildDerived(); rebuildGizmos(); rebuildPanels(); buildWaypoints(); reattach(); pushHistory(); save(); if (msg) flash(msg); }
+function commit(msg) { beats.forEach(ensureBeatFX); rebuildDerived(); rebuildGizmos(); rebuildPanels(); buildWaypoints(); reattach(); pushHistory(); save(); if (msg) flash(msg); }
 function flash(t) { edStatus.textContent = t; }
 pushHistory(); // initial state
 
@@ -1399,34 +1416,58 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
   if (!fxEl || !DEV_TOOLS) return;          // preview-only build: no FX panel for visitors
   fxEl.hidden = false;                       // dev: show it by default as before
   const f4 = (v) => v.toFixed(4), f3 = (v) => v.toFixed(3), f2 = (v) => v.toFixed(2), f0 = (v) => String(Math.round(v));
-  // each row: [id, getter, setter, formatter]
-  const rows = [
-    ['dofblur', () => (bokeh ? bokeh.uniforms.maxblur.value : FX.dofBlur), (v) => { FX.dofBlur = v; if (bokeh) bokeh.uniforms.maxblur.value = v; }, f4],
-    ['dofap', () => (bokeh ? bokeh.uniforms.aperture.value : FX.dofAperture), (v) => { FX.dofAperture = v; if (bokeh) bokeh.uniforms.aperture.value = v; }, f4],
-    ['dim', () => FX.panelDimFloor, (v) => { FX.panelDimFloor = v; }, f2],
-    ['range', () => FX.panelLightRange, (v) => { FX.panelLightRange = v; }, f0],
-    ['colint', () => FX.colorIntensity, (v) => { FX.colorIntensity = v; }, f2],
-    ['colreach', () => FX.colorReach, (v) => { FX.colorReach = v; }, f0],
-    ['warpstr', () => FX.warpStrength, (v) => { FX.warpStrength = v; }, f2],
-    ['warplen', () => FX.warpLength, (v) => { FX.warpLength = v; }, f3],
-    ['bloom', () => FX.bloomStrength, (v) => { FX.bloomStrength = v; }, f2],
-    ['nebula', () => FX.nebula, (v) => { FX.nebula = v; livingVoid.bgMat.uniforms.uIntensity.value = v; }, f2],
+  const secEl = document.querySelector('#fx-sec');
+  const focusIdx = () => clamp(editMode ? sel : index, 0, Math.max(0, beats.length - 1));
+
+  // KEYFRAMED sliders — [slider id, beat.fx key, formatter] — edit the FOCUSED section's keyframe.
+  const KEYROWS = [
+    ['dofblur', 'dofBlur', f4], ['dofap', 'dofAperture', f4],
+    ['dim', 'panelDimFloor', f2], ['range', 'panelLightRange', f0],
+    ['colint', 'colorIntensity', f2], ['colreach', 'colorReach', f0],
+    ['warpstr', 'warpStrength', f2], ['warplen', 'warpLength', f3],
+    ['bloom', 'bloomStrength', f2], ['nebula', 'nebula', f2],
+  ];
+  const refs = [];
+  for (const [id, key, fmt] of KEYROWS) {
+    const inp = document.querySelector('#fx-' + id), out = document.querySelector('#fx-' + id + '-v');
+    if (!inp) continue;
+    refs.push({ inp, out, key, fmt });
+    inp.addEventListener('input', () => {
+      const v = parseFloat(inp.value), i = focusIdx(), b = beats[i];
+      if (b) { if (!b.fx) ensureBeatFX(b); b.fx[key] = v; }
+      if (out) out.textContent = fmt(v);
+    });
+    inp.addEventListener('change', save);     // persist on release, not on every drag tick
+  }
+  let _shownIdx = -1;
+  fxSync = () => {
+    const i = focusIdx();
+    for (const r of refs) { const v = beatFX(i, r.key); r.inp.value = v; if (r.out) r.out.textContent = r.fmt(v); }
+    if (secEl) secEl.textContent = beats[i] ? ('▸ ' + (beats[i].name || ('Section ' + (i + 1)))) : '';
+    _shownIdx = i;
+  };
+  fxMaybeSync = () => { if (focusIdx() !== _shownIdx) fxSync(); };
+  fxSync();
+
+  // GLOBAL sliders — structural density (not keyframed; also bakes into the published build).
+  const globalRows = [
     ['stars', () => FX.starFrac, (v) => { FX.starFrac = v; applyVoidDensity(); }, f2],
     ['nodes', () => FX.nodeFrac, (v) => { FX.nodeFrac = v; applyVoidDensity(); }, f2],
-    ['lines', () => FX.lineFrac, (v) => { FX.lineFrac = v; applyVoidDensity(); }, f2],
+    ['linesd', () => FX.lineFrac, (v) => { FX.lineFrac = v; applyVoidDensity(); }, f2],
     ['clouds', () => FX.nebFrac, (v) => { FX.nebFrac = v; applyVoidDensity(); }, f2],
   ];
-  for (const [id, get, set, fmt] of rows) {
+  for (const [id, get, set, fmt] of globalRows) {
     const inp = document.querySelector('#fx-' + id), out = document.querySelector('#fx-' + id + '-v');
     if (!inp) continue;
     inp.value = get();
     if (out) out.textContent = fmt(parseFloat(inp.value));
     inp.addEventListener('input', () => { const v = parseFloat(inp.value); set(v); if (out) out.textContent = fmt(v); });
   }
+
   const chk = (id, fn) => { const el = document.querySelector('#fx-' + id); if (el) el.addEventListener('change', () => fn(el.checked)); };
   chk('twinkle', (v) => { livingVoid.pmat.uniforms.uTwinkle.value = v ? 1 : 0; });
   chk('drift', (v) => { FX.driftOn = v; });
-  chk('lines', (v) => { livingVoid.lmat.uniforms.uOn.value = v ? 1 : 0; });
+  chk('energylines', (v) => { livingVoid.lmat.uniforms.uOn.value = v ? 1 : 0; });
   chk('neb', (v) => { livingVoid.bg.visible = v; });
   window.addEventListener('keydown', (e) => {
     if (e.key.toLowerCase() === 'b' && !isTextEntry(e.target) && !editMode) togglePanel(fxEl);
@@ -1583,6 +1624,8 @@ function animate() {
   // keep the editor thumbnails fresh (the starfield drifts) — cheap, throttled
   if (editMode) { thumbTimer += dt; if (thumbTimer > 0.8) { thumbTimer = 0; renderAllThumbs(); } }
 
+  resolveFX();                               // per-beat FX keyframes → interpolated live values
+  livingVoid.bgMat.uniforms.uIntensity.value = curFX.nebula;
   pointField.rotation.y = t * 0.01;
   livingVoid.update(t, FX.driftOn);          // nebula time + organic node drift + lines follow
   {                                          // per-chapter color world
@@ -1593,7 +1636,7 @@ function animate() {
       const d = dx * dx + dy * dy + dz * dz;
       if (d < bd) { bd = d; bi = i; }
     }
-    const s = clamp(1 - Math.sqrt(bd) / FX.colorReach, 0, 1) * FX.colorIntensity;   // 1 at a section, 0 far between
+    const s = clamp(1 - Math.sqrt(bd) / curFX.colorReach, 0, 1) * curFX.colorIntensity;   // 1 at a section, 0 far between
     livingVoid.setTint(CHAPTER_COLORS[bi % CHAPTER_COLORS.length], s);
   }
   {                                          // kinetic caption: reveal on arrival, hide while moving / in editor
@@ -1614,12 +1657,13 @@ function animate() {
     if (beats[i]?.panel?.billboard) m.quaternion.copy(camera.quaternion);
     if (editMode) { m.material.opacity = 1; m.scale.setScalar(1); }
     else {
-      const a = clamp(1 - (camera.position.distanceTo(m.position) - 90) / FX.panelLightRange, 0, 1); // near = lit
-      m.material.opacity = FX.panelDimFloor + (1 - FX.panelDimFloor) * a;
+      const a = clamp(1 - (camera.position.distanceTo(m.position) - 90) / curFX.panelLightRange, 0, 1); // near = lit
+      m.material.opacity = curFX.panelDimFloor + (1 - curFX.panelDimFloor) * a;
       m.scale.setScalar(0.92 + 0.08 * a);
     }
   }
   updateWaypoints();
+  fxMaybeSync();                              // FX panel mirrors the focused section's keyframe
 
   hudBeat.textContent = editMode ? 'Director mode' : (freeRoam ? 'Free roam' : (beats[index]?.name ?? ''));
   hudProgress.textContent = (editMode ? (sel + 1) : (index + 1)) + ' / ' + beats.length;
@@ -1634,6 +1678,8 @@ function animate() {
     if (editMode || freeRoam) _focusV.copy(controls.target);
     else _focusV.set(beats[index].look[0], beats[index].look[1], beats[index].look[2]);
     bokeh.uniforms.focus.value = Math.max(1, camera.position.distanceTo(_focusV));
+    bokeh.uniforms.maxblur.value = curFX.dofBlur;        // per-section blur (keyframed)
+    bokeh.uniforms.aperture.value = curFX.dofAperture;
   }
   {                                          // warp streaks — world-anchored, stream along actual camera travel
     const { data, pos, geo, mat, R } = warp;
@@ -1642,7 +1688,7 @@ function animate() {
     const camSpeed = _vel.length() / Math.max(dt, 0.0001);
     _prevCamPos.copy(camera.position);
     if (_vel.lengthSq() > 1e-8) _dir.copy(_vel).normalize();
-    const len = clamp(camSpeed * FX.warpLength, 0, 60);  // longer streaks the faster you move
+    const len = clamp(camSpeed * curFX.warpLength, 0, 60);  // longer streaks the faster you move
     for (let i = 0; i < data.length; i++) {
       const p = data[i].p;
       if (camera.position.distanceTo(p) > R) p.set(      // recycle points that fall out of range around the camera
@@ -1655,13 +1701,13 @@ function animate() {
       pos[o + 3] = p.x - _dir.x * len; pos[o + 4] = p.y - _dir.y * len; pos[o + 5] = p.z - _dir.z * len;
     }
     geo.attributes.position.needsUpdate = true;
-    mat.opacity = editMode ? 0 : clamp((camSpeed - 12) / 120, 0, FX.warpStrength);
+    mat.opacity = editMode ? 0 : clamp((camSpeed - 12) / 120, 0, curFX.warpStrength);
   }
 
   if (index !== _lastBeatIdx) { voidWarp = Math.max(voidWarp, 0.9); _lastBeatIdx = index; } // warp burst on chapter change
   voidWarp *= 0.94; if (voidWarp < 0.001) voidWarp = 0;
   livingVoid.setWarp(voidWarp);
-  if (bloom) bloom.strength = FX.bloomStrength + voidWarp * 0.9;
+  if (bloom) bloom.strength = curFX.bloomStrength + voidWarp * 0.9;
   if (bokeh) bokeh.enabled = !(editMode || freeRoam);   // DOF only in play; bloom stays on in all modes
   if (composer) composer.render(); else renderer.render(scene, camera);
   if (PROF) {

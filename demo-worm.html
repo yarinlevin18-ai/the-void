@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Void — Color Worm</title>
+<script type="importmap">
+{ "imports": {
+  "three":"https://unpkg.com/three@0.169.0/build/three.module.js",
+  "three/addons/":"https://unpkg.com/three@0.169.0/examples/jsm/"
+}}
+</script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:#03040a;font-family:"source-code-pro",ui-monospace,monospace;color:#cfe8ff}
+  #scene{position:fixed;inset:0;display:block}
+  #panel{position:fixed;top:1rem;right:1rem;z-index:5;width:210px;background:rgba(8,12,22,.85);border:1px solid rgba(120,160,255,.3);border-radius:12px;padding:.8rem .9rem;backdrop-filter:blur(8px);font-size:.66rem;letter-spacing:.08em}
+  #panel h3{color:#8fd0ff;letter-spacing:.2em;text-transform:uppercase;font-size:.6rem;margin-bottom:.6rem}
+  #panel label{display:block;color:#8fb0cc;text-transform:uppercase;margin:.6rem 0 .2rem;font-size:.58rem}
+  #panel input[type=range]{width:100%;accent-color:#8fd0ff}
+  #tip{position:fixed;left:1.4rem;bottom:1.2rem;z-index:5;color:#5b768f;font-size:.62rem;letter-spacing:.14em;text-transform:uppercase}
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div id="panel">
+  <h3>Color worm</h3>
+  <label>flow speed</label><input type="range" id="flow" min="0" max="3" step="0.05" value="1">
+  <label>warp / wriggle</label><input type="range" id="warp" min="0" max="10" step="0.1" value="3">
+  <label>tunnel width</label><input type="range" id="rad" min="6" max="40" step="1" value="20">
+  <label>bloom</label><input type="range" id="bStr" min="0" max="2.5" step="0.05" value="1.2">
+  <label>color speed</label><input type="range" id="cspd" min="0" max="2" step="0.05" value="0.6">
+</div>
+<div id="tip">flying through the worm · move mouse to steer</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+const canvas=document.querySelector('#scene');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene=new THREE.Scene();scene.fog=new THREE.FogExp2(0x03040a,0.0022);
+const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,0.1,4000);
+
+// ---- a long winding CLOSED path (the worm's spine) ----
+const M=240, pts=[], BR=420;
+for(let i=0;i<M;i++){const a=i/M*Math.PI*2;
+  pts.push(new THREE.Vector3(
+    Math.cos(a)*BR + Math.sin(a*3)*150 + Math.cos(a*5)*60,
+    Math.sin(a*2)*150 + Math.cos(a*4)*90,
+    Math.sin(a)*BR + Math.cos(a*3)*150 + Math.sin(a*6)*60));}
+const curve=new THREE.CatmullRomCurve3(pts,true,'catmullrom',0.5);
+
+// ---- the worm: a tube you fly through, color flowing down its length ----
+let RAD=20;
+function buildTube(r){return new THREE.TubeGeometry(curve,800,r,32,true);}
+const wmat=new THREE.ShaderMaterial({
+  side:THREE.DoubleSide, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
+  uniforms:{uTime:{value:0},uWarp:{value:3},uColSpeed:{value:0.6}},
+  vertexShader:`uniform float uTime,uWarp; varying vec2 vUv; varying float vF;
+    void main(){vUv=uv; vec3 p=position;
+      // a wriggle that travels along the length -> the worm warps as it flows
+      p.x+=sin(uv.x*40.0+uTime*1.6)*uWarp;
+      p.y+=cos(uv.x*34.0+uTime*1.3)*uWarp;
+      vec4 mv=modelViewMatrix*vec4(p,1.0);
+      vec3 n=normalize(normalMatrix*normal); vec3 vd=normalize(-mv.xyz);
+      vF=pow(1.0-max(dot(n,vd),0.0),1.5);
+      gl_Position=projectionMatrix*mv;}`,
+  fragmentShader:`varying vec2 vUv; varying float vF; uniform float uTime,uColSpeed;
+    void main(){
+      vec3 A=vec3(0.18,0.85,1.0);  // cyan
+      vec3 B=vec3(0.55,0.42,1.0);  // violet
+      vec3 C=vec3(1.0,0.45,0.18);  // ember
+      float m=fract(vUv.x*1.6 - uTime*uColSpeed);
+      vec3 col=mix(mix(A,B,smoothstep(0.0,0.5,m)), mix(B,C,smoothstep(0.5,1.0,m)), step(0.5,m));
+      float bands=0.55+0.45*sin(vUv.x*120.0 - uTime*4.0);   // energy streaks flowing
+      col*=0.5+0.6*bands;
+      col+=vF*0.7;                                          // rim glow
+      gl_FragColor=vec4(col, 0.85*(0.35+0.65*bands));
+    }`
+});
+let tube=new THREE.Mesh(buildTube(RAD),wmat);scene.add(tube);
+
+// ---- bloom ----
+const composer=new EffectComposer(renderer);composer.addPass(new RenderPass(scene,camera));
+const bloom=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),1.2,0.8,0.0);composer.addPass(bloom);composer.setSize(innerWidth,innerHeight);
+
+// ---- controls ----
+const $=s=>document.querySelector(s);
+let flow=1;
+$('#flow').oninput=e=>flow=+e.target.value;
+$('#warp').oninput=e=>wmat.uniforms.uWarp.value=+e.target.value;
+$('#bStr').oninput=e=>bloom.strength=+e.target.value;
+$('#cspd').oninput=e=>wmat.uniforms.uColSpeed.value=+e.target.value;
+$('#rad').oninput=e=>{RAD=+e.target.value;tube.geometry.dispose();tube.geometry=buildTube(RAD);};
+
+const mouse={x:0,y:0};addEventListener('pointermove',e=>{mouse.x=(e.clientX/innerWidth)*2-1;mouse.y=-(e.clientY/innerHeight)*2+1;});
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);composer.setSize(innerWidth,innerHeight);});
+
+// ---- fly the camera along the worm's centerline ----
+const clock=new THREE.Clock();let p=0;
+const cur=new THREE.Vector3(),ahead=new THREE.Vector3(),up=new THREE.Vector3(0,1,0);
+function frame(){
+  const dt=Math.min(clock.getDelta(),0.05),t=clock.getElapsedTime();
+  wmat.uniforms.uTime.value=t;
+  p=(p+dt*0.012*flow)%1;
+  curve.getPointAt(p,cur); curve.getPointAt((p+0.006)%1,ahead);
+  // steer with the mouse (offset off the centerline) for parallax
+  camera.position.copy(cur);
+  camera.position.x+=mouse.x*6; camera.position.y+=mouse.y*6;
+  camera.up.set(Math.sin(t*0.1)*0.2,1,0).normalize();   // gentle roll = more alive
+  camera.lookAt(ahead);
+  composer.render();requestAnimationFrame(frame);
+}
+frame();
+</script>
+</body>
+</html>
