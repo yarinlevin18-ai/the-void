@@ -108,12 +108,12 @@ const livingVoid = (() => {
       uTime: { value: 0 }, uA: { value: window.innerWidth / window.innerHeight }, uSteps: { value: _reduced ? 18 : 40 },
       uDens: { value: FX.nebula }, uSpd: { value: FX.nebSpd }, uWarp: { value: FX.nebWarp }, uHue: { value: FX.nebHue }, uEmber: { value: FX.nebEmber },
       uCamPos: { value: new THREE.Vector3() }, uInvProj: { value: new THREE.Matrix4() }, uCamWorld: { value: new THREE.Matrix4() },
-      uFlash: { value: new THREE.Vector3(0, 0, -300) }, uFlashAmt: { value: 0 }, uFlashCol: { value: new THREE.Color(0x9fd8ff) }, uFlashReach: { value: 0.00002 },
+      uFlash: { value: new THREE.Vector3(0, 0, -300) }, uFlashAmt: { value: 0 }, uFlashCol: { value: new THREE.Color(0x9fd8ff) }, uFlashReach: { value: 0.00002 }, uCrackle: { value: 18 },
     },
     vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
     fragmentShader: `precision highp float; varying vec2 vUv;
       uniform vec3 uCamPos; uniform mat4 uInvProj, uCamWorld;
-      uniform float uTime,uA,uSteps,uDens,uSpd,uWarp,uHue,uEmber,uFlashAmt,uFlashReach; uniform vec3 uFlash,uFlashCol;
+      uniform float uTime,uA,uSteps,uDens,uSpd,uWarp,uHue,uEmber,uFlashAmt,uFlashReach,uCrackle; uniform vec3 uFlash,uFlashCol;
       float hash(vec3 p){ p=fract(p*0.3183099+0.1); p*=17.0; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
       float noise(vec3 x){ vec3 i=floor(x),f=fract(x); f=f*f*(3.0-2.0*f);
         return mix(mix(mix(hash(i+vec3(0,0,0)),hash(i+vec3(1,0,0)),f.x),mix(hash(i+vec3(0,1,0)),hash(i+vec3(1,1,0)),f.x),f.y),
@@ -134,7 +134,10 @@ const livingVoid = (() => {
           vec3 p=ro+rd*t; float d=density(p);
           if(d>0.01){ float fade=smoothstep(tEnd,tStart,t);
             vec3 emit=climate*(0.7+d*0.9)+ember*smoothstep(0.5,1.0,d)*uEmber*2.5;  // dim haze stays under bloom (0.22); only dense cores bloom
-            vec3 fp=p-uFlash; emit+=uFlashCol*uFlashAmt*exp(-dot(fp,fp)*uFlashReach);   // lightning lights the gas from within
+            vec3 fp=p-uFlash; float gd=exp(-dot(fp,fp)*uFlashReach);                       // glow that follows the cursor
+            float fil=pow(noise(p*0.06+uTime*4.0),3.0);                                     // filamentary arc veins (electric branches)
+            float crk=0.35+0.65*pow(0.5+0.5*sin(uTime*uCrackle+p.x*0.05+p.y*0.07),5.0);     // fast electric crackle
+            emit+=uFlashCol*uFlashAmt*gd*(0.3+1.6*fil)*crk;                                  // electrifies the gas along the cursor
             float a=clamp(d*(stepLen*0.006)*(0.6+uDens*0.5)*fade,0.0,1.0);
             acc+=emit*a*(1.0-alpha); alpha+=a*(1.0-alpha); }
           t+=stepLen; }
@@ -1876,22 +1879,17 @@ function animate() {
   if (bloom) bloom.strength = curFX.bloomStrength + voidWarp * 0.9;
   if (bokeh) bokeh.enabled = !(editMode || freeRoam);   // DOF only in play; bloom stays on in all modes
   _cVel += (_cVelRaw - _cVel) * 0.12; _cVelRaw *= 0.90;   // smoothed cursor velocity drives the FX
-  _flash *= 0.80;
   camera.updateMatrixWorld();
-  if (FX.lightning) {
-    if (_cVel > 0.9 && elapsed > _flickCD) {               // a fast cursor flick fires a strike toward the pointer
-      _cWorld.set(_cN.x, _cN.y, 0.5).unproject(camera).sub(camera.position).normalize();
-      livingVoid.nebMat.uniforms.uFlash.value.copy(camera.position).addScaledVector(_cWorld, 200 + Math.random() * 300);
-      _flash = (1.0 + Math.random() * 0.5) * (0.6 + _cVel) * FX.cursorDrive;
-      _flickCD = elapsed + 0.22;
-    } else if (elapsed > _nextFlash) {                     // ambient strikes on a timer (Rate)
-      livingVoid.nebMat.uniforms.uFlash.value.set(camera.position.x + (Math.random() - 0.5) * 500, camera.position.y + (Math.random() - 0.5) * 300, camera.position.z - (120 + Math.random() * 500));
-      _flash = 1.0 + Math.random() * 0.6;
-      _nextFlash = elapsed + FX.lightRate * (0.5 + Math.random());
-    }
+  {                                          // electric arc follows the cursor; movement electrifies the gas
+    _cWorld.set(_cN.x, _cN.y, 0.5).unproject(camera).sub(camera.position).normalize();
+    const nm = livingVoid.nebMat.uniforms;
+    nm.uFlash.value.copy(camera.position).addScaledVector(_cWorld, 300);   // electrified point where the cursor points
+    const target = FX.lightning ? Math.min(1.6, _cVel * 1.4) * FX.cursorDrive : 0;
+    _flash += (target - _flash) * 0.4;                                     // ramps with cursor speed, fades when still
+    nm.uFlashAmt.value = _flash * FX.lightInt;
+    nm.uFlashReach.value = 1.0 / Math.max(1, FX.lightReach * FX.lightReach);
+    nm.uCrackle.value = FX.lightRate * 4.0;
   }
-  livingVoid.nebMat.uniforms.uFlashAmt.value = FX.lightning ? _flash * FX.lightInt : 0;
-  livingVoid.nebMat.uniforms.uFlashReach.value = 1.0 / Math.max(1, FX.lightReach * FX.lightReach);
   { const su = livingVoid.spots.material.uniforms;        // glow spots react to the cursor + controls
     su.uPtN.value.copy(_cN); su.uVel.value = _cVel; su.uDrive.value = FX.cursorDrive; su.uBright.value = FX.glowBright; su.uFlick.value = FX.glowFlick; }
   {                                          // raymarch the volumetric nebula into its half-res target (camera-driven fly-through)
