@@ -88,60 +88,65 @@ const camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerH
 // An animated nebula backdrop + twinkling, drifting shader nodes + form/dissolve
 // energy lines whose endpoints follow the moving nodes. All behind the content.
 const livingVoid = (() => {
-  // 1) Nebula — full-screen domain-warped fbm backdrop (ported 1:1 from
-  //    demo-nebula.html, APPROVED). Screen-locked; the fly-through depth comes
-  //    from the volumetric starfield (next layer). Cursor-reactive uniforms live
-  //    here but stay OFF (uFlow/uRip = 0) until the cursor-reactivity layer.
-  const neb = {
-    uTime: { value: 0 }, uA: { value: window.innerWidth / window.innerHeight },
-    uDens: { value: FX.nebula }, uSpd: { value: 0.6 }, uWarp: { value: 1.4 },
-    uHue: { value: 0.5 }, uEmber: { value: 0.25 }, uVig: { value: 1 },
-    uPt: { value: new THREE.Vector2(0.5, 0.5) }, uVel: { value: 0 },
-    uRipC: { value: new THREE.Vector2(0.5, 0.5) }, uRipT: { value: -9 },
-    uFlow: { value: 0 }, uRip: { value: 0 },
-  };
-  // A 3D VOLUME of soft cloud puffs you fly THROUGH — same technique as the
-  //  starfield (world-anchored points, depth-sized), so the nebula is a real
-  //  volume in the void, not flat cards. Additive puffs overlap into a cloud.
-  const NEB_N = 320;
-  const np = new Float32Array(NEB_N * 3), nseed = new Float32Array(NEB_N), nsize = new Float32Array(NEB_N), nhue = new Float32Array(NEB_N), nmag = new Float32Array(NEB_N);
-  for (let i = 0; i < NEB_N; i++) {
-    np[i * 3] = (Math.random() - 0.5) * 1000; np[i * 3 + 1] = (Math.random() - 0.5) * 520 + 70; np[i * 3 + 2] = 180 - Math.random() * 1160;
-    nseed[i] = Math.random() * 6.28;
-    nsize[i] = 240 + Math.random() * 460;                       // big soft puffs (depth-attenuated below)
-    nhue[i] = Math.random();                                    // teal..violet per puff
-    nmag[i] = 0.25 + Math.pow(Math.random(), 1.7) * 0.75;       // brightness spread -> clustered structure
-  }
-  const ngeo = new THREE.BufferGeometry();
-  ngeo.setAttribute('position', new THREE.BufferAttribute(np, 3));
-  ngeo.setAttribute('nseed', new THREE.BufferAttribute(nseed, 1));
-  ngeo.setAttribute('nsize', new THREE.BufferAttribute(nsize, 1));
-  ngeo.setAttribute('nhue', new THREE.BufferAttribute(nhue, 1));
-  ngeo.setAttribute('nmag', new THREE.BufferAttribute(nmag, 1));
-  const bgMat = new THREE.ShaderMaterial({
-    transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: neb,
-    vertexShader: `attribute float nseed; attribute float nsize; attribute float nhue; attribute float nmag;
-      uniform float uTime,uSpd,uDens,uWarp; varying float vH; varying float vMag;
-      void main(){ vH=nhue; vMag=nmag;
-        vec3 wp=position;
-        wp.x+=sin(uTime*0.05*uSpd+nseed)*24.0*uWarp;          // slow drift (turbulence = Neb warp); stays anchored in the void
-        wp.y+=cos(uTime*0.04*uSpd+nseed*1.3)*16.0*uWarp;
-        vec4 mv=modelViewMatrix*vec4(wp,1.0);
-        gl_PointSize=nsize*(1.0+uDens*0.3)*(300.0/max(1.0,-mv.z));
-        gl_Position=projectionMatrix*mv; }`,
-    fragmentShader: `varying float vH; varying float vMag;
-      uniform float uHue,uEmber,uDens;
-      void main(){ float d=length(gl_PointCoord-0.5); if(d>0.5)discard;
-        float a=smoothstep(0.5,0.0,d); a*=a;                  // very soft puff falloff
-        vec3 teal=vec3(0.05,0.17,0.24), viol=vec3(0.12,0.06,0.22);
-        vec3 climate=mix(teal,viol, clamp(vH*0.7+uHue*0.4,0.0,1.0));
-        vec3 col=climate + vec3(0.22,0.09,0.03)*uEmber*smoothstep(0.8,1.0,vH);   // ember on the violet-end puffs
-        float bright=vMag*(0.5+uDens)*0.5;
-        gl_FragColor=vec4(col*bright, a*bright); }`,
+  // 1) Volumetric nebula — a half-res RAYMARCHED 3D gas cloud (from
+  //    demo-nebula-volumetric.html, APPROVED). Each pixel marches a world-space ray
+  //    through domain-warped 3D noise -> real depth + parallax, the camera flies
+  //    THROUGH it. Rendered to a half-res target, composited under the stars.
+  const _reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  let _res = 0.5;                              // half-res raymarch (the big perf lever)
+  const nebRT = new THREE.WebGLRenderTarget(2, 2, { magFilter: THREE.LinearFilter, minFilter: THREE.LinearFilter, depthBuffer: false });
+  const sizeRT = () => nebRT.setSize(Math.max(2, (window.innerWidth * _res) | 0), Math.max(2, (window.innerHeight * _res) | 0));
+  sizeRT();
+  const nebMat = new THREE.ShaderMaterial({
+    depthTest: false, depthWrite: false,
+    uniforms: {
+      uTime: { value: 0 }, uA: { value: window.innerWidth / window.innerHeight }, uSteps: { value: _reduced ? 18 : 40 },
+      uDens: { value: FX.nebula }, uSpd: { value: FX.nebSpd }, uWarp: { value: FX.nebWarp }, uHue: { value: FX.nebHue }, uEmber: { value: FX.nebEmber },
+      uCamPos: { value: new THREE.Vector3() }, uInvProj: { value: new THREE.Matrix4() }, uCamWorld: { value: new THREE.Matrix4() },
+    },
+    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+    fragmentShader: `precision highp float; varying vec2 vUv;
+      uniform vec3 uCamPos; uniform mat4 uInvProj, uCamWorld;
+      uniform float uTime,uA,uSteps,uDens,uSpd,uWarp,uHue,uEmber;
+      float hash(vec3 p){ p=fract(p*0.3183099+0.1); p*=17.0; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
+      float noise(vec3 x){ vec3 i=floor(x),f=fract(x); f=f*f*(3.0-2.0*f);
+        return mix(mix(mix(hash(i+vec3(0,0,0)),hash(i+vec3(1,0,0)),f.x),mix(hash(i+vec3(0,1,0)),hash(i+vec3(1,1,0)),f.x),f.y),
+                   mix(mix(hash(i+vec3(0,0,1)),hash(i+vec3(1,0,1)),f.x),mix(hash(i+vec3(0,1,1)),hash(i+vec3(1,1,1)),f.x),f.y),f.z); }
+      float fbm(vec3 p){ float s=0.0,a=0.5; for(int i=0;i<4;i++){ s+=a*noise(p); p=p*2.03+vec3(1.7,9.2,4.3); a*=0.5; } return s; }
+      float density(vec3 P){ vec3 q=P*0.004+vec3(0.0,uTime*0.02*uSpd,uTime*0.012*uSpd);
+        vec3 w=vec3(fbm(q+1.3),fbm(q+5.1),fbm(q+9.2)); float f=fbm(q+uWarp*w);
+        return smoothstep(0.5-uDens*0.4,0.9,f); }
+      void main(){
+        vec4 clip=vec4(vUv*2.0-1.0,-1.0,1.0); vec4 vh=uInvProj*clip; vec3 viewDir=normalize(vh.xyz/vh.w);
+        vec3 rd=normalize(mat3(uCamWorld)*viewDir); vec3 ro=uCamPos;
+        float tStart=60.0,tEnd=1700.0; int STEPS=int(uSteps); float stepLen=(tEnd-tStart)/uSteps;
+        float t=tStart+hash(vec3(gl_FragCoord.xy,fract(uTime)))*stepLen;
+        vec3 teal=vec3(0.05,0.17,0.24),viol=vec3(0.12,0.06,0.22),ember=vec3(0.22,0.09,0.03);
+        vec3 climate=mix(teal,viol,clamp(uHue+0.25*sin(uTime*0.05),0.0,1.0));
+        vec3 acc=vec3(0.0); float alpha=0.0;
+        for(int i=0;i<64;i++){ if(i>=STEPS||alpha>0.97) break;
+          float d=density(ro+rd*t);
+          if(d>0.01){ float fade=smoothstep(tEnd,tStart,t);
+            vec3 emit=climate*1.8+ember*smoothstep(0.5,1.0,d)*uEmber*2.5;
+            float a=clamp(d*(stepLen*0.006)*(0.7+uDens)*fade,0.0,1.0);
+            acc+=emit*a*(1.0-alpha); alpha+=a*(1.0-alpha); }
+          t+=stepLen; }
+        vec3 col=vec3(0.012,0.020,0.030)+acc;
+        col*=1.0-0.5*smoothstep(0.3,1.0,distance(vUv,vec2(0.5)));
+        col+=(hash(vec3(gl_FragCoord.xy,1.0))-0.5)/255.0;
+        gl_FragColor=vec4(col,1.0); }`,
   });
-  const bg = new THREE.Points(ngeo, bgMat);
-  bg.renderOrder = -20; bg.frustumCulled = false;
-  scene.add(bg);
+  const fsCam = new THREE.Camera();
+  const fsScene = new THREE.Scene();
+  fsScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), nebMat));
+  // composite the raymarched volume into the main scene as the backdrop (upscaled)
+  const composite = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+    depthTest: false, depthWrite: false, uniforms: { uTex: { value: nebRT.texture } },
+    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.999, 1.0); }`,
+    fragmentShader: `varying vec2 vUv; uniform sampler2D uTex; void main(){ gl_FragColor = texture2D(uTex, vUv); }`,
+  }));
+  composite.frustumCulled = false; composite.renderOrder = -20;
+  scene.add(composite);
 
   // 2) Volumetric starfield — a 3D VOLUME you fly through (ported 1:1 from
   //    demo-nebula.html). Streamed toward the camera and wrapped endlessly in the
@@ -203,12 +208,12 @@ const livingVoid = (() => {
   scene.add(stars);
 
   function update(time) {
-    bgMat.uniforms.uTime.value = time;
+    nebMat.uniforms.uTime.value = time;
     smat.uniforms.uTime.value = time;
   }
   const setTint = (hex, amt) => { smat.uniforms.uTint.value.set(hex); smat.uniforms.uTintAmt.value = amt; };
   const setWarp = (v) => { smat.uniforms.uWarp.value = v; };           // stars swell on a chapter warp burst
-  return { bg, bgMat, neb, smat, sgeo, STAR_N, update, setTint, setWarp };
+  return { composite, nebMat, nebRT, fsScene, fsCam, sizeRT, smat, sgeo, STAR_N, update, setTint, setWarp };
 })();
 
 // ---- Neon wave ribbon (ported 1:1 from demo-wave-ribbon.APPROVED.html) -------
@@ -283,7 +288,7 @@ text3d.loadFont().then((r) => { const el = document.querySelector('#text-status'
 // Runs at startup too, so editing the FX defaults also tunes the published build.
 function applyVoidDensity() {
   livingVoid.sgeo.setDrawRange(0, Math.max(0, Math.floor(livingVoid.STAR_N * FX.starFrac)));
-  { const g = livingVoid.bg.geometry, nn = g.attributes.position.count; g.setDrawRange(0, Math.max(0, Math.floor(nn * FX.nebFrac))); }
+  livingVoid.composite.visible = FX.nebFrac > 0.02;   // toggle the volumetric nebula
 }
 applyVoidDensity();
 
@@ -406,12 +411,11 @@ function save() {
 function applyGlobals() {
   applyVoidDensity();
   livingVoid.smat.uniforms.uTwinkle.value = FX.twinkleOn ? 1 : 0;
-  livingVoid.bg.visible = FX.nebVisible;
-  livingVoid.bgMat.uniforms.uSpd.value = FX.nebSpd;
-  livingVoid.bgMat.uniforms.uWarp.value = FX.nebWarp;
-  livingVoid.bgMat.uniforms.uHue.value = FX.nebHue;
-  livingVoid.bgMat.uniforms.uEmber.value = FX.nebEmber;
-  livingVoid.bgMat.uniforms.uVig.value = FX.nebVig ? 1 : 0;
+  livingVoid.composite.visible = FX.nebVisible;
+  livingVoid.nebMat.uniforms.uSpd.value = FX.nebSpd;
+  livingVoid.nebMat.uniforms.uWarp.value = FX.nebWarp;
+  livingVoid.nebMat.uniforms.uHue.value = FX.nebHue;
+  livingVoid.nebMat.uniforms.uEmber.value = FX.nebEmber;
   transitionEase = EASINGS[txEaseName] || easeInOut;
   captionsOn = FX.uiCaption;
   const hud = document.querySelector('#hud'); if (hud) hud.style.display = FX.uiHud ? '' : 'none';
@@ -1447,7 +1451,8 @@ window.addEventListener('resize', () => {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // cap retina: fewer fragments, big fill-rate win
   if (composer) composer.setSize(window.innerWidth, window.innerHeight);
   if (bloom) bloom.setSize((window.innerWidth / 2) | 0, (window.innerHeight / 2) | 0);
-  livingVoid.bgMat.uniforms.uA.value = window.innerWidth / window.innerHeight;   // nebula aspect
+  livingVoid.nebMat.uniforms.uA.value = window.innerWidth / window.innerHeight;
+  livingVoid.sizeRT();                            // keep the half-res raymarch target in sync
 });
 
 // ---- Depth-of-field + gentle motion blur (kept subtle to avoid sickness) ----
@@ -1513,10 +1518,10 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
     ['wavecoil', () => FX.waveCoil, (v) => { FX.waveCoil = v; }, f0],
     ['stars', () => FX.starFrac, (v) => { FX.starFrac = v; applyVoidDensity(); }, f2],
     ['clouds', () => FX.nebFrac, (v) => { FX.nebFrac = v; applyVoidDensity(); }, f2],
-    ['nebspd', () => FX.nebSpd, (v) => { FX.nebSpd = v; livingVoid.bgMat.uniforms.uSpd.value = v; }, f2],
-    ['nebwarp', () => FX.nebWarp, (v) => { FX.nebWarp = v; livingVoid.bgMat.uniforms.uWarp.value = v; }, f2],
-    ['nebhue', () => FX.nebHue, (v) => { FX.nebHue = v; livingVoid.bgMat.uniforms.uHue.value = v; }, f2],
-    ['nebember', () => FX.nebEmber, (v) => { FX.nebEmber = v; livingVoid.bgMat.uniforms.uEmber.value = v; }, f2],
+    ['nebspd', () => FX.nebSpd, (v) => { FX.nebSpd = v; livingVoid.nebMat.uniforms.uSpd.value = v; }, f2],
+    ['nebwarp', () => FX.nebWarp, (v) => { FX.nebWarp = v; livingVoid.nebMat.uniforms.uWarp.value = v; }, f2],
+    ['nebhue', () => FX.nebHue, (v) => { FX.nebHue = v; livingVoid.nebMat.uniforms.uHue.value = v; }, f2],
+    ['nebember', () => FX.nebEmber, (v) => { FX.nebEmber = v; livingVoid.nebMat.uniforms.uEmber.value = v; }, f2],
   ];
   for (const [id, get, set, fmt] of globalRows) {
     const inp = document.querySelector('#fx-' + id), out = document.querySelector('#fx-' + id + '-v');
@@ -1531,8 +1536,8 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
   chk('drift', 'driftOn', () => {});
   chk('waveon', 'waveOn', () => {});
   chk('wavegrid', 'waveGrid', () => {});
-  chk('nebvig', 'nebVig', (v) => { livingVoid.bgMat.uniforms.uVig.value = v ? 1 : 0; });
-  chk('neb', 'nebVisible', (v) => { livingVoid.bg.visible = v; });
+  chk('nebvig', 'nebVig', () => {});   // raymarch nebula has a baked vignette; toggle is a no-op now
+  chk('neb', 'nebVisible', (v) => { livingVoid.composite.visible = v; });
   window.addEventListener('keydown', (e) => {
     if (e.key.toLowerCase() === 'b' && !isTextEntry(e.target) && !editMode) togglePanel(fxEl);
   });
@@ -1702,7 +1707,7 @@ function animate() {
   if (editMode) { thumbTimer += dt; if (thumbTimer > 0.8) { thumbTimer = 0; renderAllThumbs(); } }
 
   resolveFX();                               // per-beat FX keyframes → interpolated live values
-  livingVoid.bgMat.uniforms.uDens.value = curFX.nebula;   // per-section nebula density (keyframed)
+  livingVoid.nebMat.uniforms.uDens.value = curFX.nebula;   // per-section nebula density (keyframed)
   livingVoid.update(t);                      // advance nebula + starfield time
   {                                          // neon wave ribbon — drift + warp around its section
     const w = waveRibbon;
@@ -1804,6 +1809,16 @@ function animate() {
   livingVoid.setWarp(voidWarp);
   if (bloom) bloom.strength = curFX.bloomStrength + voidWarp * 0.9;
   if (bokeh) bokeh.enabled = !(editMode || freeRoam);   // DOF only in play; bloom stays on in all modes
+  {                                          // raymarch the volumetric nebula into its half-res target (camera-driven fly-through)
+    const nm = livingVoid.nebMat.uniforms;
+    camera.updateMatrixWorld();
+    nm.uCamPos.value.copy(camera.position);
+    nm.uInvProj.value.copy(camera.projectionMatrixInverse);
+    nm.uCamWorld.value.copy(camera.matrixWorld);
+    renderer.setRenderTarget(livingVoid.nebRT);
+    renderer.render(livingVoid.fsScene, livingVoid.fsCam);
+    renderer.setRenderTarget(null);
+  }
   if (composer) composer.render(); else renderer.render(scene, camera);
   if (PROF) {
     const now = performance.now();
