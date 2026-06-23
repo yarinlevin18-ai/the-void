@@ -256,9 +256,7 @@ const waveRibbon = (() => {
   grid.visible = false;
   group.add(fill, grid);
   group.scale.setScalar(0.2);                                  // fit the 620-wide band to a section's scale
-  const _ai = Math.max(0, beats.findIndex((b) => /projects/i.test(b.name)));  // anchor around "My Projects"
-  const a = beats[_ai] ? beats[_ai].look : [0, 0, -120];
-  group.userData.anchor = new THREE.Vector3(a[0], a[1], a[2]);
+  group.userData.anchor = new THREE.Vector3(0, 0, -120);       // placeholder; real anchor set once beats load
   group.position.copy(group.userData.anchor);
   scene.add(group);
   return { uniforms, group, fill, grid };
@@ -413,6 +411,11 @@ function applyGlobals() {
 }
 load();
 beats.forEach(ensureBeatFX);   // ensure every beat (incl. defaults) carries a full FX keyframe set
+{ // anchor the wave ribbon around the "My Projects" section (now that beats exist)
+  const _ai = Math.max(0, beats.findIndex((b) => /projects/i.test(b.name)));
+  const la = beats[_ai] && beats[_ai].look;
+  if (la) { waveRibbon.group.userData.anchor.set(la[0], la[1], la[2]); waveRibbon.group.position.copy(waveRibbon.group.userData.anchor); }
+}
 
 // ---- Derived per-section position + orientation -----------------------------
 const beatPos = [];
