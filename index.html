@@ -47,6 +47,7 @@
       <div class="hk"><kbd>T</kbd><span>Transitions</span></div>
       <div class="hk"><kbd>U</kbd><span>UI / UX</span></div>
       <div class="hk"><kbd>Y</kbd><span>3D Text</span></div>
+      <div class="hk"><kbd>A</kbd><span>Assets — text + in/out + DOF blur</span></div>
       <div class="hk"><kbd>?</kbd><span>this list</span></div>
       <div class="hk-sec">In Director Mode</div>
       <div class="hk"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>fly · <kbd>R</kbd>/<kbd>F</kbd> up·down · <kbd>Shift</kbd> boost</span></div>
@@ -168,6 +169,33 @@
       <div class="fx-row"><label>UI size</label><input id="ux-scale" type="range" min="0.8" max="1.4" step="0.05" /><span id="ux-scale-v"></span></div>
 
       <div class="fx-hint">U to hide · live · play mode</div>
+    </div>
+
+    <!-- Assets panel (toggle with A) — every text box: content + in/out + DOF -->
+    <div id="assetpanel" class="sidepanel" hidden>
+      <div class="fx-head">Assets <span>A</span></div>
+      <div class="fx-row"><label>Asset</label><select id="as-list"></select></div>
+      <div class="fx-row col"><textarea id="as-text" rows="2" placeholder="text…"></textarea></div>
+
+      <div class="fx-group">Animate in</div>
+      <div class="fx-row"><label>Duration</label><input id="as-in-dur" type="range" min="0" max="2500" step="50" /><span id="as-in-dur-v"></span></div>
+      <div class="fx-row"><label>Delay</label><input id="as-in-delay" type="range" min="0" max="1500" step="50" /><span id="as-in-delay-v"></span></div>
+      <div class="fx-row"><label>Rise</label><input id="as-in-y" type="range" min="-80" max="80" step="1" /><span id="as-in-y-v"></span></div>
+      <div class="fx-row"><label>Blur</label><input id="as-in-blur" type="range" min="0" max="30" step="0.5" /><span id="as-in-blur-v"></span></div>
+      <div class="fx-row"><label>Ease</label><select id="as-in-ease"><option value="out">ease-out</option><option value="inout">in-out</option><option value="back">overshoot</option><option value="linear">linear</option></select></div>
+
+      <div class="fx-group">Animate out</div>
+      <div class="fx-row"><label>Duration</label><input id="as-out-dur" type="range" min="0" max="2500" step="50" /><span id="as-out-dur-v"></span></div>
+      <div class="fx-row"><label>Delay</label><input id="as-out-delay" type="range" min="0" max="1500" step="50" /><span id="as-out-delay-v"></span></div>
+      <div class="fx-row"><label>Rise</label><input id="as-out-y" type="range" min="-80" max="80" step="1" /><span id="as-out-y-v"></span></div>
+      <div class="fx-row"><label>Blur</label><input id="as-out-blur" type="range" min="0" max="30" step="0.5" /><span id="as-out-blur-v"></span></div>
+      <div class="fx-row"><label>Ease</label><select id="as-out-ease"><option value="out">ease-out</option><option value="inout">in-out</option><option value="back">overshoot</option><option value="linear">linear</option></select></div>
+
+      <div class="fx-group">Depth of field</div>
+      <div class="fx-row"><label>DOF → text</label><input id="as-dof" type="range" min="0" max="24" step="0.5" /><span id="as-dof-v"></span></div>
+
+      <div class="fx-row btns2"><button id="as-preview">Replay in ▸</button></div>
+      <div class="fx-hint">A to hide · live · play mode · saved</div>
     </div>
 
     <!-- 3D TEXT panel (toggle with Y) — place truly-extruded Ogg text -->

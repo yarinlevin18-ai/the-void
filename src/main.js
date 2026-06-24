@@ -1144,18 +1144,21 @@ function setCaption(i) {
   if (!capEl || !captionsOn || i === _capShown) return;
   _capShown = i;
   const c = DEMO_CAPTIONS[i] || { label: '', title: '', desc: '' };
-  capEl.classList.remove('show');
-  requestAnimationFrame(() => {                 // reset → set text → replay the reveal
-    capLabel.textContent = c.label;
+  capLabel.textContent = c.label;
+  requestAnimationFrame(() => {                 // set text → replay each asset's in-animation
     capTitle.textContent = c.title;
     capDesc.textContent = c.desc;
-    requestAnimationFrame(() => capEl.classList.add('show'));
+    capEl.classList.add('show');
+    replayAsset(assetDef('capTitle'));
+    replayAsset(assetDef('capDesc'));
   });
 }
 function hideCaption() {
   if (!capEl || _capShown === -1) return;
   _capShown = -1;
   capEl.classList.remove('show');
+  hideAsset(assetDef('capTitle'));
+  hideAsset(assetDef('capDesc'));
 }
 
 // subtle parallax (play mode only)
@@ -1173,6 +1176,67 @@ const overlay = document.querySelector('#overlay');
 const hudBeat = document.querySelector('#hud-beat');
 const hudProgress = document.querySelector('#hud-progress');
 const visitBtn = document.querySelector('#visitlive');
+
+// ---- Text assets: per-asset content + in/out animation + DOF blur -------------
+//  Every text box on the site is an "asset" you can re-word and re-time. The reveal
+//  (opacity + rise + blur) runs off each asset's in/out config; the depth-of-field
+//  blur is layered onto the group containers while flying. Editable live in the A panel.
+const ASSET_DEFS = [
+  { id: 'wordmark', label: 'Wordmark',      sel: '#overlay h1',         group: 'overlay', editable: true },
+  { id: 'tagline',  label: 'Tagline',       sel: '#overlay .sub',       group: 'overlay', editable: true },
+  { id: 'hint',     label: 'Scroll hint',   sel: '#overlay .hint',      group: 'overlay', editable: true },
+  { id: 'capTitle', label: 'Caption title', sel: '#caption .cap-title', group: 'caption', editable: false },
+  { id: 'capDesc',  label: 'Caption sub',   sel: '#caption .cap-desc',  group: 'caption', editable: false },
+];
+const ASSET_KEY = 'voidAssets';
+const _aDefault = () => ({ text: null, in: { dur: 900, delay: 120, y: 26, blur: 7, ease: 'out' }, out: { dur: 500, delay: 0, y: -12, blur: 6, ease: 'inout' } });
+let assetCfg = {}; ASSET_DEFS.forEach((a) => { assetCfg[a.id] = _aDefault(); });
+let assetDof = 6;            // DOF → text blur amount (px) at full defocus
+let _domDefocus = 0;
+const A_EASE = { out: 'cubic-bezier(0.22,1,0.36,1)', inout: 'cubic-bezier(0.65,0,0.35,1)', back: 'cubic-bezier(0.34,1.56,0.64,1)', linear: 'linear' };
+function assetDef(id) { return ASSET_DEFS.find((a) => a.id === id); }
+function assetEl(a) { return document.querySelector(typeof a === 'string' ? assetDef(a).sel : a.sel); }
+try {
+  const raw = localStorage.getItem(ASSET_KEY);
+  if (raw) {
+    const d = JSON.parse(raw);
+    if (d.cfg) for (const id in d.cfg) if (assetCfg[id]) assetCfg[id] = { text: d.cfg[id].text ?? null, in: { ...assetCfg[id].in, ...(d.cfg[id].in || {}) }, out: { ...assetCfg[id].out, ...(d.cfg[id].out || {}) } };
+    if (typeof d.dof === 'number') assetDof = d.dof;
+  }
+} catch (e) { /* keep defaults */ }
+function saveAssets() { try { localStorage.setItem(ASSET_KEY, JSON.stringify({ cfg: assetCfg, dof: assetDof })); } catch (e) {} }
+function applyAssetText(a) { if (!a.editable) return; const el = assetEl(a), t = assetCfg[a.id].text; if (el && t != null && t !== '') el.textContent = t; }
+function showAsset(a) {
+  const el = assetEl(a); if (!el || el._as === 'in') return; el._as = 'in';
+  if (PREFERS_REDUCED) { el.style.transition = 'none'; el.style.opacity = '1'; el.style.transform = 'none'; el.style.filter = 'none'; return; }
+  const i = assetCfg[a.id].in;
+  el.style.transition = 'none'; el.style.opacity = '0'; el.style.transform = `translateY(${i.y}px)`; el.style.filter = `blur(${i.blur}px)`;
+  void el.offsetWidth;                                     // commit the start state, then transition in
+  const tr = `${i.dur}ms ${A_EASE[i.ease] || 'ease'} ${i.delay}ms`;
+  el.style.transition = `opacity ${tr}, transform ${tr}, filter ${tr}`;
+  el.style.opacity = '1'; el.style.transform = 'translateY(0)'; el.style.filter = 'blur(0px)';
+}
+function hideAsset(a) {
+  const el = assetEl(a); if (!el || el._as === 'out') return; el._as = 'out';
+  if (PREFERS_REDUCED) { el.style.transition = 'none'; el.style.opacity = '0'; el.style.transform = 'none'; el.style.filter = 'none'; return; }
+  const o = assetCfg[a.id].out;
+  const tr = `${o.dur}ms ${A_EASE[o.ease] || 'ease'} ${o.delay}ms`;
+  el.style.transition = `opacity ${tr}, transform ${tr}, filter ${tr}`;
+  el.style.opacity = '0'; el.style.transform = `translateY(${o.y}px)`; el.style.filter = `blur(${o.blur}px)`;
+}
+function replayAsset(a) { const el = assetEl(a); if (el) el._as = null; showAsset(a); }   // force the in-animation again
+function initAssets() {
+  for (const a of ASSET_DEFS) { const el = assetEl(a); if (!el) continue; applyAssetText(a); el._as = 'out'; el.style.transition = 'none'; el.style.opacity = '0'; el.style.transform = `translateY(${assetCfg[a.id].out.y}px)`; }
+}
+function updateAssetDOF(flying) {            // depth-of-field blur layered on the group containers
+  if (PREFERS_REDUCED) { if (overlay) overlay.style.filter = ''; if (capEl) capEl.style.filter = ''; return; }
+  _domDefocus += ((flying ? 1 : 0) - _domDefocus) * 0.07;
+  const db = _domDefocus * assetDof;
+  const f = db > 0.03 ? `blur(${db.toFixed(2)}px)` : '';
+  if (overlay) overlay.style.filter = f;
+  if (capEl) capEl.style.filter = f;
+}
+initAssets();
 
 // ===========================================================================
 //  EDITOR
@@ -1843,9 +1907,50 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
 function togglePanel(target) {
   if (!target) return;
   const willShow = target.hidden;
-  for (const p of [fxEl, txEl, uxEl, textEl]) { if (p) p.hidden = true; }
+  for (const p of [fxEl, txEl, uxEl, textEl, asEl]) { if (p) p.hidden = true; }
   if (willShow) target.hidden = false;
 }
+
+// ---- Assets panel (toggle A) — per-asset text + in/out animation + DOF blur ---
+const asEl = document.querySelector('#assetpanel');
+let asSel = ASSET_DEFS[0].id;
+function loadAssetFields() {
+  if (!asEl) return;
+  const list = document.querySelector('#as-list');
+  if (list && !list._filled) { list.innerHTML = ASSET_DEFS.map((a) => `<option value="${a.id}">${a.label}</option>`).join(''); list._filled = true; }
+  if (list) list.value = asSel;
+  const def = assetDef(asSel), c = assetCfg[asSel];
+  const txt = document.querySelector('#as-text');
+  if (txt) { txt.disabled = !def.editable; txt.value = def.editable ? (c.text ?? (assetEl(def)?.textContent || '')) : ''; txt.placeholder = def.editable ? 'text…' : 'set per section'; }
+  const put = (id, v, fmt) => { const el = document.querySelector('#as-' + id); if (el) el.value = v; const o = document.querySelector('#as-' + id + '-v'); if (o) o.textContent = fmt ? fmt(v) : v; };
+  for (const ph of ['in', 'out']) {
+    put(ph + '-dur', c[ph].dur, (v) => v + 'ms'); put(ph + '-delay', c[ph].delay, (v) => v + 'ms');
+    put(ph + '-y', c[ph].y, (v) => v + 'px'); put(ph + '-blur', c[ph].blur, (v) => v + 'px');
+    const es = document.querySelector('#as-' + ph + '-ease'); if (es) es.value = c[ph].ease;
+  }
+  put('dof', assetDof, (v) => v + 'px');
+}
+(() => {
+  if (!asEl || !DEV_TOOLS) return;
+  const list = document.querySelector('#as-list');
+  if (list) list.addEventListener('change', () => { asSel = list.value; loadAssetFields(); });
+  const txt = document.querySelector('#as-text');
+  if (txt) txt.addEventListener('input', () => { const def = assetDef(asSel); if (!def.editable) return; assetCfg[asSel].text = txt.value; const el = assetEl(def); if (el) el.textContent = txt.value || ''; saveAssets(); });
+  const bindRange = (id, ph, key, fmt) => {
+    const el = document.querySelector('#as-' + id); if (!el) return;
+    el.addEventListener('input', () => { const v = parseFloat(el.value); assetCfg[asSel][ph][key] = v; const o = document.querySelector('#as-' + id + '-v'); if (o) o.textContent = fmt ? fmt(v) : v; saveAssets(); });
+  };
+  for (const ph of ['in', 'out']) {
+    bindRange(ph + '-dur', ph, 'dur', (v) => v + 'ms'); bindRange(ph + '-delay', ph, 'delay', (v) => v + 'ms');
+    bindRange(ph + '-y', ph, 'y', (v) => v + 'px'); bindRange(ph + '-blur', ph, 'blur', (v) => v + 'px');
+    const es = document.querySelector('#as-' + ph + '-ease'); if (es) es.addEventListener('change', () => { assetCfg[asSel][ph].ease = es.value; saveAssets(); });
+  }
+  const dof = document.querySelector('#as-dof');
+  if (dof) dof.addEventListener('input', () => { assetDof = parseFloat(dof.value); const o = document.querySelector('#as-dof-v'); if (o) o.textContent = assetDof + 'px'; saveAssets(); });
+  const prev = document.querySelector('#as-preview');
+  if (prev) prev.addEventListener('click', () => replayAsset(assetDef(asSel)));
+  loadAssetFields();
+})();
 
 // ---- Transitions panel (toggle with T) — flight feel between sections --------
 const txEl = document.querySelector('#txpanel');
@@ -1947,6 +2052,7 @@ const textEl = document.querySelector('#textpanel');
   renderList(); loadFields();
   window.addEventListener('keydown', (e) => {
     if (e.key.toLowerCase() === 'y' && !isTextEntry(e.target) && !editMode) { togglePanel(textEl); renderList(); loadFields(); }
+    if (e.key.toLowerCase() === 'a' && !isTextEntry(e.target) && !editMode) { togglePanel(asEl); loadAssetFields(); }
   });
 })();
 
@@ -2066,7 +2172,9 @@ function animate() {
 
   hudBeat.textContent = editMode ? 'Director mode' : (freeRoam ? 'Free roam' : (beats[index]?.name ?? ''));
   hudProgress.textContent = (editMode ? (sel + 1) : (index + 1)) + ' / ' + beats.length;
-  overlay.style.opacity = editMode ? '0' : String(1 - clamp(progress / 0.04, 0, 1));
+  const showOpening = !editMode && !freeRoam && progress < 0.04;     // the Opening text lives at the very start
+  for (const a of ASSET_DEFS) if (a.group === 'overlay') (showOpening ? showAsset : hideAsset)(a);
+  updateAssetDOF(!editMode && !freeRoam && !!tween);                 // text defocuses while flying
 
   // "visit live" button for the section currently in view (play mode only)
   const cur = beats[index];
