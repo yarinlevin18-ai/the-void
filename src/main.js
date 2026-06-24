@@ -489,13 +489,13 @@ const heroCluster = (() => {
 scene.add(new THREE.AmbientLight(0x4a5a6a, 0.85));
 const _textKey = new THREE.DirectionalLight(0xbfe6ff, 1.4); _textKey.position.set(40, 80, 120); scene.add(_textKey);   // key light for glass clearcoat glints
 // Cool gradient environment so the liquid-glass 3D text has the void to reflect (only Standard/Physical materials use it — panels/nebula are unaffected).
-(() => {
+try {
   const c = document.createElement('canvas'); c.width = 16; c.height = 256; const x = c.getContext('2d');
   const g = x.createLinearGradient(0, 0, 0, 256); g.addColorStop(0, '#0c2734'); g.addColorStop(0.5, '#06121c'); g.addColorStop(1, '#020406');
   x.fillStyle = g; x.fillRect(0, 0, 16, 256);
   const tex = new THREE.CanvasTexture(c); tex.mapping = THREE.EquirectangularReflectionMapping; tex.colorSpace = THREE.SRGBColorSpace;
   const pm = new THREE.PMREMGenerator(renderer); scene.environment = pm.fromEquirectangular(tex).texture; tex.dispose(); pm.dispose();
-})();
+} catch (e) { console.warn('[glass env] skipped:', e); }   // never let env setup take down the page
 const text3d = createText3D();
 scene.add(text3d.group);
 text3d.restore();                 // re-place saved texts (meshes build once the font loads)
