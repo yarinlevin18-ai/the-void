@@ -1133,17 +1133,20 @@ const capLabel = capEl && capEl.querySelector('.cap-label');
 const capTitle = capEl && capEl.querySelector('.cap-title');
 const capDesc = capEl && capEl.querySelector('.cap-desc');
 const HERO_SUBLINE = true;   // Frame 2: set false to show the headline alone (no sub-line)
-const DEMO_CAPTIONS = beats.map((b) => {
-  if (/^hero$/i.test((b.name || '').trim()))   // Frame 2 — the humble statement (no CH.0x kicker)
-    return { label: '', title: 'From knowing nothing about coding and design.', desc: HERO_SUBLINE ? 'Self-taught — everything here, I built.' : '' };
-  return { label: '', title: b.name, desc: 'Placeholder copy — real section content drops in here.' };
-});
+function resolveCaption(i) {                      // per-section caption text — beat.cap override wins, else the default
+  const b = beats[i] || {};
+  const isHero = /^hero$/i.test((b.name || '').trim());
+  const baseTitle = isHero ? 'From knowing nothing about coding and design.' : (b.name || '');
+  const baseDesc = isHero ? (HERO_SUBLINE ? 'Self-taught — everything here, I built.' : '') : 'Placeholder copy — real section content drops in here.';
+  const ov = b.cap || {};
+  return { label: '', title: (ov.title !== undefined && ov.title !== '') ? ov.title : baseTitle, desc: ov.desc !== undefined ? ov.desc : baseDesc };
+}
 let _capShown = -1;
 let captionsOn = true;   // UI/UX panel toggle
 function setCaption(i) {
   if (!capEl || !captionsOn || i === _capShown) return;
   _capShown = i;
-  const c = DEMO_CAPTIONS[i] || { label: '', title: '', desc: '' };
+  const c = resolveCaption(i);
   capLabel.textContent = c.label;
   requestAnimationFrame(() => {                 // set text → replay each asset's in-animation
     capTitle.textContent = c.title;
@@ -1914,6 +1917,7 @@ function togglePanel(target) {
 // ---- Assets panel (toggle A) — per-asset text + in/out animation + DOF blur ---
 const asEl = document.querySelector('#assetpanel');
 let asSel = ASSET_DEFS[0].id;
+function curCapIdx() { return _capShown >= 0 ? _capShown : index; }   // caption text edits the section you're currently on
 function loadAssetFields() {
   if (!asEl) return;
   const list = document.querySelector('#as-list');
@@ -1921,7 +1925,17 @@ function loadAssetFields() {
   if (list) list.value = asSel;
   const def = assetDef(asSel), c = assetCfg[asSel];
   const txt = document.querySelector('#as-text');
-  if (txt) { txt.disabled = !def.editable; txt.value = def.editable ? (c.text ?? (assetEl(def)?.textContent || '')) : ''; txt.placeholder = def.editable ? 'text…' : 'set per section'; }
+  if (txt) {
+    txt.disabled = false;
+    if (def.group === 'caption') {                 // per-section text (whichever section you're on)
+      const cc = resolveCaption(curCapIdx());
+      txt.value = def.id === 'capTitle' ? cc.title : (cc.desc || '');
+      txt.placeholder = (beats[curCapIdx()]?.name || 'this section') + '…';
+    } else {
+      txt.value = c.text ?? (assetEl(def)?.textContent || '');
+      txt.placeholder = 'text…';
+    }
+  }
   const put = (id, v, fmt) => { const el = document.querySelector('#as-' + id); if (el) el.value = v; const o = document.querySelector('#as-' + id + '-v'); if (o) o.textContent = fmt ? fmt(v) : v; };
   for (const ph of ['in', 'out']) {
     put(ph + '-dur', c[ph].dur, (v) => v + 'ms'); put(ph + '-delay', c[ph].delay, (v) => v + 'ms');
@@ -1935,7 +1949,19 @@ function loadAssetFields() {
   const list = document.querySelector('#as-list');
   if (list) list.addEventListener('change', () => { asSel = list.value; loadAssetFields(); });
   const txt = document.querySelector('#as-text');
-  if (txt) txt.addEventListener('input', () => { const def = assetDef(asSel); if (!def.editable) return; assetCfg[asSel].text = txt.value; const el = assetEl(def); if (el) el.textContent = txt.value || ''; saveAssets(); });
+  if (txt) txt.addEventListener('input', () => {
+    const def = assetDef(asSel);
+    if (def.group === 'caption') {                 // write the current section's caption override + live-update
+      const i = curCapIdx(), b = beats[i]; if (!b) return;
+      b.cap = b.cap || {};
+      b.cap[def.id === 'capTitle' ? 'title' : 'desc'] = txt.value;
+      if (def.id === 'capTitle' && capTitle) capTitle.textContent = txt.value;
+      if (def.id === 'capDesc' && capDesc) capDesc.textContent = txt.value;
+      save();
+    } else {
+      assetCfg[asSel].text = txt.value; const el = assetEl(def); if (el) el.textContent = txt.value || ''; saveAssets();
+    }
+  });
   const bindRange = (id, ph, key, fmt) => {
     const el = document.querySelector('#as-' + id); if (!el) return;
     el.addEventListener('input', () => { const v = parseFloat(el.value); assetCfg[asSel][ph][key] = v; const o = document.querySelector('#as-' + id + '-v'); if (o) o.textContent = fmt ? fmt(v) : v; saveAssets(); });
