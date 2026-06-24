@@ -1236,7 +1236,7 @@ function updateAssetDOF(flying) {            // depth-of-field blur layered on t
   if (overlay) overlay.style.filter = f;
   if (capEl) capEl.style.filter = f;
 }
-initAssets();
+try { initAssets(); } catch (e) { console.error('[initAssets]', e); }
 
 // ===========================================================================
 //  EDITOR
@@ -2172,9 +2172,11 @@ function animate() {
 
   hudBeat.textContent = editMode ? 'Director mode' : (freeRoam ? 'Free roam' : (beats[index]?.name ?? ''));
   hudProgress.textContent = (editMode ? (sel + 1) : (index + 1)) + ' / ' + beats.length;
-  const showOpening = !editMode && !freeRoam && progress < 0.04;     // the Opening text lives at the very start
-  for (const a of ASSET_DEFS) if (a.group === 'overlay') (showOpening ? showAsset : hideAsset)(a);
-  updateAssetDOF(!editMode && !freeRoam && !!tween);                 // text defocuses while flying
+  try {                                                             // never let asset reveals break the render loop
+    const showOpening = !editMode && !freeRoam && progress < 0.04;  // the Opening text lives at the very start
+    for (const a of ASSET_DEFS) if (a.group === 'overlay') (showOpening ? showAsset : hideAsset)(a);
+    updateAssetDOF(!editMode && !freeRoam && !!tween);              // text defocuses while flying
+  } catch (e) { if (!animate._aerr) { console.error('[assets]', e); animate._aerr = 1; } }
 
   // "visit live" button for the section currently in view (play mode only)
   const cur = beats[index];
