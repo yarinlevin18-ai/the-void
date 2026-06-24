@@ -369,9 +369,12 @@ const meteors = (() => {
   return { update };
 })();
 
-// ---- FRAME 2: frosted-glass UI fragments orbiting the Hero statement -----------
-const heroFragments = (() => {
-  const group = new THREE.Group(); scene.add(group);
+// ---- FRAME 2: HERO — text (DOM, the calm anchor) + 3 glass UI assets as ONE
+//  grouped cluster. The whole group parallaxes to cursor + scroll; each asset has
+//  its own staggered entrance + idle drift/rotation. Real PNGs (assets/hero/*.png)
+//  swap in over procedural placeholders the moment they exist.
+const heroCluster = (() => {
+  const group = new THREE.Group(); group.visible = false; scene.add(group);
   const ACCENT = 'rgba(95,210,255,';
   function rr(x, a, b, w, h, r) { x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r); x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath(); }
   function glass(x, w, h) {
@@ -402,52 +405,65 @@ const heroFragments = (() => {
     x.fillStyle = ACCENT + '0.95)'; x.shadowColor = ACCENT + '0.9)'; x.shadowBlur = 14; x.beginPath(); x.arc(111, 61, 16, 0, 7); x.fill(); x.shadowBlur = 0;
     x.fillStyle = ACCENT + '0.85)'; rr(x, 34, h - 66, 150, 38, 10); x.fill();
   }
-  function makeTex(cw, ch, draw, blur) {
+  function fallbackTex(cw, ch, draw) {
     const c = document.createElement('canvas'); c.width = cw; c.height = ch; const x = c.getContext('2d');
-    if (blur) x.filter = `blur(${blur}px)`; draw(x, cw, ch);
-    const t = new THREE.CanvasTexture(c); t.anisotropy = 4; t.colorSpace = THREE.SRGBColorSpace; return t;
+    draw(x, cw, ch); const t = new THREE.CanvasTexture(c); t.anisotropy = 4; t.colorSpace = THREE.SRGBColorSpace; return t;
   }
+  const loader = new THREE.TextureLoader();
+  function loadArt(png, mat) {                          // swap procedural → real PNG if present (silent fallback)
+    loader.load(import.meta.env.BASE_URL + png, (tex) => { tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4; mat.map = tex; mat.needsUpdate = true; }, undefined, () => {});
+  }
+  // local layout — origin = stage at the camera; -Z goes into the scene, +X right, +Y up.
   const cards = [];
-  function add(draw, w, h, cw, ch, blur, depth, ox, oy, drift) {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: makeTex(cw, ch, draw, blur), transparent: true, opacity: 0, depthWrite: false }));
-    m.renderOrder = 1; group.add(m);
-    cards.push({ m, depth, ox, oy, drift, base: new THREE.Vector3() });
+  function add(spec) {
+    const mat = new THREE.MeshBasicMaterial({ map: fallbackTex(spec.cw, spec.ch, spec.draw), transparent: true, opacity: 0, depthWrite: false });
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(spec.w, spec.h), mat); m.renderOrder = 1; group.add(m);
+    loadArt(spec.png, mat);
+    cards.push({ m, mat, home: new THREE.Vector3(spec.x, spec.y, spec.z), enter: spec.enter, liss: spec.liss });
   }
-  add(dashboard, 32, 20, 520, 325, 0, 58, 14, 9, { ax: 1.3, ay: 0.9, sp: 0.5, ph: 0 });      // mid depth, crisp
-  add(landing, 27, 18, 480, 320, 1.4, 80, 31, -9, { ax: 1.7, ay: 1.1, sp: 0.42, ph: 1.7 });  // far, soft depth-blur
-  add(component, 15, 9, 300, 170, 0, 46, 4, -15, { ax: 1.0, ay: 1.4, sp: 0.6, ph: 3.1 });     // near, crisp
+  add({ png: 'assets/hero/dashboard.png',    draw: dashboard, w: 34, h: 21, cw: 520, ch: 325, x: 18, y: 11, z: -62, enter: 0.00, liss: { ax: 1.3, ay: 0.9, sp: 0.5, rz: 0.04, ph: 0 } });
+  add({ png: 'assets/hero/landing-card.png', draw: landing,   w: 30, h: 19, cw: 480, ch: 320, x: 27, y: -11, z: -50, enter: 0.10, liss: { ax: 1.6, ay: 1.1, sp: 0.42, rz: 0.05, ph: 1.7 } });
+  add({ png: 'assets/hero/component.png',    draw: component, w: 18, h: 11, cw: 300, ch: 170, x: 35, y: -2, z: -74, enter: 0.20, liss: { ax: 1.0, ay: 1.4, sp: 0.6, rz: 0.06, ph: 3.1 } });
+  const anchor = new THREE.Vector3(-20, -1, -56);      // where the DOM statement reads (left-of-center) — line endpoint
   const lineGeo = new THREE.BufferGeometry(); const lp = new Float32Array(12);
   lineGeo.setAttribute('position', new THREE.BufferAttribute(lp, 3));
   const line = new THREE.LineSegments(lineGeo, new THREE.LineBasicMaterial({ color: 0x3a86a8, transparent: true, opacity: 0, depthWrite: false }));
   line.renderOrder = 0; group.add(line);
-  const C = new THREE.Vector3(), f = new THREE.Vector3(), rt = new THREE.Vector3(), uu = new THREE.Vector3(), tmp = new THREE.Vector3(), anchor = new THREE.Vector3();
+  const C = new THREE.Vector3(), f = new THREE.Vector3(), rt = new THREE.Vector3(), uu = new THREE.Vector3(), zc = new THREE.Vector3();
+  const baseQ = new THREE.Quaternion(), pQ = new THREE.Quaternion(), basis = new THREE.Matrix4(), eul = new THREE.Euler();
   let placed = false, op = 0;
-  function place(b) {                                  // frame the cards in the Hero beat's camera view
+  function place(b) {                                   // anchor the whole cluster in the Hero beat's camera frame
     if (!b || !b.cam || !b.look) return;
     C.set(b.cam[0], b.cam[1], b.cam[2]);
     f.set(b.look[0] - C.x, b.look[1] - C.y, b.look[2] - C.z).normalize();
     uu.set(b.up?.[0] ?? 0, b.up?.[1] ?? 1, b.up?.[2] ?? 0);
     rt.copy(f).cross(uu).normalize(); uu.copy(rt).cross(f).normalize();
-    for (const cd of cards) cd.base.copy(C).addScaledVector(f, cd.depth).addScaledVector(rt, cd.ox).addScaledVector(uu, cd.oy);
-    anchor.copy(C).addScaledVector(f, 60).addScaledVector(rt, -20).addScaledVector(uu, -3);   // the statement, lower-left
+    zc.copy(rt).cross(uu);                              // = toward camera → plane fronts face the viewer
+    basis.makeBasis(rt, uu, zc); baseQ.setFromRotationMatrix(basis);
     placed = true;
   }
-  function update(active, t, b) {
+  function update(active, t, b, scroll) {
     op += ((active ? 1 : 0) - op) * 0.06; group.visible = op > 0.01;
     if (!group.visible) return;
     if (active && !placed) place(b);
     if (!placed) return;
-    const mx = PREFERS_REDUCED ? 0 : mouse.x, my = PREFERS_REDUCED ? 0 : mouse.y;
+    const RM = PREFERS_REDUCED;
+    const px = RM ? 0 : mouse.x, py = RM ? 0 : mouse.y, sc = RM ? 0 : (scroll || 0);
+    eul.set(py * 0.06 + sc * 0.06, -px * 0.07, 0, 'XYZ');     // whole-cluster parallax: tilt to cursor + scroll
+    pQ.setFromEuler(eul); group.quaternion.copy(baseQ).multiply(pQ);
+    group.position.copy(C).addScaledVector(rt, px * 3.0).addScaledVector(uu, -py * 2.0);
     for (const cd of cards) {
-      const dx = PREFERS_REDUCED ? 0 : Math.sin(t * cd.drift.sp + cd.drift.ph) * cd.drift.ax;
-      const dy = PREFERS_REDUCED ? 0 : Math.cos(t * cd.drift.sp * 0.8 + cd.drift.ph) * cd.drift.ay;
-      const pf = cd.depth / 58;
-      tmp.copy(cd.base).addScaledVector(rt, dx + mx * 3.0 * pf).addScaledVector(uu, dy - my * 3.0 * pf);
-      cd.m.position.copy(tmp); cd.m.lookAt(C); cd.m.material.opacity = op * 0.95;
+      const ce = Math.max(0, Math.min(1, (op - cd.enter) / (1 - cd.enter)));   // staggered entrance
+      const e = ce * ce * (3 - 2 * ce);
+      const dx = RM ? 0 : Math.sin(t * cd.liss.sp + cd.liss.ph) * cd.liss.ax;  // idle Lissajous
+      const dy = RM ? 0 : Math.cos(t * cd.liss.sp * 0.8 + cd.liss.ph) * cd.liss.ay;
+      cd.m.position.set(cd.home.x + dx, cd.home.y + dy, cd.home.z - (1 - e) * 16);   // drift in from further back
+      cd.m.rotation.z = RM ? 0 : Math.sin(t * cd.liss.sp * 0.7 + cd.liss.ph) * cd.liss.rz;
+      cd.mat.opacity = e * 0.96;
     }
-    const a = cards[0].m.position, c = cards[2].m.position;
-    lp.set([anchor.x, anchor.y, anchor.z, a.x, a.y, a.z, anchor.x, anchor.y, anchor.z, c.x, c.y, c.z]);
-    lineGeo.attributes.position.needsUpdate = true; line.material.opacity = op * 0.3;
+    const a0 = cards[0].m.position, a2 = cards[2].m.position;
+    lp.set([anchor.x, anchor.y, anchor.z, a0.x, a0.y, a0.z, anchor.x, anchor.y, anchor.z, a2.x, a2.y, a2.z]);
+    lineGeo.attributes.position.needsUpdate = true; line.material.opacity = op * 0.28;
   }
   return { update };
 })();
@@ -1192,7 +1208,7 @@ const ASSET_DEFS = [
   { id: 'capDesc',  label: 'Caption sub',   sel: '#caption .cap-desc',  group: 'caption', editable: false },
 ];
 const ASSET_KEY = 'voidAssets';
-const _aDefault = () => ({ text: null, in: { dur: 900, delay: 120, y: 26, blur: 7, ease: 'out' }, out: { dur: 500, delay: 0, y: -12, blur: 6, ease: 'inout' } });
+const _aDefault = () => ({ text: null, size: 1, font: '', depth: 0, in: { dur: 900, delay: 120, y: 26, blur: 7, ease: 'out' }, out: { dur: 500, delay: 0, y: -12, blur: 6, ease: 'inout' } });
 let assetCfg = {}; ASSET_DEFS.forEach((a) => { assetCfg[a.id] = _aDefault(); });
 let assetDof = 6;            // DOF → text blur amount (px) at full defocus
 let _domDefocus = 0;
@@ -1203,12 +1219,26 @@ try {
   const raw = localStorage.getItem(ASSET_KEY);
   if (raw) {
     const d = JSON.parse(raw);
-    if (d.cfg) for (const id in d.cfg) if (assetCfg[id]) assetCfg[id] = { text: d.cfg[id].text ?? null, in: { ...assetCfg[id].in, ...(d.cfg[id].in || {}) }, out: { ...assetCfg[id].out, ...(d.cfg[id].out || {}) } };
+    if (d.cfg) for (const id in d.cfg) if (assetCfg[id]) assetCfg[id] = { text: d.cfg[id].text ?? null, size: d.cfg[id].size ?? 1, font: d.cfg[id].font ?? '', depth: d.cfg[id].depth ?? 0, in: { ...assetCfg[id].in, ...(d.cfg[id].in || {}) }, out: { ...assetCfg[id].out, ...(d.cfg[id].out || {}) } };
     if (typeof d.dof === 'number') assetDof = d.dof;
   }
 } catch (e) { /* keep defaults */ }
 function saveAssets() { try { localStorage.setItem(ASSET_KEY, JSON.stringify({ cfg: assetCfg, dof: assetDof })); } catch (e) {} }
 function applyAssetText(a) { if (!a.editable) return; const el = assetEl(a), t = assetCfg[a.id].text; if (el && t != null && t !== '') el.textContent = t; }
+function extrudeShadow(depth) {                   // CSS faux-3D: stacked dark shadows = extruded type, + a faint glow
+  if (!depth || depth <= 0) return '';
+  const steps = Math.min(Math.round(depth), 16), s = [];
+  for (let i = 1; i <= steps; i++) { const a = (0.5 * (1 - i / (steps + 2))).toFixed(3); s.push(`${i}px ${i}px 0 rgba(8,16,28,${a})`); }
+  s.push('0 0 22px rgba(120,200,255,0.20)');
+  return s.join(', ');
+}
+function applyAssetStyle(a) {                     // size / font / 3D-depth — independent of the in/out animation props
+  const el = assetEl(a); if (!el) return; const c = assetCfg[a.id];
+  if (el._baseFontPx == null) el._baseFontPx = parseFloat(getComputedStyle(el).fontSize) || 16;   // capture responsive base once
+  el.style.fontSize = (el._baseFontPx * (c.size || 1)).toFixed(1) + 'px';
+  el.style.fontFamily = c.font || '';
+  el.style.textShadow = extrudeShadow(c.depth || 0);
+}
 function showAsset(a) {
   const el = assetEl(a); if (!el || el._as === 'in') return; el._as = 'in';
   if (PREFERS_REDUCED) { el.style.transition = 'none'; el.style.opacity = '1'; el.style.transform = 'none'; el.style.filter = 'none'; return; }
@@ -1229,7 +1259,7 @@ function hideAsset(a) {
 }
 function replayAsset(a) { const el = assetEl(a); if (el) el._as = null; showAsset(a); }   // force the in-animation again
 function initAssets() {
-  for (const a of ASSET_DEFS) { const el = assetEl(a); if (!el) continue; applyAssetText(a); el._as = 'out'; el.style.transition = 'none'; el.style.opacity = '0'; el.style.transform = `translateY(${assetCfg[a.id].out.y}px)`; }
+  for (const a of ASSET_DEFS) { const el = assetEl(a); if (!el) continue; applyAssetText(a); applyAssetStyle(a); el._as = 'out'; el.style.transition = 'none'; el.style.opacity = '0'; el.style.transform = `translateY(${assetCfg[a.id].out.y}px)`; }
 }
 function updateAssetDOF(flying) {            // depth-of-field blur layered on the group containers
   if (PREFERS_REDUCED) { if (overlay) overlay.style.filter = ''; if (capEl) capEl.style.filter = ''; return; }
@@ -1940,6 +1970,9 @@ function loadAssetFields() {
       txt.placeholder = 'text…';
     }
   }
+  const szv = document.querySelector('#as-size'); if (szv) { szv.value = c.size ?? 1; const o = document.querySelector('#as-size-v'); if (o) o.textContent = (c.size ?? 1).toFixed(2) + '×'; }
+  const fnv = document.querySelector('#as-font'); if (fnv) fnv.value = c.font || '';
+  const dpv = document.querySelector('#as-depth'); if (dpv) { dpv.value = c.depth ?? 0; const o = document.querySelector('#as-depth-v'); if (o) o.textContent = (c.depth ?? 0) + 'px'; }
   const put = (id, v, fmt) => { const el = document.querySelector('#as-' + id); if (el) el.value = v; const o = document.querySelector('#as-' + id + '-v'); if (o) o.textContent = fmt ? fmt(v) : v; };
   for (const ph of ['in', 'out']) {
     put(ph + '-dur', c[ph].dur, (v) => v + 'ms'); put(ph + '-delay', c[ph].delay, (v) => v + 'ms');
@@ -1977,6 +2010,12 @@ function loadAssetFields() {
   }
   const dof = document.querySelector('#as-dof');
   if (dof) dof.addEventListener('input', () => { assetDof = parseFloat(dof.value); const o = document.querySelector('#as-dof-v'); if (o) o.textContent = assetDof + 'px'; saveAssets(); });
+  const szi = document.querySelector('#as-size');
+  if (szi) szi.addEventListener('input', () => { assetCfg[asSel].size = parseFloat(szi.value); applyAssetStyle(assetDef(asSel)); const o = document.querySelector('#as-size-v'); if (o) o.textContent = parseFloat(szi.value).toFixed(2) + '×'; saveAssets(); });
+  const fni = document.querySelector('#as-font');
+  if (fni) fni.addEventListener('change', () => { assetCfg[asSel].font = fni.value; applyAssetStyle(assetDef(asSel)); saveAssets(); });
+  const dpi = document.querySelector('#as-depth');
+  if (dpi) dpi.addEventListener('input', () => { assetCfg[asSel].depth = parseFloat(dpi.value); applyAssetStyle(assetDef(asSel)); const o = document.querySelector('#as-depth-v'); if (o) o.textContent = parseFloat(dpi.value) + 'px'; saveAssets(); });
   const prev = document.querySelector('#as-preview');
   if (prev) prev.addEventListener('click', () => replayAsset(assetDef(asSel)));
   loadAssetFields();
@@ -2142,7 +2181,11 @@ function animate() {
   livingVoid.nebMat.uniforms.uDens.value = curFX.nebula;   // per-section nebula density (keyframed)
   livingVoid.update(t);                      // advance nebula + starfield time
   meteors.update(dt, !editMode && !freeRoam && index === 0);   // falling stars on the start frame only
-  heroFragments.update(!editMode && !freeRoam && /^hero$/i.test(beats[index]?.name || ''), t, beats[index]);   // glass fragments at the Hero beat
+  {                                          // Frame 2 — the grouped Hero cluster (assets parallax to cursor + scroll)
+    const heroOn = !editMode && !freeRoam && /^hero$/i.test(beats[index]?.name || '');
+    const hsc = heroOn ? Math.max(-0.5, Math.min(0.5, progress * Math.max(1, lastIdx()) - index)) : 0;
+    heroCluster.update(heroOn, t, beats[index], hsc);
+  }
   {                                          // neon wave ribbon — drift + warp around its section
     const w = waveRibbon;
     w.uniforms.uTime.value = t; w.uniforms.uAmp.value = FX.waveAmp; w.uniforms.uSpd.value = FX.waveSpd; w.uniforms.uCoil.value = FX.waveCoil;
