@@ -39,8 +39,8 @@ function paintGradient(geo, color) {
 }
 // Liquid-glass material: glossy clearcoat + thin-film iridescence reflecting the
 // scene environment, a linear vertex-gradient fill, and a bloomable cool glow.
-function makeGlassMat(color, glow, transparent) {
-  return new THREE.MeshPhysicalMaterial({
+function makeGlassMat(color, glow, transparent, width) {
+  const mat = new THREE.MeshPhysicalMaterial({
     color: 0xffffff, vertexColors: true,
     metalness: 0.0, roughness: 0.16,
     clearcoat: 1.0, clearcoatRoughness: 0.22,
@@ -48,6 +48,17 @@ function makeGlassMat(color, glow, transparent) {
     emissive: glowEmissive(color), emissiveIntensity: glow * GLOW_SCALE,
     envMapIntensity: 1.25, transparent: !!transparent, opacity: 1,
   });
+  const W = Math.max(20, width || 120);
+  mat.onBeforeCompile = (shader) => {               // animated "water" light-sweep across the glass (uSweep advanced per frame)
+    shader.uniforms.uSweep = { value: 0 };
+    shader.uniforms.uWidth = { value: W };
+    shader.vertexShader = 'varying vec3 vLP;\n' + shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vLP = position;');
+    shader.fragmentShader = 'varying vec3 vLP;\nuniform float uSweep,uWidth;\n' + shader.fragmentShader.replace(
+      '#include <dithering_fragment>',
+      '#include <dithering_fragment>\n  { float _x = vLP.x / uWidth + 0.5; float _b = abs(mod(_x - uSweep, 1.7) - 0.85); float _s = smoothstep(0.11, 0.0, _b); gl_FragColor.rgb += _s * vec3(0.55,0.82,1.0) * 0.85; }');
+    mat.userData.shader = shader;
+  };
+  return mat;
 }
 
 let _uid = 1;
@@ -96,7 +107,8 @@ export function createText3D() {
     });
     geo.center();                              // pivot at the text's centre
     paintGradient(geo, d.color);               // linear gradient fill
-    const mat = makeGlassMat(d.color, d.glow, false);   // glowing liquid glass
+    const bw = geo.boundingBox ? geo.boundingBox.max.x - geo.boundingBox.min.x : 120;
+    const mat = makeGlassMat(d.color, d.glow, false, bw);   // glowing liquid glass + light sweep
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(d.x, d.y, d.z);
     mesh.rotation.set(THREE.MathUtils.degToRad(d.rx), THREE.MathUtils.degToRad(d.ry), THREE.MathUtils.degToRad(d.rz));
@@ -155,7 +167,8 @@ export function createText3D() {
     });
     geo.center();
     paintGradient(geo, opts.color || '#eaf4ff');
-    const mat = makeGlassMat(opts.color || '#eaf4ff', opts.glow ?? 1.6, true);
+    const bw = geo.boundingBox ? geo.boundingBox.max.x - geo.boundingBox.min.x : 120;
+    const mat = makeGlassMat(opts.color || '#eaf4ff', opts.glow ?? 1.6, true, bw);
     const mesh = new THREE.Mesh(geo, mat); mesh.renderOrder = 3; mesh.userData = { type: 'headline' };
     return mesh;
   }
@@ -165,5 +178,17 @@ export function createText3D() {
     try { const raw = localStorage.getItem(STORE_KEY); if (raw) for (const d of JSON.parse(raw)) add(d); } catch (e) { /* ignore */ }
   }
 
-  return { group, loadFont, add, remove, get, list, rebuild, apply, save, restore, usingOgg: () => usingOgg, buildHeadline, fontReady: () => !!font };
+  // Per-frame: advance the light sweep + a gentle idle float so placed text settles into the void.
+  function update(t, reduced) {
+    const sw = reduced ? 0 : t * 0.3;
+    for (const it of items) {
+      if (!it.mesh) continue;
+      const sh = it.mesh.material.userData && it.mesh.material.userData.shader;
+      if (sh) sh.uniforms.uSweep.value = sw;
+      const d = it.data;
+      if (reduced) it.mesh.position.set(d.x, d.y, d.z);
+      else it.mesh.position.set(d.x + Math.sin(t * 0.4 + d.id) * 1.1, d.y + Math.cos(t * 0.33 + d.id * 1.7) * 0.9, d.z);
+    }
+  }
+  return { group, loadFont, add, remove, get, list, rebuild, apply, save, restore, usingOgg: () => usingOgg, buildHeadline, fontReady: () => !!font, update };
 }

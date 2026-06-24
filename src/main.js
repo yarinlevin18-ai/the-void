@@ -1344,6 +1344,7 @@ const headline3D = (() => {
     mesh.position.copy(pos); mesh.quaternion.copy(baseQ);
     mesh.scale.setScalar(RM ? 1 : (0.86 + 0.14 * e));
     mesh.material.opacity = e;
+    if (mesh.material.userData && mesh.material.userData.shader) mesh.material.userData.shader.uniforms.uSweep.value = RM ? 0 : t * 0.3;
   }
   return { update };
 })();
@@ -2219,7 +2220,7 @@ const textEl = document.querySelector('#textpanel');
     const tmp = new THREE.Object3D(); tmp.position.copy(p); tmp.lookAt(camera.position);   // face the camera
     d.rx = Math.round(THREE.MathUtils.radToDeg(tmp.rotation.x));
     d.ry = Math.round(THREE.MathUtils.radToDeg(tmp.rotation.y));
-    d.rz = Math.round(THREE.MathUtils.radToDeg(tmp.rotation.z));
+    d.rz = 0;                                          // force upright — no roll/tilt, dead-center
     text3d.apply(curId); text3d.save(); loadFields();
   });
 
@@ -2292,6 +2293,7 @@ function animate() {
     heroCluster.update(heroOn, t, beats[index], hsc);
   }
   headline3D.update(!editMode && !freeRoam && index !== 0 && !!(assetCfg.capTitle && assetCfg.capTitle.mesh3d), t, beats[index], resolveCaption(index).title);
+  text3d.update(t, PREFERS_REDUCED);           // placed 3D text: light sweep + idle float
   {                                          // neon wave ribbon — drift + warp around its section
     const w = waveRibbon;
     w.uniforms.uTime.value = t; w.uniforms.uAmp.value = FX.waveAmp; w.uniforms.uSpd.value = FX.waveSpd; w.uniforms.uCoil.value = FX.waveCoil;
