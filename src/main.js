@@ -1168,7 +1168,8 @@ function setCaption(i) {
     capTitle.textContent = c.title;
     capDesc.textContent = c.desc;
     capEl.classList.add('show');
-    replayAsset(assetDef('capTitle'));
+    if (assetCfg.capTitle && assetCfg.capTitle.mesh3d) hideAsset(assetDef('capTitle'));   // 3D mesh shows the title instead
+    else replayAsset(assetDef('capTitle'));
     replayAsset(assetDef('capDesc'));
   });
 }
@@ -1208,7 +1209,7 @@ const ASSET_DEFS = [
   { id: 'capDesc',  label: 'Caption sub',   sel: '#caption .cap-desc',  group: 'caption', editable: false },
 ];
 const ASSET_KEY = 'voidAssets';
-const _aDefault = () => ({ text: null, size: 1, font: '', depth: 0, in: { dur: 900, delay: 120, y: 26, blur: 7, ease: 'out' }, out: { dur: 500, delay: 0, y: -12, blur: 6, ease: 'inout' } });
+const _aDefault = () => ({ text: null, size: 1, font: '', depth: 0, mesh3d: false, in: { dur: 900, delay: 120, y: 26, blur: 7, ease: 'out' }, out: { dur: 500, delay: 0, y: -12, blur: 6, ease: 'inout' } });
 let assetCfg = {}; ASSET_DEFS.forEach((a) => { assetCfg[a.id] = _aDefault(); });
 let assetDof = 6;            // DOF → text blur amount (px) at full defocus
 let _domDefocus = 0;
@@ -1219,7 +1220,7 @@ try {
   const raw = localStorage.getItem(ASSET_KEY);
   if (raw) {
     const d = JSON.parse(raw);
-    if (d.cfg) for (const id in d.cfg) if (assetCfg[id]) assetCfg[id] = { text: d.cfg[id].text ?? null, size: d.cfg[id].size ?? 1, font: d.cfg[id].font ?? '', depth: d.cfg[id].depth ?? 0, in: { ...assetCfg[id].in, ...(d.cfg[id].in || {}) }, out: { ...assetCfg[id].out, ...(d.cfg[id].out || {}) } };
+    if (d.cfg) for (const id in d.cfg) if (assetCfg[id]) assetCfg[id] = { text: d.cfg[id].text ?? null, size: d.cfg[id].size ?? 1, font: d.cfg[id].font ?? '', depth: d.cfg[id].depth ?? 0, mesh3d: d.cfg[id].mesh3d ?? false, in: { ...assetCfg[id].in, ...(d.cfg[id].in || {}) }, out: { ...assetCfg[id].out, ...(d.cfg[id].out || {}) } };
     if (typeof d.dof === 'number') assetDof = d.dof;
   }
 } catch (e) { /* keep defaults */ }
@@ -1270,6 +1271,47 @@ function updateAssetDOF(flying) {            // depth-of-field blur layered on t
   if (capEl) capEl.style.filter = f;
 }
 try { initAssets(); } catch (e) { console.error('[initAssets]', e); }
+
+// ---- 3D mesh headline — a section's caption title rendered as a real extruded
+//  Ogg mesh (via text3d), framed left-of-center in the beat view, with grouped
+//  scale/fade/rise in & out. The DOM title is hidden while this is on. Best for
+//  short titles ("My Projects", project names) — long statements stay DOM text.
+const headline3D = (() => {
+  let mesh = null, op = 0, curKey = '';
+  const C = new THREE.Vector3(), f = new THREE.Vector3(), rt = new THREE.Vector3(), uu = new THREE.Vector3(), zc = new THREE.Vector3(), pos = new THREE.Vector3();
+  const baseQ = new THREE.Quaternion(), basis = new THREE.Matrix4();
+  function pose(b) {
+    C.set(b.cam[0], b.cam[1], b.cam[2]);
+    f.set(b.look[0] - C.x, b.look[1] - C.y, b.look[2] - C.z).normalize();
+    uu.set(b.up?.[0] ?? 0, b.up?.[1] ?? 1, b.up?.[2] ?? 0);
+    rt.copy(f).cross(uu).normalize(); uu.copy(rt).cross(f).normalize();
+    zc.copy(rt).cross(uu); basis.makeBasis(rt, uu, zc); baseQ.setFromRotationMatrix(basis);
+  }
+  function dispose() { if (mesh) { scene.remove(mesh); mesh.geometry.dispose(); mesh.material.dispose(); mesh = null; } }
+  function rebuild(title) {
+    dispose();
+    const c = assetCfg.capTitle;
+    mesh = text3d.buildHeadline(title, { size: 13 * (c.size || 1), depth: Math.max(2, (c.depth || 0) * 0.6 + 3), bevel: 1.0, color: '#eaf4ff', glow: 1.7 });
+    if (mesh) { mesh.material.opacity = 0; mesh.visible = false; scene.add(mesh); }
+  }
+  function update(on, t, b, title) {
+    op += ((on ? 1 : 0) - op) * 0.08;
+    if (on && b && b.cam && title && text3d.fontReady()) {
+      const c = assetCfg.capTitle, key = title + '|' + (c.size || 1) + '|' + (c.depth || 0);
+      if (key !== curKey) { rebuild(title); curKey = key; }
+      pose(b);
+    }
+    if (!mesh) return;
+    if (op < 0.01) { mesh.visible = false; return; }
+    mesh.visible = true;
+    const RM = PREFERS_REDUCED, e = op * op * (3 - 2 * op);
+    pos.copy(C).addScaledVector(f, 72).addScaledVector(rt, -22).addScaledVector(uu, -1 + (RM ? 0 : (1 - e) * -5));
+    mesh.position.copy(pos); mesh.quaternion.copy(baseQ);
+    mesh.scale.setScalar(RM ? 1 : (0.86 + 0.14 * e));
+    mesh.material.opacity = e;
+  }
+  return { update };
+})();
 
 // ===========================================================================
 //  EDITOR
@@ -1973,6 +2015,9 @@ function loadAssetFields() {
   const szv = document.querySelector('#as-size'); if (szv) { szv.value = c.size ?? 1; const o = document.querySelector('#as-size-v'); if (o) o.textContent = (c.size ?? 1).toFixed(2) + '×'; }
   const fnv = document.querySelector('#as-font'); if (fnv) fnv.value = c.font || '';
   const dpv = document.querySelector('#as-depth'); if (dpv) { dpv.value = c.depth ?? 0; const o = document.querySelector('#as-depth-v'); if (o) o.textContent = (c.depth ?? 0) + 'px'; }
+  const m3v = document.querySelector('#as-mesh3d'), m3r = document.querySelector('#as-mesh3d-row');
+  if (m3r) m3r.style.display = (asSel === 'capTitle') ? '' : 'none';      // 3D mesh option only for the headline
+  if (m3v) m3v.checked = !!c.mesh3d;
   const put = (id, v, fmt) => { const el = document.querySelector('#as-' + id); if (el) el.value = v; const o = document.querySelector('#as-' + id + '-v'); if (o) o.textContent = fmt ? fmt(v) : v; };
   for (const ph of ['in', 'out']) {
     put(ph + '-dur', c[ph].dur, (v) => v + 'ms'); put(ph + '-delay', c[ph].delay, (v) => v + 'ms');
@@ -2016,6 +2061,8 @@ function loadAssetFields() {
   if (fni) fni.addEventListener('change', () => { assetCfg[asSel].font = fni.value; applyAssetStyle(assetDef(asSel)); saveAssets(); });
   const dpi = document.querySelector('#as-depth');
   if (dpi) dpi.addEventListener('input', () => { assetCfg[asSel].depth = parseFloat(dpi.value); applyAssetStyle(assetDef(asSel)); const o = document.querySelector('#as-depth-v'); if (o) o.textContent = parseFloat(dpi.value) + 'px'; saveAssets(); });
+  const m3i = document.querySelector('#as-mesh3d');
+  if (m3i) m3i.addEventListener('change', () => { assetCfg.capTitle.mesh3d = m3i.checked; saveAssets(); if (m3i.checked) hideAsset(assetDef('capTitle')); else replayAsset(assetDef('capTitle')); });
   const prev = document.querySelector('#as-preview');
   if (prev) prev.addEventListener('click', () => replayAsset(assetDef(asSel)));
   loadAssetFields();
@@ -2186,6 +2233,7 @@ function animate() {
     const hsc = heroOn ? Math.max(-0.5, Math.min(0.5, progress * Math.max(1, lastIdx()) - index)) : 0;
     heroCluster.update(heroOn, t, beats[index], hsc);
   }
+  headline3D.update(!editMode && !freeRoam && index !== 0 && !!(assetCfg.capTitle && assetCfg.capTitle.mesh3d), t, beats[index], resolveCaption(index).title);
   {                                          // neon wave ribbon — drift + warp around its section
     const w = waveRibbon;
     w.uniforms.uTime.value = t; w.uniforms.uAmp.value = FX.waveAmp; w.uniforms.uSpd.value = FX.waveSpd; w.uniforms.uCoil.value = FX.waveCoil;

@@ -116,10 +116,26 @@ export function createText3D() {
   const get = (id) => items.find((x) => x.data.id === id)?.data || null;
   const list = () => items.map((x) => x.data);
 
+  // A transient, fade-able headline mesh for a section caption (NOT a saved item).
+  // Caller owns it: add to a scene/group, animate material.opacity, dispose on rebuild.
+  function buildHeadline(text, opts = {}) {
+    if (!font) return null;
+    const size = opts.size ?? 16, depth = opts.depth ?? 4, bevel = opts.bevel ?? 1.0;
+    const geo = new TextGeometry(text || ' ', {
+      font, size, depth, curveSegments: 6,
+      bevelEnabled: bevel > 0, bevelThickness: bevel * 0.6, bevelSize: bevel, bevelSegments: 3,
+    });
+    geo.center();
+    const col = new THREE.Color(opts.color || '#eaf4ff');
+    const mat = new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: opts.glow ?? 1.6, metalness: 0.35, roughness: 0.35, transparent: true, opacity: 1 });
+    const mesh = new THREE.Mesh(geo, mat); mesh.renderOrder = 3; mesh.userData = { type: 'headline' };
+    return mesh;
+  }
+
   function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(items.map((x) => x.data))); } catch (e) { /* ignore */ } }
   function restore() {
     try { const raw = localStorage.getItem(STORE_KEY); if (raw) for (const d of JSON.parse(raw)) add(d); } catch (e) { /* ignore */ }
   }
 
-  return { group, loadFont, add, remove, get, list, rebuild, apply, save, restore, usingOgg: () => usingOgg };
+  return { group, loadFont, add, remove, get, list, rebuild, apply, save, restore, usingOgg: () => usingOgg, buildHeadline, fontReady: () => !!font };
 }
