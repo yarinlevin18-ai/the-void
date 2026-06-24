@@ -439,7 +439,7 @@ const heroCluster = (() => {
   const lineGeo = new THREE.BufferGeometry(); const lp = new Float32Array(12);
   lineGeo.setAttribute('position', new THREE.BufferAttribute(lp, 3));
   const line = new THREE.LineSegments(lineGeo, new THREE.LineBasicMaterial({ color: 0x3a86a8, transparent: true, opacity: 0, depthWrite: false }));
-  line.renderOrder = 0; group.add(line);
+  line.renderOrder = 0; line.visible = false; group.add(line);   // connecting "stripe" off — too noisy across the void
   const C = new THREE.Vector3(), f = new THREE.Vector3(), rt = new THREE.Vector3(), uu = new THREE.Vector3(), zc = new THREE.Vector3();
   const baseQ = new THREE.Quaternion(), pQ = new THREE.Quaternion(), basis = new THREE.Matrix4(), eul = new THREE.Euler();
   let placed = false, op = 0;
@@ -2295,7 +2295,7 @@ function animate() {
   {                                          // neon wave ribbon — drift + warp around its section
     const w = waveRibbon;
     w.uniforms.uTime.value = t; w.uniforms.uAmp.value = FX.waveAmp; w.uniforms.uSpd.value = FX.waveSpd; w.uniforms.uCoil.value = FX.waveCoil;
-    w.group.visible = FX.waveOn; w.grid.visible = FX.waveOn && FX.waveGrid;
+    w.group.visible = FX.waveOn && index >= 2; w.grid.visible = w.group.visible && FX.waveGrid;   // keep the ribbon off the Opening/Hero — clean intro composition
     if (FX.waveOn) {
       const last = Math.max(1, beats.length - 1), seg = clamp(progress, 0, 1) * last;
       const i0 = clamp(Math.floor(seg), 0, last), i1 = clamp(i0 + 1, 0, last), f = seg - i0;
