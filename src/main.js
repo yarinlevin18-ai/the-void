@@ -34,7 +34,7 @@ const FX = {
   twinkleOn: true, linesOn: true, nebVisible: true,                           // living-void toggles
   uiHud: true, uiWaypoints: true, uiCaption: true, uiHint: true, uiScale: 1,  // UX panel state
   waveAmp: 26, waveSpd: 1, waveCoil: 34, waveOn: true, waveGrid: false,        // neon wave ribbon
-  nebSpd: 0.6, nebWarp: 1.4, nebHue: 0.5, nebEmber: 0.25, nebVig: true,         // nebula climate (drift/warp/hue/ember/vignette)
+  nebSpd: 0.6, nebWarp: 1.4, nebHue: 0.5, nebEmber: 0.25, nebVig: true, nebGlow: 0.6,   // nebula climate + inner glow
   lightning: true, glowSpots: true,                                            // in-nebula lightning + flickering glow spots
   lightInt: 1, lightReach: 280, lightRate: 3, glowBright: 1, glowFlick: 1, cursorDrive: 1,   // lightning + glow + cursor-reactivity controls
 };
@@ -107,14 +107,14 @@ const livingVoid = (() => {
     depthTest: false, depthWrite: false,
     uniforms: {
       uTime: { value: 0 }, uA: { value: window.innerWidth / window.innerHeight }, uSteps: { value: _reduced ? 18 : 40 },
-      uDens: { value: FX.nebula }, uSpd: { value: FX.nebSpd }, uWarp: { value: FX.nebWarp }, uHue: { value: FX.nebHue }, uEmber: { value: FX.nebEmber },
+      uDens: { value: FX.nebula }, uSpd: { value: FX.nebSpd }, uWarp: { value: FX.nebWarp }, uHue: { value: FX.nebHue }, uEmber: { value: FX.nebEmber }, uGlow: { value: FX.nebGlow },
       uCamPos: { value: new THREE.Vector3() }, uInvProj: { value: new THREE.Matrix4() }, uCamWorld: { value: new THREE.Matrix4() },
       uFlash: { value: new THREE.Vector3(0, 0, -300) }, uFlashAmt: { value: 0 }, uFlashCol: { value: new THREE.Color(0x9fd8ff) }, uFlashReach: { value: 0.00002 }, uCrackle: { value: 18 },
     },
     vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
     fragmentShader: `precision highp float; varying vec2 vUv;
       uniform vec3 uCamPos; uniform mat4 uInvProj, uCamWorld;
-      uniform float uTime,uA,uSteps,uDens,uSpd,uWarp,uHue,uEmber,uFlashAmt,uFlashReach,uCrackle; uniform vec3 uFlash,uFlashCol;
+      uniform float uTime,uA,uSteps,uDens,uSpd,uWarp,uHue,uEmber,uGlow,uFlashAmt,uFlashReach,uCrackle; uniform vec3 uFlash,uFlashCol;
       float hash(vec3 p){ p=fract(p*0.3183099+0.1); p*=17.0; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
       float noise(vec3 x){ vec3 i=floor(x),f=fract(x); f=f*f*(3.0-2.0*f);
         return mix(mix(mix(hash(i+vec3(0,0,0)),hash(i+vec3(1,0,0)),f.x),mix(hash(i+vec3(0,1,0)),hash(i+vec3(1,1,0)),f.x),f.y),
@@ -135,6 +135,7 @@ const livingVoid = (() => {
           vec3 p=ro+rd*t; float d=density(p);
           if(d>0.01){ float fade=smoothstep(tEnd,tStart,t);
             vec3 emit=climate*(0.7+d*0.9)+ember*smoothstep(0.5,1.0,d)*uEmber*2.5;  // dim haze stays under bloom (0.22); only dense cores bloom
+            emit+=mix(climate,vec3(0.7,0.85,1.0),smoothstep(0.7,1.0,d))*smoothstep(0.5,1.0,d)*uGlow*1.6;  // inner glow: dense gas glows (cyan->white cores, blooms)
             vec3 fp=p-uFlash; float gd=exp(-dot(fp,fp)*uFlashReach);                       // glow that follows the cursor
             float fil=pow(noise(p*0.06+uTime*4.0),3.0);                                     // filamentary arc veins (electric branches)
             float crk=0.35+0.65*pow(0.5+0.5*sin(uTime*uCrackle+p.x*0.05+p.y*0.07),5.0);     // fast electric crackle
@@ -404,7 +405,7 @@ const EASINGS = {
 let transitionEase = easeInOut;
 let txEaseName = 'easeInOut';
 // global (non-keyframed) state that Save must persist alongside the beats
-const GLOBAL_KEYS = ['starFrac', 'nodeFrac', 'lineFrac', 'nebFrac', 'driftOn', 'fovPunch', 'warpStrength', 'warpLength', 'twinkleOn', 'linesOn', 'nebVisible', 'uiHud', 'uiWaypoints', 'uiCaption', 'uiHint', 'uiScale', 'waveAmp', 'waveSpd', 'waveCoil', 'waveOn', 'waveGrid', 'nebSpd', 'nebWarp', 'nebHue', 'nebEmber', 'nebVig', 'lightning', 'glowSpots', 'lightInt', 'lightReach', 'lightRate', 'glowBright', 'glowFlick', 'cursorDrive'];
+const GLOBAL_KEYS = ['starFrac', 'nodeFrac', 'lineFrac', 'nebFrac', 'driftOn', 'fovPunch', 'warpStrength', 'warpLength', 'twinkleOn', 'linesOn', 'nebVisible', 'uiHud', 'uiWaypoints', 'uiCaption', 'uiHint', 'uiScale', 'waveAmp', 'waveSpd', 'waveCoil', 'waveOn', 'waveGrid', 'nebSpd', 'nebWarp', 'nebHue', 'nebEmber', 'nebVig', 'nebGlow', 'lightning', 'glowSpots', 'lightInt', 'lightReach', 'lightRate', 'glowBright', 'glowFlick', 'cursorDrive'];
 let activePunch = 0;   // 0..1 across a transition, peaks at the midpoint (for FOV punch)
 const DEF_FOV = 68, DEF_DUR = 1.6;
 // a sensible starter panel for a section: sits at its aim point, fixed orientation
@@ -464,6 +465,7 @@ function applyGlobals() {
   livingVoid.nebMat.uniforms.uWarp.value = FX.nebWarp;
   livingVoid.nebMat.uniforms.uHue.value = FX.nebHue;
   livingVoid.nebMat.uniforms.uEmber.value = FX.nebEmber;
+  livingVoid.nebMat.uniforms.uGlow.value = FX.nebGlow;
   livingVoid.spots.visible = FX.glowSpots;
   transitionEase = EASINGS[txEaseName] || easeInOut;
   captionsOn = FX.uiCaption;
@@ -1584,6 +1586,7 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
     ['nebwarp', () => FX.nebWarp, (v) => { FX.nebWarp = v; livingVoid.nebMat.uniforms.uWarp.value = v; }, f2],
     ['nebhue', () => FX.nebHue, (v) => { FX.nebHue = v; livingVoid.nebMat.uniforms.uHue.value = v; }, f2],
     ['nebember', () => FX.nebEmber, (v) => { FX.nebEmber = v; livingVoid.nebMat.uniforms.uEmber.value = v; }, f2],
+    ['nebglow', () => FX.nebGlow, (v) => { FX.nebGlow = v; livingVoid.nebMat.uniforms.uGlow.value = v; }, f2],
     ['lightint', () => FX.lightInt, (v) => { FX.lightInt = v; }, f2],
     ['lightreach', () => FX.lightReach, (v) => { FX.lightReach = v; }, f0],
     ['lightrate', () => FX.lightRate, (v) => { FX.lightRate = v; }, f2],
