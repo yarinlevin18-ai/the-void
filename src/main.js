@@ -472,8 +472,8 @@ const heroCluster = (() => {
 // Lights are added only for the standard-material text — the particle shaders
 // ignore them. Emissive + bloom make the letters glow; the directional light
 // catches the bevels/extrusion so they read as solid 3D.
-scene.add(new THREE.AmbientLight(0x4a5a6a, 1.1));
-const _textKey = new THREE.DirectionalLight(0xbfe6ff, 1.6); _textKey.position.set(40, 80, 120); scene.add(_textKey);
+scene.add(new THREE.AmbientLight(0x4a5a6a, 0.85));
+const _textKey = new THREE.DirectionalLight(0xbfe6ff, 1.0); _textKey.position.set(40, 80, 120); scene.add(_textKey);   // gentler — let the gradient fill carry the look, not the lighting
 const text3d = createText3D();
 scene.add(text3d.group);
 text3d.restore();                 // re-place saved texts (meshes build once the font loads)

@@ -23,8 +23,20 @@ const STORE_KEY = 'voidTexts';
 // Glow that reads as a soft cool halo instead of a white blow-out: tint the
 // emissive toward cyan + scale the slider down, so the lit faces/bevels still
 // show the 3D form and only the edges bloom. Shared by build + live-apply.
-const GLOW_COOL = 0x57c1ff, GLOW_SCALE = 0.5;
+const GLOW_COOL = 0x57c1ff, GLOW_SCALE = 0.12;   // glow is now only a faint accent over a gradient fill
 function glowEmissive(color) { return new THREE.Color(color).multiplyScalar(0.55).lerp(new THREE.Color(GLOW_COOL), 0.5); }
+// Vertical linear-gradient fill baked into the geometry: top = the chosen colour,
+// fading down to near-black so the letters sink into the void. Re-paintable live.
+function paintGradient(geo, color) {
+  if (!geo.boundingBox) geo.computeBoundingBox();
+  const y0 = geo.boundingBox.min.y, h = Math.max(1e-4, geo.boundingBox.max.y - geo.boundingBox.min.y);
+  const pos = geo.attributes.position, n = pos.count;
+  let attr = geo.getAttribute('color');
+  if (!attr || attr.count !== n) { attr = new THREE.BufferAttribute(new Float32Array(n * 3), 3); geo.setAttribute('color', attr); }
+  const top = new THREE.Color(color), bot = top.clone().multiplyScalar(0.06), c = new THREE.Color();
+  for (let i = 0; i < n; i++) { const ty = (pos.getY(i) - y0) / h; c.copy(bot).lerp(top, ty * ty * (3 - 2 * ty)); attr.setXYZ(i, c.r, c.g, c.b); }
+  attr.needsUpdate = true;
+}
 
 let _uid = 1;
 export const defaultText = () => ({
@@ -71,10 +83,10 @@ export function createText3D() {
       bevelEnabled: d.bevel > 0, bevelThickness: d.bevel * 0.6, bevelSize: d.bevel, bevelSegments: 3,
     });
     geo.center();                              // pivot at the text's centre
-    const col = new THREE.Color(d.color);
+    paintGradient(geo, d.color);               // vertical gradient fill that blends into the void
     const mat = new THREE.MeshStandardMaterial({
-      color: col, emissive: glowEmissive(d.color), emissiveIntensity: d.glow * GLOW_SCALE,
-      metalness: 0.25, roughness: 0.45,
+      color: 0xffffff, vertexColors: true, emissive: glowEmissive(d.color), emissiveIntensity: d.glow * GLOW_SCALE,
+      metalness: 0.2, roughness: 0.6,
     });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(d.x, d.y, d.z);
@@ -100,7 +112,8 @@ export function createText3D() {
     it.mesh.position.set(d.x, d.y, d.z);
     it.mesh.rotation.set(THREE.MathUtils.degToRad(d.rx), THREE.MathUtils.degToRad(d.ry), THREE.MathUtils.degToRad(d.rz));
     it.mesh.material.emissiveIntensity = d.glow * GLOW_SCALE;
-    it.mesh.material.color.set(d.color); it.mesh.material.emissive.copy(glowEmissive(d.color));
+    it.mesh.material.emissive.copy(glowEmissive(d.color));
+    paintGradient(it.mesh.geometry, d.color);  // recolour the gradient fill in place (no rebuild)
   }
 
   function add(data) {
@@ -132,8 +145,8 @@ export function createText3D() {
       bevelEnabled: bevel > 0, bevelThickness: bevel * 0.6, bevelSize: bevel, bevelSegments: 3,
     });
     geo.center();
-    const col = new THREE.Color(opts.color || '#eaf4ff');
-    const mat = new THREE.MeshStandardMaterial({ color: col, emissive: glowEmissive(opts.color || '#eaf4ff'), emissiveIntensity: (opts.glow ?? 1.6) * GLOW_SCALE, metalness: 0.25, roughness: 0.45, transparent: true, opacity: 1 });
+    paintGradient(geo, opts.color || '#eaf4ff');
+    const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, emissive: glowEmissive(opts.color || '#eaf4ff'), emissiveIntensity: (opts.glow ?? 1.6) * GLOW_SCALE, metalness: 0.2, roughness: 0.6, transparent: true, opacity: 1 });
     const mesh = new THREE.Mesh(geo, mat); mesh.renderOrder = 3; mesh.userData = { type: 'headline' };
     return mesh;
   }
