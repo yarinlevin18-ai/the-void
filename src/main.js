@@ -2295,7 +2295,7 @@ function animate() {
   {                                          // neon wave ribbon — drift + warp around its section
     const w = waveRibbon;
     w.uniforms.uTime.value = t; w.uniforms.uAmp.value = FX.waveAmp; w.uniforms.uSpd.value = FX.waveSpd; w.uniforms.uCoil.value = FX.waveCoil;
-    w.group.visible = FX.waveOn && index >= 2; w.grid.visible = w.group.visible && FX.waveGrid;   // keep the ribbon off the Opening/Hero — clean intro composition
+    w.group.visible = false; w.grid.visible = false;   // ribbon taken out of the build
     if (FX.waveOn) {
       const last = Math.max(1, beats.length - 1), seg = clamp(progress, 0, 1) * last;
       const i0 = clamp(Math.floor(seg), 0, last), i1 = clamp(i0 + 1, 0, last), f = seg - i0;
