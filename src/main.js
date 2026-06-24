@@ -419,11 +419,22 @@ const heroCluster = (() => {
     const mat = new THREE.MeshBasicMaterial({ map: fallbackTex(spec.cw, spec.ch, spec.draw), transparent: true, opacity: 0, depthWrite: false });
     const m = new THREE.Mesh(new THREE.PlaneGeometry(spec.w, spec.h), mat); m.renderOrder = 1; group.add(m);
     loadArt(spec.png, mat);
-    cards.push({ m, mat, home: new THREE.Vector3(spec.x, spec.y, spec.z), enter: spec.enter, liss: spec.liss });
+    cards.push({ m, mat, id: spec.id, enter: spec.enter, liss: spec.liss });   // position/scale/styles live from assetCfg
   }
-  add({ png: 'assets/hero/dashboard.png',    draw: dashboard, w: 34, h: 21, cw: 520, ch: 325, x: 18, y: 11, z: -62, enter: 0.00, liss: { ax: 1.3, ay: 0.9, sp: 0.5, rz: 0.04, ph: 0 } });
-  add({ png: 'assets/hero/landing-card.png', draw: landing,   w: 30, h: 19, cw: 480, ch: 320, x: 27, y: -11, z: -50, enter: 0.10, liss: { ax: 1.6, ay: 1.1, sp: 0.42, rz: 0.05, ph: 1.7 } });
-  add({ png: 'assets/hero/component.png',    draw: component, w: 18, h: 11, cw: 300, ch: 170, x: 35, y: -2, z: -74, enter: 0.20, liss: { ax: 1.0, ay: 1.4, sp: 0.6, rz: 0.06, ph: 3.1 } });
+  function styleVec(s) {                          // entrance/exit offset + scale-from for a transition style
+    switch (s) {
+      case 'rise': return [0, -22, 0, 1];
+      case 'fall': return [0, 22, 0, 1];
+      case 'slideL': return [-34, 0, 0, 1];
+      case 'slideR': return [34, 0, 0, 1];
+      case 'depth': return [0, 0, -18, 1];
+      case 'scale': return [0, 0, 0, 0.5];
+      default: return [0, 0, 0, 1];               // fade
+    }
+  }
+  add({ id: 'card_dashboard', png: 'assets/hero/dashboard.png',    draw: dashboard, w: 34, h: 21, cw: 520, ch: 325, enter: 0.00, liss: { ax: 1.3, ay: 0.9, sp: 0.5, rz: 0.04, ph: 0 } });
+  add({ id: 'card_landing',   png: 'assets/hero/landing-card.png', draw: landing,   w: 30, h: 19, cw: 480, ch: 320, enter: 0.10, liss: { ax: 1.6, ay: 1.1, sp: 0.42, rz: 0.05, ph: 1.7 } });
+  add({ id: 'card_component', png: 'assets/hero/component.png',    draw: component, w: 18, h: 11, cw: 300, ch: 170, enter: 0.20, liss: { ax: 1.0, ay: 1.4, sp: 0.6, rz: 0.06, ph: 3.1 } });
   const anchor = new THREE.Vector3(-20, -1, -56);      // where the DOM statement reads (left-of-center) — line endpoint
   const lineGeo = new THREE.BufferGeometry(); const lp = new Float32Array(12);
   lineGeo.setAttribute('position', new THREE.BufferAttribute(lp, 3));
@@ -453,12 +464,15 @@ const heroCluster = (() => {
     pQ.setFromEuler(eul); group.quaternion.copy(baseQ).multiply(pQ);
     group.position.copy(C).addScaledVector(rt, px * 3.0).addScaledVector(uu, -py * 2.0);
     for (const cd of cards) {
+      const cfg = assetCfg[cd.id] || {};
       const ce = Math.max(0, Math.min(1, (op - cd.enter) / (1 - cd.enter)));   // staggered entrance
       const e = ce * ce * (3 - 2 * ce);
+      const sv = styleVec(active ? (cfg.ein || 'fade') : (cfg.eout || 'fade'));   // enter vs exit style
       const dx = RM ? 0 : Math.sin(t * cd.liss.sp + cd.liss.ph) * cd.liss.ax;  // idle Lissajous
       const dy = RM ? 0 : Math.cos(t * cd.liss.sp * 0.8 + cd.liss.ph) * cd.liss.ay;
-      cd.m.position.set(cd.home.x + dx, cd.home.y + dy, cd.home.z - (1 - e) * 16);   // drift in from further back
+      cd.m.position.set((cfg.x ?? 0) + dx + (1 - e) * sv[0], (cfg.y ?? 0) + dy + (1 - e) * sv[1], (cfg.z ?? -60) + (1 - e) * sv[2]);
       cd.m.rotation.z = RM ? 0 : Math.sin(t * cd.liss.sp * 0.7 + cd.liss.ph) * cd.liss.rz;
+      cd.m.scale.setScalar((cfg.scale || 1) * (sv[3] + (1 - sv[3]) * e));
       cd.mat.opacity = e * 0.96;
     }
     const a0 = cards[0].m.position, a2 = cards[2].m.position;
@@ -1207,10 +1221,18 @@ const ASSET_DEFS = [
   { id: 'hint',     label: 'Scroll hint',   sel: '#overlay .hint',      group: 'overlay', editable: true },
   { id: 'capTitle', label: 'Caption title', sel: '#caption .cap-title', group: 'caption', editable: false },
   { id: 'capDesc',  label: 'Caption sub',   sel: '#caption .cap-desc',  group: 'caption', editable: false },
+  { id: 'card_dashboard', label: 'Card · Dashboard', group: 'hero' },
+  { id: 'card_landing',   label: 'Card · Landing',   group: 'hero' },
+  { id: 'card_component', label: 'Card · Component',  group: 'hero' },
 ];
+const HERO_DEFAULTS = {       // local layout in the Hero cluster (x right, y up, z negative = into scene)
+  card_dashboard: { x: 18, y: 11, z: -62, scale: 1.0, ein: 'depth', eout: 'fade' },
+  card_landing:   { x: 27, y: -11, z: -50, scale: 0.9, ein: 'rise', eout: 'fade' },
+  card_component: { x: 35, y: -2, z: -74, scale: 0.7, ein: 'slideR', eout: 'fade' },
+};
 const ASSET_KEY = 'voidAssets';
 const _aDefault = () => ({ text: null, size: 1, font: '', depth: 0, mesh3d: false, in: { dur: 900, delay: 120, y: 26, blur: 7, ease: 'out' }, out: { dur: 500, delay: 0, y: -12, blur: 6, ease: 'inout' } });
-let assetCfg = {}; ASSET_DEFS.forEach((a) => { assetCfg[a.id] = _aDefault(); });
+let assetCfg = {}; ASSET_DEFS.forEach((a) => { assetCfg[a.id] = a.group === 'hero' ? { ...HERO_DEFAULTS[a.id] } : _aDefault(); });
 let assetDof = 6;            // DOF → text blur amount (px) at full defocus
 let _domDefocus = 0;
 const A_EASE = { out: 'cubic-bezier(0.22,1,0.36,1)', inout: 'cubic-bezier(0.65,0,0.35,1)', back: 'cubic-bezier(0.34,1.56,0.64,1)', linear: 'linear' };
@@ -1220,7 +1242,12 @@ try {
   const raw = localStorage.getItem(ASSET_KEY);
   if (raw) {
     const d = JSON.parse(raw);
-    if (d.cfg) for (const id in d.cfg) if (assetCfg[id]) assetCfg[id] = { text: d.cfg[id].text ?? null, size: d.cfg[id].size ?? 1, font: d.cfg[id].font ?? '', depth: d.cfg[id].depth ?? 0, mesh3d: d.cfg[id].mesh3d ?? false, in: { ...assetCfg[id].in, ...(d.cfg[id].in || {}) }, out: { ...assetCfg[id].out, ...(d.cfg[id].out || {}) } };
+    if (d.cfg) for (const id in d.cfg) if (assetCfg[id]) {                       // merge saved over defaults (works for text + hero assets)
+      const base = assetCfg[id], sv = d.cfg[id];
+      assetCfg[id] = { ...base, ...sv };
+      if (base.in) assetCfg[id].in = { ...base.in, ...(sv.in || {}) };
+      if (base.out) assetCfg[id].out = { ...base.out, ...(sv.out || {}) };
+    }
     if (typeof d.dof === 'number') assetDof = d.dof;
   }
 } catch (e) { /* keep defaults */ }
@@ -1991,7 +2018,11 @@ const asEl = document.querySelector('#assetpanel');
 let asSel = ASSET_DEFS[0].id;
 let _asFrame = -1;
 function curCapIdx() { return _capShown >= 0 ? _capShown : index; }   // caption text edits the section you're currently on
-function frameAssets() { return ASSET_DEFS.filter((a) => a.group === (index === 0 ? 'overlay' : 'caption')); }   // assets that belong to the current frame
+function frameAssets() {                          // assets that belong to the current frame
+  if (index === 0) return ASSET_DEFS.filter((a) => a.group === 'overlay');
+  const isHero = /^hero$/i.test((beats[index]?.name || '').trim());
+  return ASSET_DEFS.filter((a) => a.group === 'caption' || (isHero && a.group === 'hero'));
+}
 function loadAssetFields() {
   if (!asEl) return;
   _asFrame = index;
@@ -2000,6 +2031,18 @@ function loadAssetFields() {
   const list = document.querySelector('#as-list');
   if (list) { list.innerHTML = defs.map((a) => `<option value="${a.id}">${a.label}</option>`).join(''); list.value = asSel; }
   const def = assetDef(asSel), c = assetCfg[asSel];
+  const isHero = def.group === 'hero';
+  const tc = document.querySelector('#as-text-ctrls'), hc = document.querySelector('#as-hero-ctrls');
+  if (tc) tc.style.display = isHero ? 'none' : '';
+  if (hc) hc.style.display = isHero ? '' : 'none';
+  if (isHero) {                                  // floating card: position / scale / transition styles
+    const setR = (id, v, fmt) => { const el = document.querySelector('#' + id); if (el) el.value = v; const o = document.querySelector('#' + id + '-v'); if (o) o.textContent = fmt ? fmt(v) : v; };
+    setR('ah-x', c.x ?? 0, (v) => Math.round(v)); setR('ah-y', c.y ?? 0, (v) => Math.round(v)); setR('ah-z', c.z ?? -60, (v) => Math.round(v));
+    setR('ah-scale', c.scale ?? 1, (v) => (+v).toFixed(2) + '×');
+    const ein = document.querySelector('#ah-ein'); if (ein) ein.value = c.ein || 'fade';
+    const eout = document.querySelector('#ah-eout'); if (eout) eout.value = c.eout || 'fade';
+    return;
+  }
   const txt = document.querySelector('#as-text');
   if (txt) {
     txt.disabled = false;
@@ -2063,6 +2106,13 @@ function loadAssetFields() {
   if (dpi) dpi.addEventListener('input', () => { assetCfg[asSel].depth = parseFloat(dpi.value); applyAssetStyle(assetDef(asSel)); const o = document.querySelector('#as-depth-v'); if (o) o.textContent = parseFloat(dpi.value) + 'px'; saveAssets(); });
   const m3i = document.querySelector('#as-mesh3d');
   if (m3i) m3i.addEventListener('change', () => { assetCfg.capTitle.mesh3d = m3i.checked; saveAssets(); if (m3i.checked) hideAsset(assetDef('capTitle')); else replayAsset(assetDef('capTitle')); });
+  const ahBind = (id, key, fmt) => {              // floating-card position/scale → live into heroCluster
+    const el = document.querySelector('#' + id); if (!el) return;
+    el.addEventListener('input', () => { const v = parseFloat(el.value); assetCfg[asSel][key] = v; const o = document.querySelector('#' + id + '-v'); if (o) o.textContent = fmt ? fmt(v) : v; saveAssets(); });
+  };
+  ahBind('ah-x', 'x', (v) => Math.round(v)); ahBind('ah-y', 'y', (v) => Math.round(v)); ahBind('ah-z', 'z', (v) => Math.round(v)); ahBind('ah-scale', 'scale', (v) => v.toFixed(2) + '×');
+  const ahEin = document.querySelector('#ah-ein'); if (ahEin) ahEin.addEventListener('change', () => { assetCfg[asSel].ein = ahEin.value; saveAssets(); });
+  const ahEout = document.querySelector('#ah-eout'); if (ahEout) ahEout.addEventListener('change', () => { assetCfg[asSel].eout = ahEout.value; saveAssets(); });
   const prev = document.querySelector('#as-preview');
   if (prev) prev.addEventListener('click', () => replayAsset(assetDef(asSel)));
   loadAssetFields();
