@@ -114,14 +114,14 @@ const livingVoid = (() => {
     depthTest: false, depthWrite: false,
     uniforms: {
       uTime: { value: 0 }, uA: { value: window.innerWidth / window.innerHeight }, uSteps: { value: _reduced ? 18 : 40 },
-      uDens: { value: FX.nebula }, uSpd: { value: FX.nebSpd }, uWarp: { value: FX.nebWarp }, uHue: { value: FX.nebHue }, uEmber: { value: FX.nebEmber }, uGlow: { value: FX.nebGlow },
+      uDens: { value: FX.nebula }, uSpd: { value: FX.nebSpd }, uWarp: { value: FX.nebWarp }, uHue: { value: FX.nebHue }, uEmber: { value: FX.nebEmber }, uGlow: { value: FX.nebGlow }, uNebFrac: { value: FX.nebFrac },
       uCamPos: { value: new THREE.Vector3() }, uInvProj: { value: new THREE.Matrix4() }, uCamWorld: { value: new THREE.Matrix4() },
       uFlash: { value: new THREE.Vector3(0, 0, -300) }, uFlashAmt: { value: 0 }, uFlashCol: { value: new THREE.Color(0x9fd8ff) }, uFlashReach: { value: 0.00002 }, uCrackle: { value: 18 },
     },
     vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
     fragmentShader: `precision highp float; varying vec2 vUv;
       uniform vec3 uCamPos; uniform mat4 uInvProj, uCamWorld;
-      uniform float uTime,uA,uSteps,uDens,uSpd,uWarp,uHue,uEmber,uGlow,uFlashAmt,uFlashReach,uCrackle; uniform vec3 uFlash,uFlashCol;
+      uniform float uTime,uA,uSteps,uDens,uSpd,uWarp,uHue,uEmber,uGlow,uNebFrac,uFlashAmt,uFlashReach,uCrackle; uniform vec3 uFlash,uFlashCol;
       float hash(vec3 p){ p=fract(p*0.3183099+0.1); p*=17.0; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
       float noise(vec3 x){ vec3 i=floor(x),f=fract(x); f=f*f*(3.0-2.0*f);
         return mix(mix(mix(hash(i+vec3(0,0,0)),hash(i+vec3(1,0,0)),f.x),mix(hash(i+vec3(0,1,0)),hash(i+vec3(1,1,0)),f.x),f.y),
@@ -150,7 +150,7 @@ const livingVoid = (() => {
             float a=clamp(d*(stepLen*0.006)*(0.6+uDens*0.5)*fade,0.0,1.0);
             acc+=emit*a*(1.0-alpha); alpha+=a*(1.0-alpha); }
           t+=stepLen; }
-        vec3 col=vec3(0.012,0.020,0.030)+acc;
+        vec3 col=vec3(0.012,0.020,0.030)+acc*uNebFrac;   // Clouds slider = smooth density fade
         col*=1.0-0.5*smoothstep(0.3,1.0,distance(vUv,vec2(0.5)));
         col+=(hash(vec3(gl_FragCoord.xy,1.0))-0.5)/255.0;
         gl_FragColor=vec4(col,1.0); }`,
@@ -328,6 +328,47 @@ const waveRibbon = (() => {
   return { uniforms, group, fill, grid };
 })();
 
+// ---- Falling stars (shooting-star streaks) — view-space, gated to one frame -----
+const meteors = (() => {
+  const M = 8;
+  const pos = new Float32Array(M * 6), col = new Float32Array(M * 6);
+  const data = [];
+  for (let i = 0; i < M; i++) data.push({ on: false, next: Math.random() * 5, life: 0, dur: 1, x: 0, y: 0, z: 0, vx: 0, vy: 0 });
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const obj = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, depthTest: false, blending: THREE.AdditiveBlending }));
+  obj.frustumCulled = false; obj.renderOrder = -7; obj.visible = false;
+  scene.add(obj);
+  function update(dt, active) {
+    obj.visible = active;
+    if (!active) return;
+    for (let i = 0; i < M; i++) {
+      const m = data[i], o = i * 6;
+      if (!m.on) {
+        m.next -= dt;
+        if (m.next <= 0) {                                   // launch a new streak
+          m.on = true; m.life = 0; m.dur = 0.55 + Math.random() * 0.6;
+          m.x = (Math.random() * 2 - 1) * 350; m.y = 90 + Math.random() * 200; m.z = -260 - Math.random() * 320;
+          const sp = 320 + Math.random() * 260; m.vx = -sp * (0.5 + Math.random() * 0.4); m.vy = -sp;  // streak down-left
+        }
+      }
+      if (m.on) {
+        m.life += dt; m.x += m.vx * dt; m.y += m.vy * dt;
+        const fade = Math.max(0, 1 - m.life / m.dur);
+        pos[o] = m.x; pos[o + 1] = m.y; pos[o + 2] = m.z;
+        pos[o + 3] = m.x - m.vx * 0.11; pos[o + 4] = m.y - m.vy * 0.11; pos[o + 5] = m.z;   // trailing tail
+        col[o] = 0.85 * fade; col[o + 1] = 0.92 * fade; col[o + 2] = fade;                   // bright head
+        col[o + 3] = 0; col[o + 4] = 0; col[o + 5] = 0;                                       // faded tail
+        if (m.life >= m.dur) { m.on = false; m.next = 0.8 + Math.random() * 5; }
+      } else { for (let k = 0; k < 6; k++) { pos[o + k] = 0; col[o + k] = 0; } }
+    }
+    geo.attributes.position.needsUpdate = true; geo.attributes.color.needsUpdate = true;
+    obj.position.copy(camera.position); obj.quaternion.copy(camera.quaternion);   // ride the view (sky overlay)
+  }
+  return { update };
+})();
+
 // ---- Placeable extruded 3D text (Ogg) ---------------------------------------
 // Lights are added only for the standard-material text — the particle shaders
 // ignore them. Emissive + bloom make the letters glow; the directional light
@@ -344,7 +385,7 @@ text3d.loadFont().then((r) => { const el = document.querySelector('#text-status'
 // Runs at startup too, so editing the FX defaults also tunes the published build.
 function applyVoidDensity() {
   livingVoid.sgeo.setDrawRange(0, Math.max(0, Math.floor(livingVoid.STAR_N * FX.starFrac)));
-  livingVoid.composite.visible = FX.nebFrac > 0.02;   // toggle the volumetric nebula
+  livingVoid.nebMat.uniforms.uNebFrac.value = FX.nebFrac;   // Clouds = nebula density (smooth fade)
 }
 applyVoidDensity();
 
@@ -1874,6 +1915,7 @@ function animate() {
   resolveFX();                               // per-beat FX keyframes → interpolated live values
   livingVoid.nebMat.uniforms.uDens.value = curFX.nebula;   // per-section nebula density (keyframed)
   livingVoid.update(t);                      // advance nebula + starfield time
+  meteors.update(dt, !editMode && !freeRoam && index === 0);   // falling stars on the start frame only
   {                                          // neon wave ribbon — drift + warp around its section
     const w = waveRibbon;
     w.uniforms.uTime.value = t; w.uniforms.uAmp.value = FX.waveAmp; w.uniforms.uSpd.value = FX.waveSpd; w.uniforms.uCoil.value = FX.waveCoil;
