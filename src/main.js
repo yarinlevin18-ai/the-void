@@ -72,6 +72,7 @@ let _flash = 0, _nextFlash = 2.5;                  // nebula lightning strikes
 let _cVel = 0, _cVelRaw = 0, _flickCD = 0, _pPX = null, _pPY = null;   // smoothed cursor velocity
 const _cN = new THREE.Vector2(9, 9), _cWorld = new THREE.Vector3();    // pointer NDC + world-ray scratch
 const _ray = new THREE.Raycaster();                                   // cursor → section hit-test (liquid cursor)
+const _waveTgt = new THREE.Vector3();                                 // wave-ribbon follow target
 const _focusV = new THREE.Vector3();
 
 // ---- Offscreen renderer that draws each shot's thumbnail in the editor list -
@@ -1787,6 +1788,11 @@ function animate() {
     w.uniforms.uTime.value = t; w.uniforms.uAmp.value = FX.waveAmp; w.uniforms.uSpd.value = FX.waveSpd; w.uniforms.uCoil.value = FX.waveCoil;
     w.group.visible = FX.waveOn; w.grid.visible = FX.waveOn && FX.waveGrid;
     if (FX.waveOn) {
+      const last = Math.max(1, beats.length - 1), seg = clamp(progress, 0, 1) * last;
+      const i0 = clamp(Math.floor(seg), 0, last), i1 = clamp(i0 + 1, 0, last), f = seg - i0;
+      const la = beats[i0].look, lb = beats[i1].look;
+      _waveTgt.set(la[0] + (lb[0] - la[0]) * f, la[1] + (lb[1] - la[1]) * f, la[2] + (lb[2] - la[2]) * f);
+      w.group.userData.anchor.lerp(_waveTgt, 0.06);   // ribbon glides with the camera, re-wrapping each section
       const an = w.group.userData.anchor;
       w.group.position.set(an.x + Math.sin(t * 0.18) * 18, an.y + Math.cos(t * 0.15) * 9 + 2, an.z + Math.sin(t * 0.12) * 9 - 8);
       w.group.rotation.set(Math.cos(t * 0.09) * 0.12, Math.sin(t * 0.10) * 0.5, Math.sin(t * 0.07) * 0.22);
