@@ -75,6 +75,7 @@ let _cVel = 0, _cVelRaw = 0, _flickCD = 0, _pPX = null, _pPY = null;   // smooth
 const _cN = new THREE.Vector2(9, 9), _cWorld = new THREE.Vector3();    // pointer NDC + world-ray scratch
 const _ray = new THREE.Raycaster();                                   // cursor → section hit-test (liquid cursor)
 const _waveTgt = new THREE.Vector3();                                 // wave-ribbon follow target
+const _pc = new THREE.Vector3();                                      // panel-corner projection (water rect)
 const _wUV = new THREE.Vector2(-9, -9);                               // pointer in 0..1 uv (water sim drop)
 const PREFERS_REDUCED = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 let water = null;                                                     // water swipe system (set up after the composer)
@@ -1554,10 +1555,11 @@ if (composer && !PREFERS_REDUCED) try {
     tPrev: { value: null }, uDelta: { value: new THREE.Vector2(1, 1) }, uA: { value: window.innerWidth / window.innerHeight },
     uM: { value: new THREE.Vector2(-9, -9) }, uPM: { value: new THREE.Vector2(-9, -9) },
     uRad: { value: FX.waterRad }, uStr: { value: FX.waterStr }, uDown: { value: 0 }, uAtt: { value: FX.waterAtt },
+    uRect: { value: new THREE.Vector4(2, 2, 2, 2) },
   };
   const simMat = new THREE.ShaderMaterial({ uniforms: simU,
     vertexShader: `varying vec2 v; void main(){ v=uv; gl_Position=vec4(position.xy,0.,1.); }`,
-    fragmentShader: `varying vec2 v; uniform sampler2D tPrev; uniform vec2 uDelta,uM,uPM; uniform float uA,uRad,uStr,uDown,uAtt;
+    fragmentShader: `varying vec2 v; uniform sampler2D tPrev; uniform vec2 uDelta,uM,uPM; uniform float uA,uRad,uStr,uDown,uAtt; uniform vec4 uRect;
       float segd(vec2 p,vec2 a,vec2 b){ vec2 pa=p-a,ba=b-a; float t=clamp(dot(pa,ba)/max(dot(ba,ba),1e-6),0.,1.); return length(pa-ba*t); }
       void main(){
         vec2 info=texture2D(tPrev,v).rg;
@@ -1566,7 +1568,8 @@ if (composer && !PREFERS_REDUCED) try {
         info.g += (avg-info.r)*2.0; info.g *= uAtt; info.r += info.g;        // verlet + damping
         vec2 p=v; p.x*=uA; vec2 a=uM; a.x*=uA; vec2 b=uPM; b.x*=uA;
         float d=segd(p,a,b); float dd=1.0-clamp(d/uRad,0.0,1.0); float drop=0.5-0.5*cos(dd*3.14159265);
-        info.r += drop*uStr*uDown;                                          // cosine splash along the cursor stroke
+        float inSec=step(uRect.x,v.x)*step(v.x,uRect.z)*step(uRect.y,v.y)*step(v.y,uRect.w);  // splash only inside the section rect
+        info.r += drop*uStr*uDown*inSec;
         gl_FragColor=vec4(info,0.,1.); }` });
   const simScene = new THREE.Scene(); simScene.add(new THREE.Mesh(wq, simMat));
   const sizeSim = () => {
@@ -1580,26 +1583,29 @@ if (composer && !PREFERS_REDUCED) try {
   };
   sizeSim();
   const waterPass = new ShaderPass({
-    uniforms: { tDiffuse: { value: null }, tSim: { value: null }, uDelta: { value: new THREE.Vector2(1, 1) }, uDisp: { value: FX.waterDisp }, uSheen: { value: FX.waterSheen } },
+    uniforms: { tDiffuse: { value: null }, tSim: { value: null }, uDelta: { value: new THREE.Vector2(1, 1) }, uDisp: { value: FX.waterDisp }, uSheen: { value: FX.waterSheen }, uRect: { value: new THREE.Vector4(2, 2, 2, 2) } },
     vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
-    fragmentShader: `varying vec2 vUv; uniform sampler2D tDiffuse,tSim; uniform vec2 uDelta; uniform float uDisp,uSheen;
+    fragmentShader: `varying vec2 vUv; uniform sampler2D tDiffuse,tSim; uniform vec2 uDelta; uniform float uDisp,uSheen; uniform vec4 uRect;
       void main(){
         vec2 dx=vec2(uDelta.x,0.), dy=vec2(0.,uDelta.y);
         float hl=texture2D(tSim,vUv-dx).r, hr=texture2D(tSim,vUv+dx).r, hd=texture2D(tSim,vUv-dy).r, hu=texture2D(tSim,vUv+dy).r;
-        vec2 grad=vec2(hr-hl,hu-hd); vec2 off=grad*uDisp;
+        vec2 grad=vec2(hr-hl,hu-hd);
+        float msk=smoothstep(uRect.x,uRect.x+0.03,vUv.x)*smoothstep(uRect.z,uRect.z-0.03,vUv.x)*smoothstep(uRect.y,uRect.y+0.03,vUv.y)*smoothstep(uRect.w,uRect.w-0.03,vUv.y);  // soft-clip to the section
+        vec2 off=grad*uDisp*msk;
         vec3 col;
         col.r=texture2D(tDiffuse,vUv-off*1.05).r;
         col.g=texture2D(tDiffuse,vUv-off).g;
         col.b=texture2D(tDiffuse,vUv-off*0.95).b;
         vec3 nrm=normalize(vec3(-grad*120.0,1.0));
-        float spec=pow(max(dot(nrm,normalize(vec3(-0.5,0.6,1.0))),0.0),16.0);
+        float spec=pow(max(dot(nrm,normalize(vec3(-0.5,0.6,1.0))),0.0),16.0)*msk;
         col+=vec3(0.65,0.85,1.0)*spec*uSheen;
-        col+=vec3(0.3,0.6,1.0)*length(grad)*30.0*uSheen*0.15;               // faint cool wake edge
+        col+=vec3(0.3,0.6,1.0)*length(grad)*30.0*uSheen*0.15*msk;           // faint cool wake edge (clipped)
         gl_FragColor=vec4(col,1.0); }` });
   waterPass.uniforms.uDelta.value.copy(simU.uDelta.value);
   composer.addPass(waterPass);
   water = {
     sizeSim, prev: { x: -9, y: -9 },
+    setRect(x, y, z, w) { simU.uRect.value.set(x, y, z, w); waterPass.uniforms.uRect.value.set(x, y, z, w); },
     step(mx, my, down) {
       simU.tPrev.value = simB.texture; simU.uPM.value.set(this.prev.x, this.prev.y); simU.uM.value.set(mx, my); simU.uDown.value = down;
       simU.uStr.value = FX.waterStr; simU.uRad.value = FX.waterRad; simU.uAtt.value = FX.waterAtt;
@@ -2002,7 +2008,21 @@ function animate() {
     renderer.render(livingVoid.fsScene, livingVoid.fsCam);
     renderer.setRenderTarget(null);
   }
-  if (water) { const down = (!editMode && !freeRoam && beats[index] && beats[index].water) ? 1 : 0; water.step(_wUV.x, _wUV.y, down); }
+  if (water) {                               // clip the water to the current section's on-screen rectangle
+    const pn = beats[index] && beats[index].panel, pm = panelMeshes[index];
+    if (!editMode && !freeRoam && beats[index] && beats[index].water && pn && pm) {
+      pm.updateMatrixWorld();
+      const hw = pn.size[0] / 2, hh = pn.size[1] / 2;
+      let mnx = 9, mny = 9, mxx = -9, mxy = -9;
+      for (let cx = -1; cx <= 1; cx += 2) for (let cy = -1; cy <= 1; cy += 2) {
+        _pc.set(cx * hw, cy * hh, 0).applyMatrix4(pm.matrixWorld).project(camera);
+        const ux = _pc.x * 0.5 + 0.5, uy = _pc.y * 0.5 + 0.5;
+        mnx = Math.min(mnx, ux); mny = Math.min(mny, uy); mxx = Math.max(mxx, ux); mxy = Math.max(mxy, uy);
+      }
+      water.setRect(mnx, mny, mxx, mxy);
+      water.step(_wUV.x, _wUV.y, 1);
+    } else { water.setRect(2, 2, 2, 2); water.step(_wUV.x, _wUV.y, 0); }
+  }
   if (composer) composer.render(); else renderer.render(scene, camera);
   if (PROF) {
     const now = performance.now();
