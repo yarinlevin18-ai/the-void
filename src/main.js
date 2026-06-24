@@ -1917,12 +1917,16 @@ function togglePanel(target) {
 // ---- Assets panel (toggle A) — per-asset text + in/out animation + DOF blur ---
 const asEl = document.querySelector('#assetpanel');
 let asSel = ASSET_DEFS[0].id;
+let _asFrame = -1;
 function curCapIdx() { return _capShown >= 0 ? _capShown : index; }   // caption text edits the section you're currently on
+function frameAssets() { return ASSET_DEFS.filter((a) => a.group === (index === 0 ? 'overlay' : 'caption')); }   // assets that belong to the current frame
 function loadAssetFields() {
   if (!asEl) return;
+  _asFrame = index;
+  const defs = frameAssets();
+  if (!defs.find((a) => a.id === asSel)) asSel = (defs[0] || ASSET_DEFS[0]).id;   // keep the selection valid for this frame
   const list = document.querySelector('#as-list');
-  if (list && !list._filled) { list.innerHTML = ASSET_DEFS.map((a) => `<option value="${a.id}">${a.label}</option>`).join(''); list._filled = true; }
-  if (list) list.value = asSel;
+  if (list) { list.innerHTML = defs.map((a) => `<option value="${a.id}">${a.label}</option>`).join(''); list.value = asSel; }
   const def = assetDef(asSel), c = assetCfg[asSel];
   const txt = document.querySelector('#as-text');
   if (txt) {
@@ -2202,6 +2206,7 @@ function animate() {
     const showOpening = !editMode && !freeRoam && progress < 0.04;  // the Opening text lives at the very start
     for (const a of ASSET_DEFS) if (a.group === 'overlay') (showOpening ? showAsset : hideAsset)(a);
     updateAssetDOF(!editMode && !freeRoam && !!tween);              // text defocuses while flying
+    if (asEl && !asEl.hidden && index !== _asFrame) loadAssetFields();   // panel follows the frame you fly to
   } catch (e) { if (!animate._aerr) { console.error('[assets]', e); animate._aerr = 1; } }
 
   // "visit live" button for the section currently in view (play mode only)
