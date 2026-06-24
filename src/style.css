@@ -38,6 +38,7 @@ html, body {
   transition: opacity 0.4s ease;
 }
 #overlay h1 {
+  display: none;   /* hidden — the placed 3D "yarin" (Y panel) is the hero wordmark now */
   font-family: "ogg", Georgia, serif;
   font-size: clamp(3rem, 11vw, 8.5rem);
   font-weight: 600;

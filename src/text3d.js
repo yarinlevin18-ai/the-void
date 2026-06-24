@@ -23,7 +23,7 @@ const STORE_KEY = 'voidTexts';
 // Glow that reads as a soft cool halo instead of a white blow-out: tint the
 // emissive toward cyan + scale the slider down, so the lit faces/bevels still
 // show the 3D form and only the edges bloom. Shared by build + live-apply.
-const GLOW_COOL = 0x57c1ff, GLOW_SCALE = 0.12;   // glow is now only a faint accent over a gradient fill
+const GLOW_COOL = 0x57c1ff, GLOW_SCALE = 0.5;    // emissive glow strength (bloomable)
 function glowEmissive(color) { return new THREE.Color(color).multiplyScalar(0.55).lerp(new THREE.Color(GLOW_COOL), 0.5); }
 // Vertical linear-gradient fill baked into the geometry: top = the chosen colour,
 // fading down to near-black so the letters sink into the void. Re-paintable live.
@@ -36,6 +36,18 @@ function paintGradient(geo, color) {
   const top = new THREE.Color(color), bot = top.clone().multiplyScalar(0.06), c = new THREE.Color();
   for (let i = 0; i < n; i++) { const ty = (pos.getY(i) - y0) / h; c.copy(bot).lerp(top, ty * ty * (3 - 2 * ty)); attr.setXYZ(i, c.r, c.g, c.b); }
   attr.needsUpdate = true;
+}
+// Liquid-glass material: glossy clearcoat + thin-film iridescence reflecting the
+// scene environment, a linear vertex-gradient fill, and a bloomable cool glow.
+function makeGlassMat(color, glow, transparent) {
+  return new THREE.MeshPhysicalMaterial({
+    color: 0xffffff, vertexColors: true,
+    metalness: 0.0, roughness: 0.16,
+    clearcoat: 1.0, clearcoatRoughness: 0.22,
+    iridescence: 1.0, iridescenceIOR: 1.3, iridescenceThicknessRange: [130, 460],
+    emissive: glowEmissive(color), emissiveIntensity: glow * GLOW_SCALE,
+    envMapIntensity: 1.25, transparent: !!transparent, opacity: 1,
+  });
 }
 
 let _uid = 1;
@@ -83,11 +95,8 @@ export function createText3D() {
       bevelEnabled: d.bevel > 0, bevelThickness: d.bevel * 0.6, bevelSize: d.bevel, bevelSegments: 3,
     });
     geo.center();                              // pivot at the text's centre
-    paintGradient(geo, d.color);               // vertical gradient fill that blends into the void
-    const mat = new THREE.MeshStandardMaterial({
-      color: 0xffffff, vertexColors: true, emissive: glowEmissive(d.color), emissiveIntensity: d.glow * GLOW_SCALE,
-      metalness: 0.2, roughness: 0.6,
-    });
+    paintGradient(geo, d.color);               // linear gradient fill
+    const mat = makeGlassMat(d.color, d.glow, false);   // glowing liquid glass
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(d.x, d.y, d.z);
     mesh.rotation.set(THREE.MathUtils.degToRad(d.rx), THREE.MathUtils.degToRad(d.ry), THREE.MathUtils.degToRad(d.rz));
@@ -146,7 +155,7 @@ export function createText3D() {
     });
     geo.center();
     paintGradient(geo, opts.color || '#eaf4ff');
-    const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, emissive: glowEmissive(opts.color || '#eaf4ff'), emissiveIntensity: (opts.glow ?? 1.6) * GLOW_SCALE, metalness: 0.2, roughness: 0.6, transparent: true, opacity: 1 });
+    const mat = makeGlassMat(opts.color || '#eaf4ff', opts.glow ?? 1.6, true);
     const mesh = new THREE.Mesh(geo, mat); mesh.renderOrder = 3; mesh.userData = { type: 'headline' };
     return mesh;
   }
