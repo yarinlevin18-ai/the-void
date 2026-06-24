@@ -20,6 +20,12 @@ const OGG_CANDIDATES = [
 const FALLBACK = { url: '/fonts/fallback-serif.typeface.json', type: 'json' };
 const STORE_KEY = 'voidTexts';
 
+// Glow that reads as a soft cool halo instead of a white blow-out: tint the
+// emissive toward cyan + scale the slider down, so the lit faces/bevels still
+// show the 3D form and only the edges bloom. Shared by build + live-apply.
+const GLOW_COOL = 0x57c1ff, GLOW_SCALE = 0.5;
+function glowEmissive(color) { return new THREE.Color(color).multiplyScalar(0.55).lerp(new THREE.Color(GLOW_COOL), 0.5); }
+
 let _uid = 1;
 export const defaultText = () => ({
   id: _uid++, text: 'OGG',
@@ -67,8 +73,8 @@ export function createText3D() {
     geo.center();                              // pivot at the text's centre
     const col = new THREE.Color(d.color);
     const mat = new THREE.MeshStandardMaterial({
-      color: col, emissive: col, emissiveIntensity: d.glow,
-      metalness: 0.35, roughness: 0.35,
+      color: col, emissive: glowEmissive(d.color), emissiveIntensity: d.glow * GLOW_SCALE,
+      metalness: 0.25, roughness: 0.45,
     });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(d.x, d.y, d.z);
@@ -93,8 +99,8 @@ export function createText3D() {
     const d = it.data;
     it.mesh.position.set(d.x, d.y, d.z);
     it.mesh.rotation.set(THREE.MathUtils.degToRad(d.rx), THREE.MathUtils.degToRad(d.ry), THREE.MathUtils.degToRad(d.rz));
-    it.mesh.material.emissiveIntensity = d.glow;
-    it.mesh.material.color.set(d.color); it.mesh.material.emissive.set(d.color);
+    it.mesh.material.emissiveIntensity = d.glow * GLOW_SCALE;
+    it.mesh.material.color.set(d.color); it.mesh.material.emissive.copy(glowEmissive(d.color));
   }
 
   function add(data) {
@@ -127,7 +133,7 @@ export function createText3D() {
     });
     geo.center();
     const col = new THREE.Color(opts.color || '#eaf4ff');
-    const mat = new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: opts.glow ?? 1.6, metalness: 0.35, roughness: 0.35, transparent: true, opacity: 1 });
+    const mat = new THREE.MeshStandardMaterial({ color: col, emissive: glowEmissive(opts.color || '#eaf4ff'), emissiveIntensity: (opts.glow ?? 1.6) * GLOW_SCALE, metalness: 0.25, roughness: 0.45, transparent: true, opacity: 1 });
     const mesh = new THREE.Mesh(geo, mat); mesh.renderOrder = 3; mesh.userData = { type: 'headline' };
     return mesh;
   }
