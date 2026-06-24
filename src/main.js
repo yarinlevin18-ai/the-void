@@ -369,6 +369,89 @@ const meteors = (() => {
   return { update };
 })();
 
+// ---- FRAME 2: frosted-glass UI fragments orbiting the Hero statement -----------
+const heroFragments = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const ACCENT = 'rgba(95,210,255,';
+  function rr(x, a, b, w, h, r) { x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r); x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath(); }
+  function glass(x, w, h) {
+    x.clearRect(0, 0, w, h); rr(x, 8, 8, w - 16, h - 16, 22);
+    const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(20,30,44,0.66)'); g.addColorStop(1, 'rgba(7,11,19,0.66)');
+    x.fillStyle = g; x.fill(); x.lineWidth = 2.5; x.strokeStyle = ACCENT + '0.5)'; x.stroke();
+  }
+  function dashboard(x, w, h) {                       // (a) mini SaaS dashboard + glowing line chart
+    glass(x, w, h);
+    x.fillStyle = 'rgba(150,195,228,0.85)'; x.font = '600 24px "source-code-pro", monospace'; x.fillText('DASHBOARD', 34, 56);
+    x.fillStyle = ACCENT + '0.16)'; rr(x, 34, 74, 150, 38, 8); x.fill(); rr(x, 198, 74, 110, 38, 8); x.fill();
+    x.strokeStyle = ACCENT + '0.95)'; x.lineWidth = 4; x.shadowColor = ACCENT + '0.9)'; x.shadowBlur = 16; x.beginPath();
+    const ys = [0.2, 0.5, 0.32, 0.7, 0.55, 0.92, 0.78];
+    for (let i = 0; i < ys.length; i++) { const px = 40 + i * (w - 96) / (ys.length - 1), py = h - 46 - ys[i] * (h - 170); i ? x.lineTo(px, py) : x.moveTo(px, py); }
+    x.stroke(); x.shadowBlur = 0;
+  }
+  function landing(x, w, h) {                         // (b) landing-page hero card
+    glass(x, w, h);
+    x.fillStyle = ACCENT + '0.14)'; rr(x, 34, 34, w - 68, 92, 12); x.fill();
+    x.fillStyle = 'rgba(235,244,255,0.92)'; x.font = '600 36px "ogg", Georgia, serif'; x.fillText('Build. Ship.', 52, 96);
+    x.fillStyle = 'rgba(150,190,220,0.7)'; x.font = '17px "acumin-pro", sans-serif'; x.fillText('A landing page that moves.', 52, 150);
+    x.fillStyle = ACCENT + '0.85)'; rr(x, 34, h - 80, 134, 46, 23); x.fill();
+    x.fillStyle = 'rgba(150,190,220,0.45)'; rr(x, 182, h - 80, 134, 46, 23); x.fill();
+  }
+  function component(x, w, h) {                       // (c) small UI component (toggle + button)
+    glass(x, w, h);
+    x.strokeStyle = ACCENT + '0.55)'; x.lineWidth = 3; rr(x, 34, 38, 100, 46, 23); x.stroke();
+    x.fillStyle = ACCENT + '0.95)'; x.shadowColor = ACCENT + '0.9)'; x.shadowBlur = 14; x.beginPath(); x.arc(111, 61, 16, 0, 7); x.fill(); x.shadowBlur = 0;
+    x.fillStyle = ACCENT + '0.85)'; rr(x, 34, h - 66, 150, 38, 10); x.fill();
+  }
+  function makeTex(cw, ch, draw, blur) {
+    const c = document.createElement('canvas'); c.width = cw; c.height = ch; const x = c.getContext('2d');
+    if (blur) x.filter = `blur(${blur}px)`; draw(x, cw, ch);
+    const t = new THREE.CanvasTexture(c); t.anisotropy = 4; t.colorSpace = THREE.SRGBColorSpace; return t;
+  }
+  const cards = [];
+  function add(draw, w, h, cw, ch, blur, depth, ox, oy, drift) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: makeTex(cw, ch, draw, blur), transparent: true, opacity: 0, depthWrite: false }));
+    m.renderOrder = 1; group.add(m);
+    cards.push({ m, depth, ox, oy, drift, base: new THREE.Vector3() });
+  }
+  add(dashboard, 32, 20, 520, 325, 0, 58, 14, 9, { ax: 1.3, ay: 0.9, sp: 0.5, ph: 0 });      // mid depth, crisp
+  add(landing, 27, 18, 480, 320, 1.4, 80, 31, -9, { ax: 1.7, ay: 1.1, sp: 0.42, ph: 1.7 });  // far, soft depth-blur
+  add(component, 15, 9, 300, 170, 0, 46, 4, -15, { ax: 1.0, ay: 1.4, sp: 0.6, ph: 3.1 });     // near, crisp
+  const lineGeo = new THREE.BufferGeometry(); const lp = new Float32Array(12);
+  lineGeo.setAttribute('position', new THREE.BufferAttribute(lp, 3));
+  const line = new THREE.LineSegments(lineGeo, new THREE.LineBasicMaterial({ color: 0x3a86a8, transparent: true, opacity: 0, depthWrite: false }));
+  line.renderOrder = 0; group.add(line);
+  const C = new THREE.Vector3(), f = new THREE.Vector3(), rt = new THREE.Vector3(), uu = new THREE.Vector3(), tmp = new THREE.Vector3(), anchor = new THREE.Vector3();
+  let placed = false, op = 0;
+  function place(b) {                                  // frame the cards in the Hero beat's camera view
+    if (!b || !b.cam || !b.look) return;
+    C.set(b.cam[0], b.cam[1], b.cam[2]);
+    f.set(b.look[0] - C.x, b.look[1] - C.y, b.look[2] - C.z).normalize();
+    uu.set(b.up?.[0] ?? 0, b.up?.[1] ?? 1, b.up?.[2] ?? 0);
+    rt.copy(f).cross(uu).normalize(); uu.copy(rt).cross(f).normalize();
+    for (const cd of cards) cd.base.copy(C).addScaledVector(f, cd.depth).addScaledVector(rt, cd.ox).addScaledVector(uu, cd.oy);
+    anchor.copy(C).addScaledVector(f, 60).addScaledVector(rt, -20).addScaledVector(uu, -3);   // the statement, lower-left
+    placed = true;
+  }
+  function update(active, t, b) {
+    op += ((active ? 1 : 0) - op) * 0.06; group.visible = op > 0.01;
+    if (!group.visible) return;
+    if (active && !placed) place(b);
+    if (!placed) return;
+    const mx = PREFERS_REDUCED ? 0 : mouse.x, my = PREFERS_REDUCED ? 0 : mouse.y;
+    for (const cd of cards) {
+      const dx = PREFERS_REDUCED ? 0 : Math.sin(t * cd.drift.sp + cd.drift.ph) * cd.drift.ax;
+      const dy = PREFERS_REDUCED ? 0 : Math.cos(t * cd.drift.sp * 0.8 + cd.drift.ph) * cd.drift.ay;
+      const pf = cd.depth / 58;
+      tmp.copy(cd.base).addScaledVector(rt, dx + mx * 3.0 * pf).addScaledVector(uu, dy - my * 3.0 * pf);
+      cd.m.position.copy(tmp); cd.m.lookAt(C); cd.m.material.opacity = op * 0.95;
+    }
+    const a = cards[0].m.position, c = cards[2].m.position;
+    lp.set([anchor.x, anchor.y, anchor.z, a.x, a.y, a.z, anchor.x, anchor.y, anchor.z, c.x, c.y, c.z]);
+    lineGeo.attributes.position.needsUpdate = true; line.material.opacity = op * 0.3;
+  }
+  return { update };
+})();
+
 // ---- Placeable extruded 3D text (Ogg) ---------------------------------------
 // Lights are added only for the standard-material text — the particle shaders
 // ignore them. Emissive + bloom make the letters glow; the directional light
@@ -423,8 +506,8 @@ const makeHeroBeat = () => ({
 });
 // Baked from the user's exported path (Copy config) — kept exactly as-is.
 const DEFAULT_BEATS = [
-  { name: 'Hero', cam: [-56, 2, 120], look: [-11, 59, 42], up: [0, 1, 0], fov: 25, dur: 1.4, desc: 'Landing pages & SaaS interfaces — fly through the work.', img: '', link: '', panel: { pos: [196, -53, -70], size: [120, 64], rot: [-5, -68, 2], billboard: false } },
-  { name: 'Transition', cam: [1, 53, 33], look: [192, -55, -56], up: [0, 1, 0], fov: 41, dur: 1.6, desc: '', img: '', link: '', panel: null },
+  { name: 'Opening', cam: [-56, 2, 120], look: [-11, 59, 42], up: [0, 1, 0], fov: 25, dur: 1.4, desc: 'Landing pages & SaaS interfaces — fly through the work.', img: '', link: '', panel: null },
+  { name: 'Hero', cam: [1, 53, 33], look: [192, -55, -56], up: [0, 1, 0], fov: 41, dur: 1.6, desc: '', img: '', link: '', panel: null },
   { name: 'My Projects', cam: [9, 10, -69], look: [15, 4, -119], up: [-0.66418640324206, 0.7376001166578326, -0.1216654825935754], fov: 83, dur: 1.6, desc: '', img: '', link: '', panel: { pos: [15, 4, -119], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
   { name: 'Project 1', cam: [0, 2, -190], look: [-22, 0, -235], up: [0, 1, 0], fov: 87, dur: 1.6, desc: '', img: '', link: '', panel: { pos: [-22, 0, -235], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
   { name: 'Project 2', cam: [0, 2, -310], look: [22, 0, -355], up: [0, 1, 0], fov: 80, dur: 1.6, desc: '', img: '', link: '', panel: { pos: [22, 0, -355], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
@@ -493,6 +576,12 @@ function load() {
           if (fin) fin.dur = 3;                                                          // slow the last transition into the finale
           migrated = true;
         }
+        if (!(d.version >= 6)) {
+          if (beats[0]) { beats[0].name = 'Opening'; beats[0].panel = null; }     // Frame 1: opening = wordmark only, drop the empty panel
+          const tr = beats.find((b) => /^transition$/i.test((b.name || '').trim()));
+          if (tr) tr.name = 'Hero';                                               // Frame 2: the statement beat
+          migrated = true;
+        }
         if (migrated) save();
         return;
       }
@@ -503,7 +592,7 @@ function load() {
 }
 function save() {
   const g = {}; for (const k of GLOBAL_KEYS) g[k] = FX[k]; g.ease = txEaseName;
-  localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 5 }));
+  localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 6 }));
 }
 // push the global (saved) FX/UX/transition state into the live scene + DOM
 function applyGlobals() {
@@ -1043,11 +1132,12 @@ const capEl = document.querySelector('#caption');
 const capLabel = capEl && capEl.querySelector('.cap-label');
 const capTitle = capEl && capEl.querySelector('.cap-title');
 const capDesc = capEl && capEl.querySelector('.cap-desc');
-const DEMO_CAPTIONS = beats.map((b, i) => ({
-  label: `CH.${String(i + 1).padStart(2, '0')} — ${b.name}`,
-  title: b.name,
-  desc: 'Placeholder copy — this is where the real section content will drop in.',
-}));
+const HERO_SUBLINE = true;   // Frame 2: set false to show the headline alone (no sub-line)
+const DEMO_CAPTIONS = beats.map((b) => {
+  if (/^hero$/i.test((b.name || '').trim()))   // Frame 2 — the humble statement (no CH.0x kicker)
+    return { label: '', title: 'From knowing nothing about coding and design.', desc: HERO_SUBLINE ? 'Self-taught — everything here, I built.' : '' };
+  return { label: '', title: b.name, desc: 'Placeholder copy — real section content drops in here.' };
+});
 let _capShown = -1;
 let captionsOn = true;   // UI/UX panel toggle
 function setCaption(i) {
@@ -1916,6 +2006,7 @@ function animate() {
   livingVoid.nebMat.uniforms.uDens.value = curFX.nebula;   // per-section nebula density (keyframed)
   livingVoid.update(t);                      // advance nebula + starfield time
   meteors.update(dt, !editMode && !freeRoam && index === 0);   // falling stars on the start frame only
+  heroFragments.update(!editMode && !freeRoam && /^hero$/i.test(beats[index]?.name || ''), t, beats[index]);   // glass fragments at the Hero beat
   {                                          // neon wave ribbon — drift + warp around its section
     const w = waveRibbon;
     w.uniforms.uTime.value = t; w.uniforms.uAmp.value = FX.waveAmp; w.uniforms.uSpd.value = FX.waveSpd; w.uniforms.uCoil.value = FX.waveCoil;
