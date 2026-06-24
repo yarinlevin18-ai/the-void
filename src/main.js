@@ -129,7 +129,7 @@ const livingVoid = (() => {
       float fbm(vec3 p){ float s=0.0,a=0.5; for(int i=0;i<4;i++){ s+=a*noise(p); p=p*2.03+vec3(1.7,9.2,4.3); a*=0.5; } return s; }
       float density(vec3 P){ vec3 q=P*0.004+vec3(0.0,uTime*0.02*uSpd,uTime*0.012*uSpd);
         vec3 w=vec3(fbm(q+1.3),fbm(q+5.1),fbm(q+9.2)); float f=fbm(q+uWarp*w);
-        return smoothstep(0.6-uDens*0.28,0.95,f); }   // higher floor -> dark void gaps, not full coverage
+        return smoothstep(0.64-uDens*0.26,0.96,f); }   // sparser -> more open sky between the clouds
       void main(){
         vec4 clip=vec4(vUv*2.0-1.0,-1.0,1.0); vec4 vh=uInvProj*clip; vec3 viewDir=normalize(vh.xyz/vh.w);
         vec3 rd=normalize(mat3(uCamWorld)*viewDir); vec3 ro=uCamPos;
@@ -147,7 +147,7 @@ const livingVoid = (() => {
             float fil=pow(noise(p*0.06+uTime*4.0),3.0);                                     // filamentary arc veins (electric branches)
             float crk=0.35+0.65*pow(0.5+0.5*sin(uTime*uCrackle+p.x*0.05+p.y*0.07),5.0);     // fast electric crackle
             emit+=uFlashCol*uFlashAmt*gd*(0.3+1.6*fil)*crk;                                  // electrifies the gas along the cursor
-            float a=clamp(d*(stepLen*0.006)*(0.6+uDens*0.5)*fade,0.0,1.0);
+            float a=clamp(d*(stepLen*0.0042)*(0.6+uDens*0.5)*fade,0.0,1.0);   // thinner accumulation -> translucent, the star sky shows through
             acc+=emit*a*(1.0-alpha); alpha+=a*(1.0-alpha); }
           t+=stepLen; }
         vec3 col=vec3(0.012,0.020,0.030)+acc*uNebFrac;   // Clouds slider = smooth density fade
