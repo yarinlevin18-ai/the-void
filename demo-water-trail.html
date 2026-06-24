@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Void — Water swipe (wave sim)</title>
+<link rel="stylesheet" href="https://use.typekit.net/xan5bdy.css"/>
+<script type="importmap">
+{ "imports": { "three":"https://unpkg.com/three@0.169.0/build/three.module.js" }}
+</script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:#04050c;font-family:"acumin-pro",system-ui,sans-serif;color:#cfe8ff}
+  #scene{position:fixed;inset:0;display:block}
+  #content{position:fixed;inset:0;z-index:2;pointer-events:none;display:flex;flex-direction:column;justify-content:center;padding-left:9vw}
+  .kick{font-family:"source-code-pro",monospace;color:#7fe0ff;font-size:.72rem;letter-spacing:.28em;text-transform:uppercase;margin-bottom:.8rem}
+  h1{font-family:"ogg",serif;font-weight:600;font-size:clamp(3rem,7vw,6rem);color:#fff;line-height:1}
+  .desc{max-width:38ch;margin-top:1rem;color:#8fb0cc;line-height:1.6}
+  #panel{position:fixed;top:1rem;right:1rem;z-index:5;width:200px;background:rgba(10,10,22,.85);border:1px solid rgba(150,160,255,.3);border-radius:12px;padding:.8rem .9rem;backdrop-filter:blur(8px);font-size:.66rem;font-family:"source-code-pro",monospace}
+  #panel h3{color:#9fd0ff;letter-spacing:.2em;text-transform:uppercase;font-size:.6rem;margin-bottom:.6rem}
+  #panel label{display:block;color:#9bb0cc;text-transform:uppercase;margin:.5rem 0 .2rem;font-size:.57rem}
+  #panel input[type=range]{width:100%;accent-color:#9fd0ff}
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div id="content">
+  <div class="kick">CH.02 — interaction</div>
+  <h1>Swipe&nbsp;the&nbsp;void</h1>
+  <div class="desc">Drag across the section — real ripples spread from your finger and settle.</div>
+</div>
+<div id="panel">
+  <h3>Water (wave sim)</h3>
+  <label>drop strength</label><input type="range" id="str"  min="0.02" max="0.5" step="0.01" value="0.18">
+  <label>drop radius</label><input type="range" id="rad"  min="0.004" max="0.05" step="0.002" value="0.018">
+  <label>damping (trail)</label><input type="range" id="att" min="0.95" max="0.999" step="0.001" value="0.992">
+  <label>distortion</label><input type="range" id="disp" min="0" max="0.6" step="0.01" value="0.22">
+  <label>sheen</label><input type="range" id="sheen" min="0" max="2" step="0.05" value="1">
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+const canvas=document.querySelector('#scene');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+const PR=Math.min(devicePixelRatio,1.75);renderer.setPixelRatio(PR);renderer.setSize(innerWidth,innerHeight);
+const ortho=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+const quad=new THREE.PlaneGeometry(2,2);
+const SIM=0.5;  // run the wave sim at half-res for speed + nicer spread
+
+// ---------- targets ----------
+let nebRT, simA, simB;
+function mkRT(){
+  const w=Math.floor(innerWidth*PR), h=Math.floor(innerHeight*PR);
+  const sw=Math.floor(innerWidth*SIM), sh=Math.floor(innerHeight*SIM);
+  const disp={minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,depthBuffer:false};
+  const simo={minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,depthBuffer:false,
+    type:THREE.HalfFloatType,wrapS:THREE.ClampToEdgeWrapping,wrapT:THREE.ClampToEdgeWrapping};
+  if(nebRT)nebRT.dispose(); nebRT=new THREE.WebGLRenderTarget(w,h,disp);
+  if(simA)simA.dispose(); if(simB)simB.dispose();
+  simA=new THREE.WebGLRenderTarget(sw,sh,simo); simB=new THREE.WebGLRenderTarget(sw,sh,simo);
+  // clear both sim buffers to zero
+  renderer.setRenderTarget(simA);renderer.setClearColor(0x000000,1);renderer.clear();
+  renderer.setRenderTarget(simB);renderer.clear(); renderer.setRenderTarget(null);
+  sim.uDelta.value.set(1/sw,1/sh);
+}
+
+// ---------- nebula (the section) ----------
+const neb={uTime:{value:0},uA:{value:innerWidth/innerHeight}};
+const nebScene=new THREE.Scene();
+nebScene.add(new THREE.Mesh(quad,new THREE.ShaderMaterial({uniforms:neb,
+  vertexShader:`varying vec2 v;void main(){v=uv;gl_Position=vec4(position.xy,0.,1.);}`,
+  fragmentShader:`varying vec2 v;uniform float uTime,uA;
+   float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+   float n(vec2 p){vec2 i=floor(p),f=fract(p);float a=h(i),b=h(i+vec2(1,0)),c=h(i+vec2(0,1)),d=h(i+vec2(1,1));vec2 u=f*f*(3.-2.*f);return mix(mix(a,b,u.x),mix(c,d,u.x),u.y);}
+   float fbm(vec2 p){float s=0.,m=.5;for(int i=0;i<6;i++){s+=m*n(p);p=p*2.03+1.7;m*=.5;}return s;}
+   void main(){vec2 uv=v;uv.x*=uA;
+     vec2 q=vec2(fbm(uv*2.0+vec2(0.,uTime*0.03)),fbm(uv*2.0+vec2(5.2,-uTime*0.03)));
+     float f=fbm(uv*2.0+1.5*q);
+     vec3 climate=mix(vec3(0.05,0.17,0.24),vec3(0.12,0.06,0.22),0.5+0.5*sin(uTime*0.07));
+     vec3 col=vec3(0.012,0.020,0.030)+climate*smoothstep(0.38,1.0,f);
+     col+=vec3(0.22,0.09,0.03)*smoothstep(0.62,0.95,q.x*q.y+0.4*f)*0.5;
+     col+=climate*1.1*smoothstep(0.82,1.0,f);
+     col+=vec3(0.7,0.85,1.0)*smoothstep(0.992,1.0,h(floor(uv*90.0)));
+     col*=1.0-0.5*smoothstep(0.3,0.95,distance(v,vec2(0.5)));
+     gl_FragColor=vec4(col,1.0);}`})));
+
+// ---------- wave SIM update (ported from jquery.ripples: neighbour-average + verlet) ----------
+// channels: R = height, G = velocity
+const sim={tPrev:{value:null},uDelta:{value:new THREE.Vector2(1,1)},uA:{value:innerWidth/innerHeight},
+  uM:{value:new THREE.Vector2(-9,-9)},uPM:{value:new THREE.Vector2(-9,-9)},
+  uRad:{value:0.018},uStr:{value:0.18},uDown:{value:0},uAtt:{value:0.992}};
+const simScene=new THREE.Scene();
+const simMat=new THREE.ShaderMaterial({uniforms:sim,
+  vertexShader:`varying vec2 v;void main(){v=uv;gl_Position=vec4(position.xy,0.,1.);}`,
+  fragmentShader:`varying vec2 v;uniform sampler2D tPrev;uniform vec2 uDelta,uM,uPM;
+   uniform float uA,uRad,uStr,uDown,uAtt;
+   float segd(vec2 p,vec2 a,vec2 b){vec2 pa=p-a,ba=b-a;float t=clamp(dot(pa,ba)/max(dot(ba,ba),1e-6),0.,1.);return length(pa-ba*t);}
+   void main(){
+     vec2 info=texture2D(tPrev,v).rg;
+     vec2 dx=vec2(uDelta.x,0.), dy=vec2(0.,uDelta.y);
+     float avg=(texture2D(tPrev,v-dx).r+texture2D(tPrev,v+dx).r+
+                texture2D(tPrev,v-dy).r+texture2D(tPrev,v+dy).r)*0.25;
+     info.g += (avg-info.r)*2.0;   // acceleration toward neighbours
+     info.g *= uAtt;               // damping
+     info.r += info.g;             // integrate height
+     // inject the swipe as a moving drop (aspect-correct distance to the stroke segment)
+     vec2 p=v; p.x*=uA; vec2 a=uM; a.x*=uA; vec2 b=uPM; b.x*=uA;
+     float d=segd(p,a,b);
+     float dd=1.0-clamp(d/uRad,0.0,1.0);
+     float drop=0.5-0.5*cos(dd*3.14159265);   // smooth circular splash along the stroke
+     info.r += drop*uStr*uDown;
+     gl_FragColor=vec4(info,0.,1.);}`});
+simScene.add(new THREE.Mesh(quad,simMat));
+
+// ---------- display: refract nebula by the wave normal + sheen ----------
+const disp={tNeb:{value:null},tSim:{value:null},uDelta:{value:new THREE.Vector2(1,1)},
+  uDisp:{value:0.22},uSheen:{value:1.0}};
+const dispScene=new THREE.Scene();
+const dispMat=new THREE.ShaderMaterial({uniforms:disp,
+  vertexShader:`varying vec2 v;void main(){v=uv;gl_Position=vec4(position.xy,0.,1.);}`,
+  fragmentShader:`varying vec2 v;uniform sampler2D tNeb,tSim;uniform vec2 uDelta;uniform float uDisp,uSheen;
+   void main(){
+     vec2 dx=vec2(uDelta.x,0.), dy=vec2(0.,uDelta.y);
+     float hl=texture2D(tSim,v-dx).r, hr=texture2D(tSim,v+dx).r;
+     float hd=texture2D(tSim,v-dy).r, hu=texture2D(tSim,v+dy).r;
+     vec2 grad=vec2(hr-hl,hu-hd);
+     vec2 off=grad*uDisp;
+     vec3 col;
+     col.r=texture2D(tNeb,v-off*1.05).r;
+     col.g=texture2D(tNeb,v-off).g;
+     col.b=texture2D(tNeb,v-off*0.95).b;
+     vec3 nrm=normalize(vec3(-grad*120.0,1.0));
+     float spec=pow(max(dot(nrm,normalize(vec3(-0.5,0.6,1.0))),0.0),16.0);
+     col+=vec3(0.65,0.85,1.0)*spec*uSheen;
+     col+=vec3(0.3,0.6,1.0)*length(grad)*30.0*uSheen*0.15;  // faint cool wake edge
+     gl_FragColor=vec4(col,1.0);}`});
+dispScene.add(new THREE.Mesh(quad,dispMat));
+
+// ---------- input ----------
+const $=s=>document.querySelector(s);
+$('#str').oninput=e=>sim.uStr.value=+e.target.value;
+$('#rad').oninput=e=>sim.uRad.value=+e.target.value;
+$('#att').oninput=e=>sim.uAtt.value=+e.target.value;
+$('#disp').oninput=e=>disp.uDisp.value=+e.target.value;
+$('#sheen').oninput=e=>disp.uSheen.value=+e.target.value;
+
+let raw={x:-9,y:-9}, prev={x:-9,y:-9}, inside=false;
+addEventListener('pointermove',e=>{raw.x=e.clientX/innerWidth; raw.y=1.0-e.clientY/innerHeight; inside=true;});
+addEventListener('pointerdown',e=>{raw.x=e.clientX/innerWidth; raw.y=1.0-e.clientY/innerHeight; inside=true; sim.uStr.value*=1.0;});
+addEventListener('pointerleave',()=>inside=false);
+addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);
+  neb.uA.value=sim.uA.value=innerWidth/innerHeight; mkRT();
+  disp.uDelta.value.copy(sim.uDelta.value);});
+
+mkRT(); disp.uDelta.value.copy(sim.uDelta.value);
+
+const clock=new THREE.Clock();
+function frame(){const t=clock.getElapsedTime();
+  // 1) nebula
+  neb.uTime.value=t; renderer.setRenderTarget(nebRT); renderer.render(nebScene,ortho);
+  // 2) wave sim step (read simB -> write simA), can sub-step for stability
+  sim.tPrev.value=simB.texture; sim.uPM.value.set(prev.x,prev.y); sim.uM.value.set(raw.x,raw.y);
+  sim.uDown.value=inside?1.0:0.0;
+  renderer.setRenderTarget(simA); renderer.render(simScene,ortho);
+  const tmp=simA; simA=simB; simB=tmp;     // simB now holds latest
+  prev.x=raw.x; prev.y=raw.y;
+  // 3) display
+  disp.tNeb.value=nebRT.texture; disp.tSim.value=simB.texture;
+  renderer.setRenderTarget(null); renderer.render(dispScene,ortho);
+  requestAnimationFrame(frame);}
+frame();
+</script>
+</body>
+</html>

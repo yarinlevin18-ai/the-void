@@ -17,6 +17,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 // Only TEXT entry should swallow global hotkeys (E/V/arrows) — not range sliders, checkboxes, etc.
@@ -37,6 +38,7 @@ const FX = {
   nebSpd: 0.6, nebWarp: 1.4, nebHue: 0.5, nebEmber: 0.25, nebVig: true, nebGlow: 0.6,   // nebula climate + inner glow
   lightning: true, glowSpots: true,                                            // in-nebula lightning + flickering glow spots
   lightInt: 1, lightReach: 280, lightRate: 3, glowBright: 1, glowFlick: 1, cursorDrive: 1,   // lightning + glow + cursor-reactivity controls
+  waterStr: 0.18, waterRad: 0.018, waterAtt: 0.992, waterDisp: 0.22, waterSheen: 1.0,         // water swipe (APPROVED tuning — see water.md)
 };
 const fxEl = document.querySelector('#fxpanel');
 // FX keyframes: these params live PER BEAT (beat.fx) and are interpolated across
@@ -73,6 +75,9 @@ let _cVel = 0, _cVelRaw = 0, _flickCD = 0, _pPX = null, _pPY = null;   // smooth
 const _cN = new THREE.Vector2(9, 9), _cWorld = new THREE.Vector3();    // pointer NDC + world-ray scratch
 const _ray = new THREE.Raycaster();                                   // cursor → section hit-test (liquid cursor)
 const _waveTgt = new THREE.Vector3();                                 // wave-ribbon follow target
+const _wUV = new THREE.Vector2(-9, -9);                               // pointer in 0..1 uv (water sim drop)
+const PREFERS_REDUCED = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+let water = null;                                                     // water swipe system (set up after the composer)
 const _focusV = new THREE.Vector3();
 
 // ---- Offscreen renderer that draws each shot's thumbnail in the editor list -
@@ -406,7 +411,7 @@ const EASINGS = {
 let transitionEase = easeInOut;
 let txEaseName = 'easeInOut';
 // global (non-keyframed) state that Save must persist alongside the beats
-const GLOBAL_KEYS = ['starFrac', 'nodeFrac', 'lineFrac', 'nebFrac', 'driftOn', 'fovPunch', 'warpStrength', 'warpLength', 'twinkleOn', 'linesOn', 'nebVisible', 'uiHud', 'uiWaypoints', 'uiCaption', 'uiHint', 'uiScale', 'waveAmp', 'waveSpd', 'waveCoil', 'waveOn', 'waveGrid', 'nebSpd', 'nebWarp', 'nebHue', 'nebEmber', 'nebVig', 'nebGlow', 'lightning', 'glowSpots', 'lightInt', 'lightReach', 'lightRate', 'glowBright', 'glowFlick', 'cursorDrive'];
+const GLOBAL_KEYS = ['starFrac', 'nodeFrac', 'lineFrac', 'nebFrac', 'driftOn', 'fovPunch', 'warpStrength', 'warpLength', 'twinkleOn', 'linesOn', 'nebVisible', 'uiHud', 'uiWaypoints', 'uiCaption', 'uiHint', 'uiScale', 'waveAmp', 'waveSpd', 'waveCoil', 'waveOn', 'waveGrid', 'nebSpd', 'nebWarp', 'nebHue', 'nebEmber', 'nebVig', 'nebGlow', 'lightning', 'glowSpots', 'lightInt', 'lightReach', 'lightRate', 'glowBright', 'glowFlick', 'cursorDrive', 'waterStr', 'waterRad', 'waterAtt', 'waterDisp', 'waterSheen'];
 let activePunch = 0;   // 0..1 across a transition, peaks at the midpoint (for FOV punch)
 const DEF_FOV = 68, DEF_DUR = 1.6;
 // a sensible starter panel for a section: sits at its aim point, fixed orientation
@@ -417,6 +422,7 @@ const SAVE_KEY = 'voidConfig';
 function backfillBeat(b) {
   b.fov ??= DEF_FOV; b.dur ??= DEF_DUR;
   b.desc ??= ''; b.img ??= ''; b.link ??= '';
+  b.water ??= false;   // per-section water swipe (enable per asset)
   if (b.panel === undefined) b.panel = defaultPanelFor(b);
   if (b.panel) {
     if (b.panel.spin !== undefined) { if (b.panel.rot === undefined) b.panel.rot = [0, b.panel.spin, 0]; delete b.panel.spin; } // migrate old single-axis spin
@@ -1027,6 +1033,7 @@ window.addEventListener('pointermove', (e) => {
   mouse.x = nx; mouse.y = (e.clientY / window.innerHeight) * 2 - 1;        // parallax (unchanged convention)
   if (_pPX !== null) _cVelRaw = Math.min(Math.hypot(nx - _pPX, nyTop - _pPY) * 6.0, 2.5);  // cursor speed
   _pPX = nx; _pPY = nyTop; _cN.set(nx, nyTop);                            // pointer NDC (y-up) for the reactive FX
+  _wUV.set(e.clientX / window.innerWidth, 1 - e.clientY / window.innerHeight);  // 0..1 uv for the water sim
 });
 
 // ---- HUD --------------------------------------------------------------------
@@ -1252,6 +1259,7 @@ function loadFields() {
   edName.value = beats[sel].name;
   edDofBlur.value = beatFX(sel, 'dofBlur'); edDofBlurV.textContent = (+edDofBlur.value).toFixed(3);
   edDofAp.value = beatFX(sel, 'dofAperture'); edDofApV.textContent = (+edDofAp.value).toFixed(4);
+  edWater.checked = !!beats[sel].water;
   for (const f of fieldInputs) { const v = beats[sel][f.key][f.axis]; f.rng.value = v; f.num.value = v; }
   for (const s of scalarInputs) { const v = beats[sel][s.prop] ?? s.def; s.rng.value = v; s.num.value = v; }
   edVertical.checked = beats[sel].up[1] === 0; // vertical look uses up=[0,0,-1]
@@ -1285,6 +1293,8 @@ const _edDof = (inp, key, out, dp) => {
 };
 _edDof(edDofBlur, 'dofBlur', edDofBlurV, 3);
 _edDof(edDofAp, 'dofAperture', edDofApV, 4);
+const edWater = document.querySelector('#ed-water');
+edWater.addEventListener('change', () => { if (beats[sel]) beats[sel].water = edWater.checked; commit(''); });
 // vertical look toggle
 edVertical.addEventListener('change', () => {
   beats[sel].up = (edVertical.checked ? UP_VERTICAL : UP_NORMAL).slice();
@@ -1518,6 +1528,7 @@ window.addEventListener('resize', () => {
   if (bloom) bloom.setSize((window.innerWidth / 2) | 0, (window.innerHeight / 2) | 0);
   livingVoid.nebMat.uniforms.uA.value = window.innerWidth / window.innerHeight;
   livingVoid.sizeRT();                            // keep the half-res raymarch target in sync
+  if (water) water.sizeSim();
 });
 
 // ---- Depth-of-field + gentle motion blur (kept subtle to avoid sickness) ----
@@ -1531,6 +1542,75 @@ try {
   composer.setSize(window.innerWidth, window.innerHeight);
   bloom.setSize((window.innerWidth / 2) | 0, (window.innerHeight / 2) | 0);  // half-res bloom — ~4x cheaper, looks ~identical (it's blurred anyway)
 } catch (e) { composer = null; console.warn('Postprocessing disabled:', e); }
+
+// ---- Water swipe — GPU wave-equation sim refracting the scene, per-section ----
+//  (ported 1:1 from demo-water-trail.html). Half-float ping-pong sim; the final
+//  composer pass refracts the rendered scene by the wave gradient. Calm = passthrough.
+if (composer && !PREFERS_REDUCED) try {
+  const SIM = 0.5;
+  const wq = new THREE.PlaneGeometry(2, 2), wOrtho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  let simA, simB;
+  const simU = {
+    tPrev: { value: null }, uDelta: { value: new THREE.Vector2(1, 1) }, uA: { value: window.innerWidth / window.innerHeight },
+    uM: { value: new THREE.Vector2(-9, -9) }, uPM: { value: new THREE.Vector2(-9, -9) },
+    uRad: { value: FX.waterRad }, uStr: { value: FX.waterStr }, uDown: { value: 0 }, uAtt: { value: FX.waterAtt },
+  };
+  const simMat = new THREE.ShaderMaterial({ uniforms: simU,
+    vertexShader: `varying vec2 v; void main(){ v=uv; gl_Position=vec4(position.xy,0.,1.); }`,
+    fragmentShader: `varying vec2 v; uniform sampler2D tPrev; uniform vec2 uDelta,uM,uPM; uniform float uA,uRad,uStr,uDown,uAtt;
+      float segd(vec2 p,vec2 a,vec2 b){ vec2 pa=p-a,ba=b-a; float t=clamp(dot(pa,ba)/max(dot(ba,ba),1e-6),0.,1.); return length(pa-ba*t); }
+      void main(){
+        vec2 info=texture2D(tPrev,v).rg;
+        vec2 dx=vec2(uDelta.x,0.), dy=vec2(0.,uDelta.y);
+        float avg=(texture2D(tPrev,v-dx).r+texture2D(tPrev,v+dx).r+texture2D(tPrev,v-dy).r+texture2D(tPrev,v+dy).r)*0.25;
+        info.g += (avg-info.r)*2.0; info.g *= uAtt; info.r += info.g;        // verlet + damping
+        vec2 p=v; p.x*=uA; vec2 a=uM; a.x*=uA; vec2 b=uPM; b.x*=uA;
+        float d=segd(p,a,b); float dd=1.0-clamp(d/uRad,0.0,1.0); float drop=0.5-0.5*cos(dd*3.14159265);
+        info.r += drop*uStr*uDown;                                          // cosine splash along the cursor stroke
+        gl_FragColor=vec4(info,0.,1.); }` });
+  const simScene = new THREE.Scene(); simScene.add(new THREE.Mesh(wq, simMat));
+  const sizeSim = () => {
+    const sw = Math.max(2, (window.innerWidth * SIM) | 0), sh = Math.max(2, (window.innerHeight * SIM) | 0);
+    if (simA) simA.dispose(); if (simB) simB.dispose();
+    const o = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false, type: THREE.HalfFloatType, wrapS: THREE.ClampToEdgeWrapping, wrapT: THREE.ClampToEdgeWrapping };
+    simA = new THREE.WebGLRenderTarget(sw, sh, o); simB = new THREE.WebGLRenderTarget(sw, sh, o);
+    renderer.setRenderTarget(simA); renderer.setClearColor(0x000000, 1); renderer.clear();
+    renderer.setRenderTarget(simB); renderer.clear(); renderer.setRenderTarget(null);
+    simU.uDelta.value.set(1 / sw, 1 / sh);
+  };
+  sizeSim();
+  const waterPass = new ShaderPass({
+    uniforms: { tDiffuse: { value: null }, tSim: { value: null }, uDelta: { value: new THREE.Vector2(1, 1) }, uDisp: { value: FX.waterDisp }, uSheen: { value: FX.waterSheen } },
+    vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+    fragmentShader: `varying vec2 vUv; uniform sampler2D tDiffuse,tSim; uniform vec2 uDelta; uniform float uDisp,uSheen;
+      void main(){
+        vec2 dx=vec2(uDelta.x,0.), dy=vec2(0.,uDelta.y);
+        float hl=texture2D(tSim,vUv-dx).r, hr=texture2D(tSim,vUv+dx).r, hd=texture2D(tSim,vUv-dy).r, hu=texture2D(tSim,vUv+dy).r;
+        vec2 grad=vec2(hr-hl,hu-hd); vec2 off=grad*uDisp;
+        vec3 col;
+        col.r=texture2D(tDiffuse,vUv-off*1.05).r;
+        col.g=texture2D(tDiffuse,vUv-off).g;
+        col.b=texture2D(tDiffuse,vUv-off*0.95).b;
+        vec3 nrm=normalize(vec3(-grad*120.0,1.0));
+        float spec=pow(max(dot(nrm,normalize(vec3(-0.5,0.6,1.0))),0.0),16.0);
+        col+=vec3(0.65,0.85,1.0)*spec*uSheen;
+        col+=vec3(0.3,0.6,1.0)*length(grad)*30.0*uSheen*0.15;               // faint cool wake edge
+        gl_FragColor=vec4(col,1.0); }` });
+  waterPass.uniforms.uDelta.value.copy(simU.uDelta.value);
+  composer.addPass(waterPass);
+  water = {
+    sizeSim, prev: { x: -9, y: -9 },
+    step(mx, my, down) {
+      simU.tPrev.value = simB.texture; simU.uPM.value.set(this.prev.x, this.prev.y); simU.uM.value.set(mx, my); simU.uDown.value = down;
+      simU.uStr.value = FX.waterStr; simU.uRad.value = FX.waterRad; simU.uAtt.value = FX.waterAtt;
+      renderer.setRenderTarget(simA); renderer.render(simScene, wOrtho);
+      const tmp = simA; simA = simB; simB = tmp;                           // simB now holds the latest
+      this.prev.x = mx; this.prev.y = my;
+      waterPass.uniforms.tSim.value = simB.texture; waterPass.uniforms.uDelta.value.copy(simU.uDelta.value);
+      waterPass.uniforms.uDisp.value = FX.waterDisp; waterPass.uniforms.uSheen.value = FX.waterSheen;
+    },
+  };
+} catch (e) { water = null; console.warn('Water disabled:', e); }
 
 // ---- Dev profiling handle + ?prof FPS/drawcall probe ------------------------
 const PROF = new URLSearchParams(location.search).has('prof');
@@ -1588,6 +1668,11 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
     ['nebhue', () => FX.nebHue, (v) => { FX.nebHue = v; livingVoid.nebMat.uniforms.uHue.value = v; }, f2],
     ['nebember', () => FX.nebEmber, (v) => { FX.nebEmber = v; livingVoid.nebMat.uniforms.uEmber.value = v; }, f2],
     ['nebglow', () => FX.nebGlow, (v) => { FX.nebGlow = v; livingVoid.nebMat.uniforms.uGlow.value = v; }, f2],
+    ['waterstr', () => FX.waterStr, (v) => { FX.waterStr = v; }, f2],
+    ['waterrad', () => FX.waterRad, (v) => { FX.waterRad = v; }, f3],
+    ['wateratt', () => FX.waterAtt, (v) => { FX.waterAtt = v; }, f3],
+    ['waterdisp', () => FX.waterDisp, (v) => { FX.waterDisp = v; }, f2],
+    ['watersheen', () => FX.waterSheen, (v) => { FX.waterSheen = v; }, f2],
     ['lightint', () => FX.lightInt, (v) => { FX.lightInt = v; }, f2],
     ['lightreach', () => FX.lightReach, (v) => { FX.lightReach = v; }, f0],
     ['lightrate', () => FX.lightRate, (v) => { FX.lightRate = v; }, f2],
@@ -1917,6 +2002,7 @@ function animate() {
     renderer.render(livingVoid.fsScene, livingVoid.fsCam);
     renderer.setRenderTarget(null);
   }
+  if (water) { const down = (!editMode && !freeRoam && beats[index] && beats[index].water) ? 1 : 0; water.step(_wUV.x, _wUV.y, down); }
   if (composer) composer.render(); else renderer.render(scene, camera);
   if (PROF) {
     const now = performance.now();
