@@ -40,6 +40,7 @@ const FX = {
   lightning: true, glowSpots: true,                                            // in-nebula lightning + flickering glow spots
   lightInt: 1, lightReach: 280, lightRate: 3, glowBright: 1, glowFlick: 1, cursorDrive: 1,   // lightning + glow + cursor-reactivity controls
   waterStr: 0.18, waterRad: 0.018, waterAtt: 0.992, waterDisp: 0.22, waterSheen: 1.0,         // water swipe (APPROVED tuning — see water.md)
+  openFit: 0.3, openSize: 1.1, openGlow: 0.7, openForm: 2.6, openShatterR: 5, openPush: 1.7, openSpring: 0.028, openColor: '#9fd8ff',   // Frame 1 opening particles
 };
 const fxEl = document.querySelector('#fxpanel');
 // FX keyframes: these params live PER BEAT (beat.fx) and are interpolated across
@@ -487,7 +488,7 @@ const heroCluster = (() => {
 //  starfield can't hold glyph positions); visually it reads as the void's own matter.
 const openingFX = (() => {
   const group = new THREE.Group(); group.visible = false; scene.add(group);
-  const FIT = 0.3, GLYPH = 0.17;                       // group scale to fit the Opening fov; glyph px→local
+  const GLYPH = 0.17;                                  // glyph px → local (rebuild-fixed; live params read from FX)
   let built = false, N = 0, posA, startA, targ, vel, geo, mat, pts;
   function buildText() {
     try {
@@ -506,9 +507,9 @@ const openingFX = (() => {
         posA[i * 3] = startA[i * 3]; posA[i * 3 + 1] = startA[i * 3 + 1]; posA[i * 3 + 2] = startA[i * 3 + 2];
       }
       geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(posA, 3));
-      mat = new THREE.PointsMaterial({ size: 1.1, color: 0x9fd8ff, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false });
+      mat = new THREE.PointsMaterial({ size: FX.openSize, color: new THREE.Color(FX.openColor), transparent: true, opacity: FX.openGlow, blending: THREE.AdditiveBlending, depthWrite: false });
       pts = new THREE.Points(geo, mat); pts.frustumCulled = false; group.add(pts);
-      group.scale.setScalar(FIT); built = true;
+      group.scale.setScalar(FX.openFit); built = true;
     } catch (e) { console.warn('[opening] build failed', e); }
   }
   if (document.fonts && document.fonts.load) document.fonts.load('600 190px "ogg"').catch(() => {}).finally(buildText); else buildText();
@@ -535,14 +536,16 @@ const openingFX = (() => {
   const ease = (k) => 1 - Math.pow(1 - k, 3);
   function update(active, t) {
     if (!built) return;
-    if (active && phase === 'off') { place(); for (let i = 0; i < N * 3; i++) { posA[i] = startA[i]; vel[i] = 0; } if (mat) mat.opacity = 0.7; phase = 'form'; t0 = t; clearWhisper(); }
+    if (active && phase === 'off') { place(); for (let i = 0; i < N * 3; i++) { posA[i] = startA[i]; vel[i] = 0; } phase = 'form'; t0 = t; clearWhisper(); }
     if (!active && (phase === 'form' || phase === 'idle')) { phase = 'exit'; exitT0 = t; clearWhisper(); }
     group.visible = phase !== 'off';
     if (overlaySub) overlaySub.style.display = phase !== 'off' ? 'none' : '';   // the whisper replaces the tagline on the Opening
+    if (mat) { mat.size = FX.openSize || 1.1; mat.color.set(FX.openColor || '#9fd8ff'); mat.opacity = FX.openGlow ?? 0.7; }   // live FX
+    group.scale.setScalar(FX.openFit || 0.3);
     if (phase === 'off') return;
     const RM = PREFERS_REDUCED;
     if (phase === 'form') {
-      const k = RM ? 1 : Math.min((t - t0) / 2.6, 1), e = ease(k);
+      const k = RM ? 1 : Math.min((t - t0) / (FX.openForm || 2.6), 1), e = ease(k);
       for (let i = 0; i < N * 3; i++) posA[i] = startA[i] + (targ[i] - startA[i]) * e;
       if (k >= 1) { phase = 'idle'; typeWhisper(); }
     } else if (phase === 'exit') {
@@ -551,13 +554,14 @@ const openingFX = (() => {
         vel[ix] += posA[ix] * 0.006; vel[ix + 1] += posA[ix + 1] * 0.006; vel[ix + 2] += 1.5 + Math.random() * 0.7;
         vel[ix] *= 0.985; vel[ix + 1] *= 0.985; vel[ix + 2] *= 0.99;
         posA[ix] += vel[ix]; posA[ix + 1] += vel[ix + 1]; posA[ix + 2] += vel[ix + 2]; }
-      if (mat) mat.opacity = Math.max(0, 0.7 * (1 - ek));
+      if (mat) mat.opacity = Math.max(0, (FX.openGlow ?? 0.7) * (1 - ek));
       if (ek >= 1) { phase = 'off'; group.visible = false; }
     } else {                                            // idle: spring home + cursor shatter
       const dist = camera.position.distanceTo(group.position);
       const halfH = Math.tan((camera.fov * Math.PI / 180) / 2) * dist, halfW = halfH * camera.aspect;
-      const mwx = RM ? 1e6 : (_cN.x * halfW) / FIT, mwy = RM ? 1e6 : (_cN.y * halfH) / FIT;
-      const R = 5, R2 = R * R, push = 1.7, spring = 0.028, damp = 0.9;
+      const F = FX.openFit || 0.3;
+      const mwx = RM ? 1e6 : (_cN.x * halfW) / F, mwy = RM ? 1e6 : (_cN.y * halfH) / F;
+      const R = FX.openShatterR || 5, R2 = R * R, push = FX.openPush ?? 1.7, spring = FX.openSpring || 0.028, damp = 0.9;
       for (let i = 0; i < N; i++) { const ix = i * 3;
         vel[ix] += (targ[ix] - posA[ix]) * spring; vel[ix + 1] += (targ[ix + 1] - posA[ix + 1]) * spring; vel[ix + 2] += (targ[ix + 2] - posA[ix + 2]) * spring;
         if (!RM) { const ex = posA[ix] - mwx, ey = posA[ix + 1] - mwy, d2 = ex * ex + ey * ey;
@@ -662,7 +666,7 @@ const EASINGS = {
 let transitionEase = easeInOut;
 let txEaseName = 'easeInOut';
 // global (non-keyframed) state that Save must persist alongside the beats
-const GLOBAL_KEYS = ['starFrac', 'nodeFrac', 'lineFrac', 'nebFrac', 'driftOn', 'fovPunch', 'warpStrength', 'warpLength', 'twinkleOn', 'linesOn', 'nebVisible', 'uiHud', 'uiWaypoints', 'uiCaption', 'uiHint', 'uiScale', 'waveAmp', 'waveSpd', 'waveCoil', 'waveOn', 'waveGrid', 'nebSpd', 'nebWarp', 'nebHue', 'nebEmber', 'nebVig', 'nebGlow', 'lightning', 'glowSpots', 'lightInt', 'lightReach', 'lightRate', 'glowBright', 'glowFlick', 'cursorDrive', 'waterStr', 'waterRad', 'waterAtt', 'waterDisp', 'waterSheen'];
+const GLOBAL_KEYS = ['starFrac', 'nodeFrac', 'lineFrac', 'nebFrac', 'driftOn', 'fovPunch', 'warpStrength', 'warpLength', 'twinkleOn', 'linesOn', 'nebVisible', 'uiHud', 'uiWaypoints', 'uiCaption', 'uiHint', 'uiScale', 'waveAmp', 'waveSpd', 'waveCoil', 'waveOn', 'waveGrid', 'nebSpd', 'nebWarp', 'nebHue', 'nebEmber', 'nebVig', 'nebGlow', 'lightning', 'glowSpots', 'lightInt', 'lightReach', 'lightRate', 'glowBright', 'glowFlick', 'cursorDrive', 'waterStr', 'waterRad', 'waterAtt', 'waterDisp', 'waterSheen', 'openFit', 'openSize', 'openGlow', 'openForm', 'openShatterR', 'openPush', 'openSpring', 'openColor'];
 let activePunch = 0;   // 0..1 across a transition, peaks at the midpoint (for FOV punch)
 const DEF_FOV = 68, DEF_DUR = 1.6;
 // a sensible starter panel for a section: sits at its aim point, fixed orientation
@@ -2078,6 +2082,13 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
     ['glowbright', () => FX.glowBright, (v) => { FX.glowBright = v; }, f2],
     ['glowflick', () => FX.glowFlick, (v) => { FX.glowFlick = v; }, f2],
     ['cursordrive', () => FX.cursorDrive, (v) => { FX.cursorDrive = v; }, f2],
+    ['openfit', () => FX.openFit, (v) => { FX.openFit = v; }, f2],
+    ['opensize', () => FX.openSize, (v) => { FX.openSize = v; }, f2],
+    ['openglow', () => FX.openGlow, (v) => { FX.openGlow = v; }, f2],
+    ['openform', () => FX.openForm, (v) => { FX.openForm = v; }, f2],
+    ['openshatterr', () => FX.openShatterR, (v) => { FX.openShatterR = v; }, f2],
+    ['openpush', () => FX.openPush, (v) => { FX.openPush = v; }, f2],
+    ['openspring', () => FX.openSpring, (v) => { FX.openSpring = v; }, f3],
   ];
   for (const [id, get, set, fmt] of globalRows) {
     const inp = document.querySelector('#fx-' + id), out = document.querySelector('#fx-' + id + '-v');
@@ -2087,6 +2098,8 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
     inp.addEventListener('input', () => { const v = parseFloat(inp.value); set(v); if (out) out.textContent = fmt(v); });
   }
 
+  const _ocol = document.querySelector('#fx-opencolor');
+  if (_ocol) { _ocol.value = FX.openColor; _ocol.addEventListener('input', () => { FX.openColor = _ocol.value; }); }
   const chk = (id, key, fn) => { const el = document.querySelector('#fx-' + id); if (!el) return; el.checked = !!FX[key]; el.addEventListener('change', () => { FX[key] = el.checked; fn(el.checked); }); };
   chk('twinkle', 'twinkleOn', (v) => { livingVoid.smat.uniforms.uTwinkle.value = v ? 1 : 0; });
   chk('drift', 'driftOn', () => {});
