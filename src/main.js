@@ -400,33 +400,26 @@ const heroCluster = (() => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: frameTex(cw, ch), transparent: true, depthWrite: false }));
     m.renderOrder = 1; return m;
   }
-  const loader = new THREE.TextureLoader();
+  const WORLD_W = 22;                                  // screen world width at scale 1
   const cards = [];
-  // --- Shadiez: real screenshot on a glass-framed plane ---
-  const shRoot = new THREE.Group(); group.add(shRoot);
-  shRoot.add(framePlane(38, 25, 540, 350));
-  const shImg = new THREE.Mesh(new THREE.PlaneGeometry(34, 21.5), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, color: 0x1b2734 }));
-  shImg.position.z = 0.4; shImg.renderOrder = 2; shRoot.add(shImg);
-  loader.load(import.meta.env.BASE_URL + 'assets/hero/shadiez-landing.png', (tex) => {
-    tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
-    shImg.material.map = tex; shImg.material.color.set(0xffffff); shImg.material.needsUpdate = true;
-    if (tex.image && tex.image.height) shImg.scale.set(1, (34 / (tex.image.width / tex.image.height)) / 21.5, 1);   // fit the screenshot's aspect
-  }, undefined, () => {});
-  cards.push({ id: 'card_shadiez', root: shRoot });
-  // --- SmartCut: live HTML rendered as a CSS3D iframe over a glass frame ---
-  const scRoot = new THREE.Group(); group.add(scRoot);
-  const scFrame = framePlane(34, 23, 500, 340); scRoot.add(scFrame);
-  let scIframe = null;
-  const IFRAME_W = 700, IFRAME_H = 470, IFRAME_SCALE = 30 / IFRAME_W;   // px → world (~30u wide at scale 1)
-  if (css3d) try {
-    const f = document.createElement('iframe');
-    f.src = import.meta.env.BASE_URL + 'assets/hero/smartcut-crm.html';
-    f.style.width = IFRAME_W + 'px'; f.style.height = IFRAME_H + 'px';
-    f.style.border = '0'; f.style.background = 'transparent'; f.style.pointerEvents = 'none';
-    f.setAttribute('scrolling', 'no'); f.setAttribute('title', 'SmartCut');
-    scIframe = new CSS3DObject(f); scIframe.visible = false; css3d.scene.add(scIframe);
-  } catch (e) { console.warn('[hero iframe]', e); }
-  cards.push({ id: 'card_smartcut', root: scRoot });
+  function addScreen(spec) {
+    const aspect = spec.pxW / spec.pxH, sw = WORLD_W, sh = WORLD_W / aspect;
+    const root = new THREE.Group(); group.add(root);
+    const frame = framePlane(sw * 1.12, sh * 1.12, spec.cw, spec.ch); root.add(frame);
+    let el = null, obj = null;
+    if (css3d) try {                                   // the screen itself is a DOM element on the shared CSS3D layer
+      el = document.createElement(spec.kind);
+      el.src = import.meta.env.BASE_URL + spec.src;
+      if (spec.kind === 'iframe') el.setAttribute('scrolling', 'no'); else el.style.objectFit = 'cover';
+      el.style.width = spec.pxW + 'px'; el.style.height = spec.pxH + 'px';
+      el.style.border = '0'; el.style.background = 'transparent'; el.style.pointerEvents = 'none'; el.style.borderRadius = '12px'; el.style.display = 'block';
+      el.setAttribute('title', spec.id);
+      obj = new CSS3DObject(el); obj.visible = false; css3d.scene.add(obj);
+    } catch (e) { console.warn('[hero screen]', spec.id, e); }
+    cards.push({ id: spec.id, root, frame, el, obj, baseScale: WORLD_W / spec.pxW });
+  }
+  addScreen({ id: 'card_shadiez',  kind: 'img',    src: 'assets/hero/shadiez-landing.png', cw: 540, ch: 350, pxW: 600, pxH: 380 });
+  addScreen({ id: 'card_smartcut', kind: 'iframe', src: 'assets/hero/smartcut-crm.html',   cw: 500, ch: 340, pxW: 700, pxH: 470 });
   // --- anchor the cluster in the Hero beat's camera frame ---
   const C = new THREE.Vector3(), ff = new THREE.Vector3(), rt = new THREE.Vector3(), uu = new THREE.Vector3(), zc = new THREE.Vector3();
   const baseQ = new THREE.Quaternion(), basis = new THREE.Matrix4();
@@ -440,23 +433,27 @@ const heroCluster = (() => {
     zc.copy(rt).cross(uu); basis.makeBasis(rt, uu, zc); baseQ.setFromRotationMatrix(basis);
     placed = true;
   }
-  function update(active, t, b) {                      // LAYOUT ONLY — static placement, no entrance/idle/parallax yet
+  function update(active, t, b) {                      // LAYOUT ONLY — static placement; blur/scale/pos live from assetCfg
     group.visible = active;
-    if (scIframe) scIframe.visible = active;
-    if (!active) return;
+    if (!active) { for (const cd of cards) if (cd.obj) cd.obj.visible = false; return; }
     if (!placed) place(b);
     if (!placed) return;
     group.position.copy(C); group.quaternion.copy(baseQ);
     for (const cd of cards) {
       const cfg = assetCfg[cd.id] || {};
-      cd.root.position.set(cfg.x ?? 0, cfg.y ?? 0, cfg.z ?? -60);
+      cd.root.position.set(cfg.x ?? 0, cfg.y ?? 0, cfg.z ?? -56);
       cd.root.scale.setScalar(cfg.scale || 1);
     }
-    if (scIframe) {                                    // sync the live iframe to the SmartCut frame's world transform
-      group.updateMatrixWorld(true);
-      scIframe.position.setFromMatrixPosition(scFrame.matrixWorld);
-      scIframe.quaternion.copy(group.quaternion);
-      scIframe.scale.setScalar(IFRAME_SCALE * (assetCfg.card_smartcut.scale || 1));
+    group.updateMatrixWorld(true);
+    for (const cd of cards) {                          // sync each DOM screen to its frame's world transform
+      if (!cd.obj) continue;
+      const cfg = assetCfg[cd.id] || {};
+      cd.obj.visible = true;
+      cd.obj.position.setFromMatrixPosition(cd.frame.matrixWorld);
+      cd.obj.quaternion.copy(group.quaternion);
+      cd.obj.scale.setScalar(cd.baseScale * (cfg.scale || 1));
+      const blur = cfg.blur || 0;
+      cd.el.style.filter = blur > 0.05 ? `blur(${blur.toFixed(1)}px)` : '';
     }
   }
   return { update };
@@ -1213,8 +1210,8 @@ const ASSET_DEFS = [
   { id: 'card_smartcut', label: 'Screen · SmartCut', group: 'hero' },
 ];
 const HERO_DEFAULTS = {       // local layout in the Hero cluster (x right, y up, z negative = into scene)
-  card_shadiez:  { x: 22, y: 12, z: -60, scale: 1.0, ein: 'depth', eout: 'fade' },
-  card_smartcut: { x: 26, y: -12, z: -46, scale: 0.95, ein: 'rise', eout: 'fade' },
+  card_shadiez:  { x: 13, y: 9, z: -60, scale: 0.8, blur: 0, ein: 'depth', eout: 'fade' },
+  card_smartcut: { x: 17, y: -10, z: -52, scale: 0.8, blur: 0, ein: 'rise', eout: 'fade' },
 };
 const ASSET_KEY = 'voidAssets';
 const _aDefault = () => ({ text: null, size: 1, font: '', depth: 0, mesh3d: false, in: { dur: 900, delay: 120, y: 26, blur: 7, ease: 'out' }, out: { dur: 500, delay: 0, y: -12, blur: 6, ease: 'inout' } });
@@ -2027,6 +2024,7 @@ function loadAssetFields() {
     const setR = (id, v, fmt) => { const el = document.querySelector('#' + id); if (el) el.value = v; const o = document.querySelector('#' + id + '-v'); if (o) o.textContent = fmt ? fmt(v) : v; };
     setR('ah-x', c.x ?? 0, (v) => Math.round(v)); setR('ah-y', c.y ?? 0, (v) => Math.round(v)); setR('ah-z', c.z ?? -60, (v) => Math.round(v));
     setR('ah-scale', c.scale ?? 1, (v) => (+v).toFixed(2) + '×');
+    setR('ah-blur', c.blur ?? 0, (v) => (+v).toFixed(1) + 'px');
     const ein = document.querySelector('#ah-ein'); if (ein) ein.value = c.ein || 'fade';
     const eout = document.querySelector('#ah-eout'); if (eout) eout.value = c.eout || 'fade';
     return;
@@ -2098,7 +2096,7 @@ function loadAssetFields() {
     const el = document.querySelector('#' + id); if (!el) return;
     el.addEventListener('input', () => { const v = parseFloat(el.value); assetCfg[asSel][key] = v; const o = document.querySelector('#' + id + '-v'); if (o) o.textContent = fmt ? fmt(v) : v; saveAssets(); });
   };
-  ahBind('ah-x', 'x', (v) => Math.round(v)); ahBind('ah-y', 'y', (v) => Math.round(v)); ahBind('ah-z', 'z', (v) => Math.round(v)); ahBind('ah-scale', 'scale', (v) => v.toFixed(2) + '×');
+  ahBind('ah-x', 'x', (v) => Math.round(v)); ahBind('ah-y', 'y', (v) => Math.round(v)); ahBind('ah-z', 'z', (v) => Math.round(v)); ahBind('ah-scale', 'scale', (v) => v.toFixed(2) + '×'); ahBind('ah-blur', 'blur', (v) => v.toFixed(1) + 'px');
   const ahEin = document.querySelector('#ah-ein'); if (ahEin) ahEin.addEventListener('change', () => { assetCfg[asSel].ein = ahEin.value; saveAssets(); });
   const ahEout = document.querySelector('#ah-eout'); if (ahEout) ahEout.addEventListener('change', () => { assetCfg[asSel].eout = ahEout.value; saveAssets(); });
   const prev = document.querySelector('#as-preview');

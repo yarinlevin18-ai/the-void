@@ -57,21 +57,21 @@ const bg=new THREE.Mesh(new THREE.PlaneGeometry(2,2),new THREE.ShaderMaterial({d
 bg.frustumCulled=false;bg.renderOrder=-10;scene.add(bg);
 
 // ---- sample "Yarin Levin" into target points ----
-let N=0, pos, start, targ, grp;
+let N=0, pos, start, targ, vel, grp;
 function buildText(){
   const c=document.createElement('canvas'), W=1100, H=320; c.width=W;c.height=H;
   const x=c.getContext('2d'); x.fillStyle='#fff'; x.textAlign='center'; x.textBaseline='middle';
   x.font='600 190px "ogg", Georgia, serif';
   x.fillText('Yarin Levin', W/2, H/2+6);
   const d=x.getImageData(0,0,W,H).data;
-  const pts=[]; const step=3, scale=0.17;
+  const pts=[]; const step=4, scale=0.17;
   for(let y=0;y<H;y+=step){ for(let xx=0;xx<W;xx+=step){
     if(d[(y*W+xx)*4+3]>130){ pts.push([ (xx-W/2)*scale, -(y-H/2)*scale, (Math.random()-0.5)*6 ]); }
   }}
   // cap to ~5200 for perf
   for(let i=pts.length-1;i>0;i--){const j=Math.random()*i|0;[pts[i],pts[j]]=[pts[j],pts[i]];}
   const cap=Math.min(pts.length,5200); pts.length=cap; N=cap;
-  pos=new Float32Array(N*3); start=new Float32Array(N*3); targ=new Float32Array(N*3);
+  pos=new Float32Array(N*3); start=new Float32Array(N*3); targ=new Float32Array(N*3); vel=new Float32Array(N*3);
   for(let i=0;i<N;i++){
     targ[i*3]=pts[i][0]; targ[i*3+1]=pts[i][1]; targ[i*3+2]=pts[i][2];
     // start scattered in a wide void cloud
@@ -81,19 +81,18 @@ function buildText(){
   }
   if(grp){scene.remove(grp); grp.geometry.dispose();}
   const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3));
-  const m=new THREE.PointsMaterial({size:1.5,color:0xdff2ff,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false});
+  const m=new THREE.PointsMaterial({size:1.05,color:0x9fd8ff,transparent:true,opacity:.7,blending:THREE.AdditiveBlending,depthWrite:false});
   grp=new THREE.Points(g,m); scene.add(grp);
 }
 
 const composer=new EffectComposer(renderer);composer.addPass(new RenderPass(scene,camera));
-const bloom=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),1.25,0.85,0.0);composer.addPass(bloom);composer.setSize(innerWidth,innerHeight);
+const bloom=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),0.55,0.6,0.2);composer.addPass(bloom);composer.setSize(innerWidth,innerHeight);
 
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
   renderer.setSize(innerWidth,innerHeight);composer.setSize(innerWidth,innerHeight);neb.uA.value=innerWidth/innerHeight;});
-
-const mouse={x:0,y:0};
-addEventListener('pointermove',e=>{mouse.x=(e.clientX/innerWidth)*2-1;mouse.y=-(e.clientY/innerHeight)*2+1;
-  neb.uM.value.set(e.clientX/innerWidth,1-e.clientY/innerHeight);});
+const mouse={x:1e6,y:1e6};
+addEventListener('pointermove',e=>{mouse.x=(e.clientX/innerWidth)*2-1;mouse.y=-(e.clientY/innerHeight)*2+1;});
+addEventListener('pointerleave',()=>{mouse.x=1e6;mouse.y=1e6;});
 
 // whisper typing
 const LINE='welcome to my world.';
@@ -110,7 +109,7 @@ let t0=0, formed=false;
 function reset(){ t0=performance.now(); formed=false;
   document.querySelector('#whisper').style.opacity='0'; document.querySelector('#whisper').innerHTML='';
   document.querySelector('#cue').style.opacity='0';
-  for(let i=0;i<N*3;i++) pos[i]=start[i];
+  for(let i=0;i<N*3;i++){pos[i]=start[i]; vel[i]=0;}
 }
 document.querySelector('#replay').onclick=reset;
 
@@ -119,18 +118,27 @@ function ease(x){return 1-Math.pow(1-x,3);}
 function frame(){const t=clock.getElapsedTime();neb.uTime.value=t;
   if(N){
     const k=Math.min((performance.now()-t0)/2600,1), e=ease(k);
-    for(let i=0;i<N;i++){
-      const ix=i*3;
-      pos[ix]  = start[ix]  +(targ[ix]  -start[ix])*e + (k>=1?Math.sin(t*1.2+i)*0.25:0);
-      pos[ix+1]= start[ix+1]+(targ[ix+1]-start[ix+1])*e + (k>=1?Math.cos(t*1.1+i)*0.25:0);
-      pos[ix+2]= start[ix+2]+(targ[ix+2]-start[ix+2])*e;
+    if(k<1){                                   // forming: scatter -> letters
+      for(let i=0;i<N*3;i++) pos[i]=start[i]+(targ[i]-start[i])*e;
+    } else {                                   // formed: spring home + cursor shatter
+      if(!formed){formed=true; typeWhisper();}
+      const hH=Math.tan(55*Math.PI/360)*camera.position.z, hW=hH*camera.aspect;
+      const mwx=mouse.x*hW, mwy=mouse.y*hH;     // cursor in world space at the name plane
+      const R=9,R2=R*R,push=2.6,spring=0.045,damp=0.86;
+      for(let i=0;i<N;i++){const ix=i*3;
+        vel[ix]  +=(targ[ix]  -pos[ix]  )*spring;   // pull back to letter
+        vel[ix+1]+=(targ[ix+1]-pos[ix+1])*spring;
+        vel[ix+2]+=(targ[ix+2]-pos[ix+2])*spring;
+        const ex=pos[ix]-mwx, ey=pos[ix+1]-mwy, d2=ex*ex+ey*ey;
+        if(d2<R2 && d2>0.01){const d=Math.sqrt(d2), f=(1-d/R)*push;  // push away from cursor
+          vel[ix]+=ex/d*f; vel[ix+1]+=ey/d*f; vel[ix+2]+=(Math.random()-0.5)*f*0.6;}
+        vel[ix]*=damp; vel[ix+1]*=damp; vel[ix+2]*=damp;
+        pos[ix]+=vel[ix]; pos[ix+1]+=vel[ix+1]; pos[ix+2]+=vel[ix+2];
+      }
     }
     grp.geometry.attributes.position.needsUpdate=true;
-    if(k>=1 && !formed){formed=true; typeWhisper();}
   }
-  // cursor parallax
-  if(grp){grp.rotation.y += ((mouse.x*0.18)-grp.rotation.y)*0.05; grp.rotation.x += ((-mouse.y*0.12)-grp.rotation.x)*0.05;}
-  camera.position.x += ((mouse.x*16)-camera.position.x)*0.03; camera.lookAt(0,0,0);
+  camera.lookAt(0,0,0);
   composer.render();requestAnimationFrame(frame);}
 
 document.fonts.load('600 190px "ogg"').catch(()=>{}).finally(()=>{ buildText(); t0=performance.now(); frame(); });
