@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>SmartCut — CRM (asset)</title>
+<style>
+  :root{
+    --bg:#0d0d0d;--card:#141414;--card2:#0f0f0f;--line:#262421;
+    --gold:#c9a84c;--gold-l:#e2c97e;--text:#f0f0ec;--muted:#8a857c;
+    --green:#3ba55c;--amber:#d8a23a;--radius:16px;
+  }
+  *{box-sizing:border-box;font-family:"Segoe UI",system-ui,-apple-system,Inter,Roboto,Arial,sans-serif}
+  html,body{margin:0;background:transparent;color:var(--text)}
+  .serif{font-family:"Segoe UI",system-ui,-apple-system,Inter,Roboto,Arial,sans-serif}
+  .app{display:flex;gap:14px;max-width:760px;margin:0 auto;padding:18px}
+  /* sidebar */
+  .side{width:170px;flex:0 0 auto;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 12px;animation:rise .6s cubic-bezier(.2,.8,.2,1) both}
+  .logo{font-size:19px;font-weight:700;color:var(--gold);letter-spacing:.5px;margin:2px 6px 16px}
+  .logo .serif{color:var(--gold-l)}
+  .nav a{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:12.5px;padding:9px 10px;border-radius:9px;text-decoration:none;margin-bottom:3px}
+  .nav a.on{background:linear-gradient(120deg,rgba(201,168,76,.18),rgba(201,168,76,.06));color:var(--gold-l);border:1px solid rgba(201,168,76,.35)}
+  .nav .d{width:7px;height:7px;border-radius:50%;background:#3a352a}
+  .nav a.on .d{background:var(--gold);box-shadow:0 0 8px var(--gold)}
+  /* main */
+  .main{flex:1;min-width:0}
+  .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;animation:rise .6s ease .05s both}
+  .top h1{font-size:20px;margin:0;font-weight:700}
+  .top .sub{font-size:11px;color:var(--muted)}
+  .top .right{display:flex;align-items:center;gap:10px}
+  .bell{position:relative;width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:var(--card);display:grid;place-items:center;color:var(--gold-l)}
+  .bell i{position:absolute;top:7px;right:7px;width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px var(--gold);animation:blink 1.8s ease-in-out infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+  .btn{border:none;cursor:pointer;color:#1a1408;font-weight:700;font-size:12px;background:linear-gradient(135deg,var(--gold-l),var(--gold));
+    padding:9px 14px;border-radius:10px;position:relative;overflow:hidden;box-shadow:0 10px 22px -10px rgba(201,168,76,.7)}
+  .btn::after{content:"";position:absolute;top:0;left:-120%;width:55%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.6),transparent);transform:skewX(-18deg);animation:shine 3.4s ease-in-out infinite}
+  @keyframes shine{0%{left:-120%}55%,100%{left:150%}}
+  /* kpis */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;animation:rise .6s ease both}
+  .kpi .l{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .kpi .v{font-size:22px;font-weight:700;margin-top:5px}.kpi .v.g{color:var(--gold-l)}
+  /* panel */
+  .cols{display:grid;grid-template-columns:1.5fr 1fr;gap:12px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;animation:rise .7s ease .12s both}
+  .panel h3{margin:2px 4px 10px;font-size:13px;color:var(--gold-l);font-weight:700}
+  .row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:9px 8px;border-top:1px solid var(--line);font-size:12px;animation:rin .5s ease both}
+  @keyframes rin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .row .who b{font-weight:600}.row .who small{display:block;color:var(--muted);font-size:10.5px;margin-top:1px}
+  .st{font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+  .st.p{color:var(--amber);background:rgba(216,162,58,.12);border:1px solid rgba(216,162,58,.4)}
+  .st.a{color:var(--green);background:rgba(59,165,92,.12);border:1px solid rgba(59,165,92,.4)}
+  .flip{animation:pop .5s ease}
+  @keyframes pop{0%{transform:scale(.8)}60%{transform:scale(1.12)}100%{transform:scale(1)}}
+  /* availability mini */
+  .slots{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:4px}
+  .slot{font-size:10px;text-align:center;padding:7px 0;border-radius:8px;border:1px solid var(--line);color:var(--muted)}
+  .slot.free{color:var(--gold-l);border-color:rgba(201,168,76,.45);background:rgba(201,168,76,.08)}
+  .slot.book{color:#1a1408;background:linear-gradient(135deg,var(--gold-l),var(--gold));border-color:transparent;font-weight:700}
+  .nrow{display:flex;gap:8px;align-items:flex-start;font-size:11.5px;padding:8px 6px;border-top:1px solid var(--line)}
+  .nrow .dot{width:7px;height:7px;border-radius:50%;background:var(--gold);margin-top:5px;flex:0 0 auto;animation:blink 2.4s ease-in-out infinite}
+  .nrow small{display:block;color:var(--muted);font-size:10px;margin-top:1px}
+  @keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+  <div class="app">
+    <aside class="side">
+      <div class="logo">Smart<span class="serif">Cut</span></div>
+      <nav class="nav">
+        <a class="on"><span class="d"></span>Overview</a>
+        <a><span class="d"></span>Bookings</a>
+        <a><span class="d"></span>Services</a>
+        <a><span class="d"></span>Availability</a>
+        <a><span class="d"></span>Gallery</a>
+        <a><span class="d"></span>Notifications</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <div class="top">
+        <div><h1 class="serif">Dashboard</h1><div class="sub">Wed · June 25 · live</div></div>
+        <div class="right">
+          <div class="bell">🔔<i></i></div>
+          <button class="btn">+ New booking</button>
+        </div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi" style="animation-delay:.06s"><div class="l">Today</div><div class="v" data-count="12">0</div></div>
+        <div class="kpi" style="animation-delay:.12s"><div class="l">Pending</div><div class="v g" data-count="3">0</div></div>
+        <div class="kpi" style="animation-delay:.18s"><div class="l">Revenue</div><div class="v g">₪<span data-count="4820">0</span></div></div>
+        <div class="kpi" style="animation-delay:.24s"><div class="l">Chair use</div><div class="v" data-count="78" data-suffix="%">0</div></div>
+      </div>
+
+      <div class="cols">
+        <div class="panel">
+          <h3>Today's bookings</h3>
+          <div class="row" style="animation-delay:.20s">
+            <div class="who"><b>Daniel L.</b><small>Skin fade · 14:00</small></div>
+            <span class="st p" id="flipper">Pending</span></div>
+          <div class="row" style="animation-delay:.30s">
+            <div class="who"><b>Omer K.</b><small>Beard trim · 14:45</small></div>
+            <span class="st a">Approved</span></div>
+          <div class="row" style="animation-delay:.40s">
+            <div class="who"><b>Noam B.</b><small>Cut + shave · 15:30</small></div>
+            <span class="st p">Pending</span></div>
+          <div class="row" style="animation-delay:.50s">
+            <div class="who"><b>Eitan R.</b><small>Hot-towel shave · 16:15</small></div>
+            <span class="st a">Approved</span></div>
+        </div>
+
+        <div>
+          <div class="panel" style="margin-bottom:12px">
+            <h3>Availability · today</h3>
+            <div class="slots">
+              <div class="slot book">14:00</div><div class="slot book">14:45</div>
+              <div class="slot free">15:30</div><div class="slot free">16:15</div>
+              <div class="slot">17:00</div><div class="slot free">17:45</div>
+              <div class="slot free">18:30</div><div class="slot">19:15</div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3>Notifications</h3>
+            <div class="nrow"><span class="dot"></span><div>New booking request<small>Daniel L. · just now</small></div></div>
+            <div class="nrow"><span class="dot"></span><div>SMS confirmation sent<small>Omer K. · 6 min ago</small></div></div>
+            <div class="nrow"><span class="dot"></span><div>Reschedule requested<small>Noam B. · 20 min ago</small></div></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+<script>
+  // count-up KPIs
+  document.querySelectorAll('[data-count]').forEach(el=>{
+    const target=+el.getAttribute('data-count'), suf=el.getAttribute('data-suffix')||'';
+    let v=0, step=target/40;
+    const t=setInterval(()=>{v+=step; if(v>=target){v=target;clearInterval(t);}
+      el.textContent=Math.round(v).toLocaleString()+suf;},22);
+  });
+  // a pending booking gets approved live
+  setTimeout(()=>{const f=document.getElementById('flipper');
+    f.textContent='Approved'; f.className='st a flip';},2600);
+</script>
+</body>
+</html>

@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>TEEPO — Weekly Dashboard (Asset)</title>
+<style>
+  :root{
+    --green-900:#1f5d33;--green-700:#2f8f4e;--green-500:#3aa655;--green-400:#57c074;
+    --cream-card:#fffdf8;--ink:#33402f;--ink-soft:#6b7363;--lilac:#b79bd6;--lilac-soft:#efe7f8;
+    --line:#e8dcc4;--radius:18px;--shadow:0 16px 40px -18px rgba(40,70,40,.35);
+    --blue:#4285F4;--purple:#A142F4;--gcgreen:#34A853;--yellow:#FBBC05;--red:#EA4335;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:transparent;color:var(--ink);font-family:"Segoe UI",system-ui,-apple-system,Inter,Roboto,Arial,sans-serif}
+  .wrap{max-width:680px;margin:0 auto;padding:22px 20px 40px}
+  .card{background:var(--cream-card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);animation:rise .7s cubic-bezier(.2,.8,.2,1) both}
+  @keyframes rise{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+  /* top bar */
+  .topbar{display:flex;justify-content:flex-end;margin-bottom:14px}
+  .clock{background:#222;color:#eafaee;border-radius:10px;padding:7px 14px;font-size:13px;letter-spacing:.04em}
+  .clock b{color:#fff}
+  /* header */
+  h1{font-size:30px;margin:2px 0 4px;color:var(--ink);font-weight:700}
+  h1 .g{color:var(--green-700)}
+  .meta{color:var(--ink-soft);font-size:13px;margin-bottom:14px}
+  /* alert */
+  .alert{display:flex;align-items:center;justify-content:space-between;gap:14px;background:linear-gradient(120deg,#fff4e3,#fdeede);
+    border:1px solid #f0d9b8;border-radius:14px;padding:12px 14px;margin-bottom:16px;animation:rise .7s ease .05s both}
+  .alert .l{font-size:13px;color:#8a5a2a}
+  .alert .tag{display:inline-block;font-size:10px;letter-spacing:.12em;color:var(--red);border:1px solid #f0b5ad;border-radius:6px;padding:1px 6px;margin-left:6px}
+  .alert .l small{display:block;color:#b08a5a;font-size:11px;margin-top:2px}
+  .btn{display:inline-flex;align-items:center;gap:8px;border:none;cursor:pointer;color:#fff;font-size:13px;font-weight:700;
+    background:linear-gradient(135deg,var(--green-500),var(--green-700));padding:9px 14px;border-radius:10px;
+    box-shadow:0 10px 20px -8px rgba(47,143,78,.7);position:relative;overflow:hidden;white-space:nowrap}
+  .btn::after{content:"";position:absolute;top:0;left:-120%;width:55%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.5),transparent);transform:skewX(-18deg);animation:shine 3.4s ease-in-out infinite}
+  @keyframes shine{0%{left:-120%}55%,100%{left:150%}}
+  /* two col */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+  .ph{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 6px;font-size:14px;font-weight:700;color:var(--green-900)}
+  .pill-n{font-size:11px;color:var(--green-700);background:#eafaee;border:1px solid #bfe6c8;border-radius:999px;padding:1px 8px}
+  .pill-r{font-size:11px;color:#b04a3a;background:#fdeae6;border:1px solid #f0b5ad;border-radius:999px;padding:1px 8px}
+  .task{display:flex;align-items:center;gap:10px;padding:9px 14px;font-size:13px;border-top:1px dashed #efe4cf}
+  .box{width:16px;height:16px;border-radius:5px;border:1.5px solid #cbb890;display:inline-block;flex:0 0 auto}
+  .box.done{background:var(--green-500);border-color:var(--green-500)}
+  .task.done span{color:#9aa392;text-decoration:line-through}
+  .add{padding:10px 14px;color:var(--green-700);font-size:13px}
+  .add .plus{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:7px;background:var(--green-500);color:#fff;margin-right:8px}
+  .note{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;padding:14px;border-radius:var(--radius);
+    background:linear-gradient(120deg,#f3ecfb,#efe7f8);border:1px solid #e0d2f0;margin-bottom:16px;animation:rise .7s ease .1s both}
+  .note b{color:#6a4f93;font-size:14px}.note small{color:#8a7aa6;font-size:12px;max-width:520px}
+  /* notif rows */
+  .nrow{padding:9px 14px;border-top:1px dashed #efe4cf;font-size:13px;display:flex;gap:9px;align-items:flex-start}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--green-500);margin-top:5px;flex:0 0 auto;animation:blink 2.4s ease-in-out infinite}
+  .dot.r{background:var(--red)}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+  .nrow small{display:block;color:var(--ink-soft);font-size:11px;margin-top:1px}
+  /* schedule */
+  .schead{display:flex;align-items:center;justify-content:space-between;margin:6px 2px 10px}
+  .schead .t{font-size:15px;font-weight:700;color:var(--green-900)}
+  .schead .rng{font-size:12px;color:var(--ink-soft);border:1px solid var(--line);border-radius:8px;padding:4px 10px;background:#fffdf8}
+  .gcal{font-size:12px;color:var(--green-700);border:1px solid #bfe6c8;border-radius:8px;padding:4px 10px;background:#fff;cursor:pointer}
+  .allday{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px}
+  .ad{font-size:11px;background:#fff6ea;border:1px dashed #e6cfa6;color:#9a7a3a;border-radius:8px;padding:3px 9px}
+  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;background:#fffdf8;border:1px solid var(--line);border-radius:14px;padding:10px;animation:rise .8s ease .15s both}
+  .day{min-height:150px;position:relative}
+  .dh{text-align:center;font-size:11px;color:var(--ink-soft);padding-bottom:8px}
+  .dh b{display:block;font-size:14px;color:var(--ink)}
+  .dh.today b{color:#fff;background:var(--green-500);width:24px;height:24px;line-height:24px;border-radius:50%;margin:2px auto 0}
+  .ev{color:#fff;border-radius:8px;padding:6px 7px;font-size:10px;font-weight:700;margin-bottom:6px;box-shadow:0 6px 14px -8px rgba(0,0,0,.4);
+    animation:evin .6s ease both}
+  .ev small{display:block;font-weight:500;opacity:.9;font-size:9px}
+  @keyframes evin{from{opacity:0;transform:scale(.9) translateY(6px)}to{opacity:1;transform:none}}
+  /* bottom CTA */
+  .cta{margin-top:16px;text-align:center;padding:18px;border-radius:var(--radius);
+    background:linear-gradient(120deg,#eafaef,#dff3e6);border:1px solid #bfe6c8;animation:rise .8s ease .2s both}
+  .cta .eye{font-size:10px;letter-spacing:.22em;color:var(--green-700);text-transform:uppercase}
+  .cta b{display:block;font-size:18px;color:var(--green-900);margin:6px 0 4px}
+  .cta small{color:var(--ink-soft);font-size:12px}
+  .cta .btn{margin-top:12px}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar"><div class="clock">18:22 · <b>Wed · June 24, 2026</b></div></div>
+
+    <h1>Hi <span class="g">Dev</span>, your week is on track.</h1>
+    <div class="meta">3 tasks today · 2 classes · 1 deadline coming up</div>
+
+    <div class="alert">
+      <div class="l">⚠ Google Calendar disconnected <span class="tag">TOKEN_EXPIRED</span>
+        <small>Your session expired. Reconnect to keep your weekly schedule in sync.</small></div>
+      <button class="btn">⟳ Reconnect Google Calendar</button>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="ph">Today's tasks <span class="pill-n">2 left</span></div>
+        <div class="task done"><span class="box done"></span><span>Review Calculus lecture 07</span></div>
+        <div class="task"><span class="box"></span><span>Finish CS exercise set 4</span></div>
+        <div class="task"><span class="box"></span><span>Email Prof. Cohen about exam</span></div>
+        <div class="add"><span class="plus">+</span>Add a task for today…</div>
+      </div>
+      <div class="card">
+        <div class="ph">Notifications <span class="pill-r">3 new</span></div>
+        <div class="nrow"><span class="dot r"></span><div>Calendar token expired<small>Action needed · just now</small></div></div>
+        <div class="nrow"><span class="dot"></span><div>New file synced to “Linear Algebra”<small>12 min ago</small></div></div>
+        <div class="nrow"><span class="dot"></span><div>Summary ready for Lecture 07<small>1 hour ago</small></div></div>
+      </div>
+    </div>
+
+    <div class="note">
+      <b>Your personal note for the week</b>
+      <small>“Block 2 focused hours every morning for exam prep — future you will thank you.”</small>
+    </div>
+
+    <div class="schead">
+      <div class="t">📅 Weekly schedule</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="rng">‹ Jun 21 – 27, 2026 ›</div>
+        <div class="gcal">Google Calendar</div>
+      </div>
+    </div>
+    <div class="allday"><span class="ad">All-day: Stats assignment due</span><span class="ad">Library books return</span></div>
+
+    <div class="cal">
+      <div class="day"><div class="dh">MON<b>21</b></div>
+        <div class="ev" style="background:var(--blue);animation-delay:.1s">Calculus I<small>Hall 305</small></div>
+        <div class="ev" style="background:var(--purple);animation-delay:.5s">CS Lab<small>Lab 9</small></div></div>
+      <div class="day"><div class="dh">TUE<b>22</b></div>
+        <div class="ev" style="background:var(--gcgreen);animation-delay:.18s">Linear Algebra<small>Hall 112</small></div></div>
+      <div class="day"><div class="dh">WED<b>23</b></div>
+        <div class="ev" style="background:var(--yellow);animation-delay:.26s">Statistics<small>Cohen</small></div></div>
+      <div class="day"><div class="dh today">THU<b>24</b></div>
+        <div class="ev" style="background:var(--gcgreen);animation-delay:.34s">Study block<small>Exam prep</small></div>
+        <div class="ev" style="background:var(--red);animation-delay:.62s">Office hours<small>Prof. Cohen</small></div></div>
+      <div class="day"><div class="dh">FRI<b>25</b></div>
+        <div class="ev" style="background:var(--purple);animation-delay:.42s">CS Lecture<small>Hall 200</small></div></div>
+      <div class="day"><div class="dh">SAT<b>26</b></div>
+        <div class="ev" style="background:var(--red);animation-delay:.5s">Calculus exam<small>Hall 305 · 09:00</small></div></div>
+      <div class="day"><div class="dh">SUN<b>27</b></div></div>
+    </div>
+
+    <div class="cta">
+      <div class="eye">My personal progress</div>
+      <b>Let's set your goals for the semester</b>
+      <small>Define weekly targets and TEEPO will keep you on pace, automatically.</small>
+      <div><button class="btn">Set my goals</button></div>
+    </div>
+  </div>
+</body>
+</html>

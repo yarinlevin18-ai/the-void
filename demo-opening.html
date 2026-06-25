@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Void — Opening (particles form the name)</title>
+<link rel="stylesheet" href="https://use.typekit.net/xan5bdy.css"/>
+<script type="importmap">
+{ "imports":{
+ "three":"https://unpkg.com/three@0.169.0/build/three.module.js",
+ "three/addons/":"https://unpkg.com/three@0.169.0/examples/jsm/"
+}}
+</script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:#04060d;font-family:"acumin-pro",system-ui,sans-serif;color:#cfe8ff}
+  #scene{position:fixed;inset:0}
+  #whisper{position:fixed;left:0;right:0;top:58%;text-align:center;z-index:3;pointer-events:none;
+    font-family:"source-code-pro",monospace;letter-spacing:.26em;text-transform:lowercase;color:#7fa8c8;font-size:.8rem;opacity:0;transition:opacity .6s}
+  #whisper .dot{color:#7fe0ff;animation:dotblink 1.05s steps(1,end) infinite}
+  @keyframes dotblink{0%,50%{opacity:1}50.01%,100%{opacity:0}}
+  #cue{position:fixed;left:0;right:0;bottom:5%;text-align:center;z-index:3;pointer-events:none;
+    font-family:"source-code-pro",monospace;letter-spacing:.3em;text-transform:uppercase;color:#43607a;font-size:.66rem;opacity:0;transition:opacity 1s}
+  #replay{position:fixed;right:1rem;bottom:1rem;z-index:5;font-family:"source-code-pro",monospace;font-size:.6rem;letter-spacing:.2em;
+    text-transform:uppercase;color:#9fd0ff;background:rgba(10,14,26,.8);border:1px solid rgba(150,160,255,.3);border-radius:30px;padding:.5rem 1rem;cursor:pointer}
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div id="whisper"></div>
+<div id="cue">scroll to fly</div>
+<button id="replay">↻ replay</button>
+
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+const canvas=document.querySelector('#scene');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));renderer.setSize(innerWidth,innerHeight);
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,0.1,4000);camera.position.set(0,0,230);
+
+// faint nebula backdrop (cursor-reactive glow)
+const neb={uTime:{value:0},uA:{value:innerWidth/innerHeight},uM:{value:new THREE.Vector2(0.5,0.5)}};
+const bg=new THREE.Mesh(new THREE.PlaneGeometry(2,2),new THREE.ShaderMaterial({depthTest:false,depthWrite:false,uniforms:neb,
+ vertexShader:`varying vec2 v;void main(){v=uv;gl_Position=vec4(position.xy,0.999,1.);}`,
+ fragmentShader:`varying vec2 v;uniform float uTime,uA;uniform vec2 uM;
+  float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5);}
+  float n(vec2 p){vec2 i=floor(p),f=fract(p);float a=h(i),b=h(i+vec2(1,0)),c=h(i+vec2(0,1)),d=h(i+vec2(1,1));vec2 u=f*f*(3.-2.*f);return mix(mix(a,b,u.x),mix(c,d,u.x),u.y);}
+  float fbm(vec2 p){float s=0.,m=.5;for(int i=0;i<5;i++){s+=m*n(p);p=p*2.03+1.7;m*=.5;}return s;}
+  void main(){vec2 uv=v;uv.x*=uA;float f=fbm(uv*2.2+vec2(uTime*0.02,0.));
+    vec3 col=vec3(0.012,0.018,0.030)+mix(vec3(0.05,0.16,0.25),vec3(0.12,0.07,0.24),0.5+0.5*sin(uTime*0.07))*smoothstep(0.45,1.,f);
+    float md=1.-smoothstep(0.,0.45,distance(v,uM));col+=vec3(0.05,0.13,0.20)*md*0.5;
+    col*=1.-0.5*smoothstep(0.3,0.95,distance(v,vec2(0.5)));gl_FragColor=vec4(col,1.);}`}));
+bg.frustumCulled=false;bg.renderOrder=-10;scene.add(bg);
+
+// ---- sample "Yarin Levin" into target points ----
+let N=0, pos, start, targ, grp;
+function buildText(){
+  const c=document.createElement('canvas'), W=1100, H=320; c.width=W;c.height=H;
+  const x=c.getContext('2d'); x.fillStyle='#fff'; x.textAlign='center'; x.textBaseline='middle';
+  x.font='600 190px "ogg", Georgia, serif';
+  x.fillText('Yarin Levin', W/2, H/2+6);
+  const d=x.getImageData(0,0,W,H).data;
+  const pts=[]; const step=3, scale=0.17;
+  for(let y=0;y<H;y+=step){ for(let xx=0;xx<W;xx+=step){
+    if(d[(y*W+xx)*4+3]>130){ pts.push([ (xx-W/2)*scale, -(y-H/2)*scale, (Math.random()-0.5)*6 ]); }
+  }}
+  // cap to ~5200 for perf
+  for(let i=pts.length-1;i>0;i--){const j=Math.random()*i|0;[pts[i],pts[j]]=[pts[j],pts[i]];}
+  const cap=Math.min(pts.length,5200); pts.length=cap; N=cap;
+  pos=new Float32Array(N*3); start=new Float32Array(N*3); targ=new Float32Array(N*3);
+  for(let i=0;i<N;i++){
+    targ[i*3]=pts[i][0]; targ[i*3+1]=pts[i][1]; targ[i*3+2]=pts[i][2];
+    // start scattered in a wide void cloud
+    const a=Math.random()*6.28, r=120+Math.random()*240;
+    start[i*3]=Math.cos(a)*r; start[i*3+1]=(Math.random()-0.5)*260; start[i*3+2]=-160-Math.random()*260;
+    pos[i*3]=start[i*3]; pos[i*3+1]=start[i*3+1]; pos[i*3+2]=start[i*3+2];
+  }
+  if(grp){scene.remove(grp); grp.geometry.dispose();}
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  const m=new THREE.PointsMaterial({size:1.5,color:0xdff2ff,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false});
+  grp=new THREE.Points(g,m); scene.add(grp);
+}
+
+const composer=new EffectComposer(renderer);composer.addPass(new RenderPass(scene,camera));
+const bloom=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),1.25,0.85,0.0);composer.addPass(bloom);composer.setSize(innerWidth,innerHeight);
+
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);composer.setSize(innerWidth,innerHeight);neb.uA.value=innerWidth/innerHeight;});
+
+const mouse={x:0,y:0};
+addEventListener('pointermove',e=>{mouse.x=(e.clientX/innerWidth)*2-1;mouse.y=-(e.clientY/innerHeight)*2+1;
+  neb.uM.value.set(e.clientX/innerWidth,1-e.clientY/innerHeight);});
+
+// whisper typing
+const LINE='welcome to my world.';
+function typeWhisper(){const el=document.querySelector('#whisper');el.style.opacity='1';let i=0;
+  const body=LINE.slice(0,-1);                       // 'welcome to my world'
+  (function t(){ el.textContent=LINE.slice(0,i); i++;
+    if(i<=LINE.length) setTimeout(t,42);
+    else el.innerHTML=body+'<span class="dot">.</span>'; })();   // period blinks
+  setTimeout(()=>document.querySelector('#cue').style.opacity='1',900);
+}
+
+// formation timeline
+let t0=0, formed=false;
+function reset(){ t0=performance.now(); formed=false;
+  document.querySelector('#whisper').style.opacity='0'; document.querySelector('#whisper').innerHTML='';
+  document.querySelector('#cue').style.opacity='0';
+  for(let i=0;i<N*3;i++) pos[i]=start[i];
+}
+document.querySelector('#replay').onclick=reset;
+
+const clock=new THREE.Clock();
+function ease(x){return 1-Math.pow(1-x,3);}
+function frame(){const t=clock.getElapsedTime();neb.uTime.value=t;
+  if(N){
+    const k=Math.min((performance.now()-t0)/2600,1), e=ease(k);
+    for(let i=0;i<N;i++){
+      const ix=i*3;
+      pos[ix]  = start[ix]  +(targ[ix]  -start[ix])*e + (k>=1?Math.sin(t*1.2+i)*0.25:0);
+      pos[ix+1]= start[ix+1]+(targ[ix+1]-start[ix+1])*e + (k>=1?Math.cos(t*1.1+i)*0.25:0);
+      pos[ix+2]= start[ix+2]+(targ[ix+2]-start[ix+2])*e;
+    }
+    grp.geometry.attributes.position.needsUpdate=true;
+    if(k>=1 && !formed){formed=true; typeWhisper();}
+  }
+  // cursor parallax
+  if(grp){grp.rotation.y += ((mouse.x*0.18)-grp.rotation.y)*0.05; grp.rotation.x += ((-mouse.y*0.12)-grp.rotation.x)*0.05;}
+  camera.position.x += ((mouse.x*16)-camera.position.x)*0.03; camera.lookAt(0,0,0);
+  composer.render();requestAnimationFrame(frame);}
+
+document.fonts.load('600 190px "ogg"').catch(()=>{}).finally(()=>{ buildText(); t0=performance.now(); frame(); });
+</script>
+</body>
+</html>

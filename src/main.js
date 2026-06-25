@@ -18,6 +18,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 // Only TEXT entry should swallow global hotkeys (E/V/arrows) — not range sliders, checkboxes, etc.
@@ -68,6 +69,18 @@ const canvas = document.querySelector('#scene');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: false }); // composer renders the scene to its own targets — MSAA on the canvas is wasted
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // cap retina: fewer fragments, big fill-rate win
+// Shared CSS3D layer — live HTML assets (SmartCut, TEEPO) rendered as real iframes
+// positioned in 3D and synced to the camera. Sits above the canvas, below the UI.
+let css3d = null;
+try {
+  const cssR = new CSS3DRenderer();
+  cssR.setSize(window.innerWidth, window.innerHeight);
+  const el = cssR.domElement;
+  el.style.position = 'fixed'; el.style.top = '0'; el.style.left = '0';
+  el.style.width = '100%'; el.style.height = '100%'; el.style.pointerEvents = 'none'; el.style.zIndex = '1';
+  document.body.appendChild(el);
+  css3d = { renderer: cssR, scene: new THREE.Scene() };
+} catch (e) { console.warn('[css3d] disabled:', e); }
 let composer = null, bokeh = null, bloom = null;   // post-FX (set up below)
 let _lastBeatIdx = 0, voidWarp = 0;                // warp burst on chapter change
 let _flash = 0, _nextFlash = 2.5;                  // nebula lightning strikes
@@ -369,115 +382,82 @@ const meteors = (() => {
   return { update };
 })();
 
-// ---- FRAME 2: HERO — text (DOM, the calm anchor) + 3 glass UI assets as ONE
-//  grouped cluster. The whole group parallaxes to cursor + scroll; each asset has
-//  its own staggered entrance + idle drift/rotation. Real PNGs (assets/hero/*.png)
-//  swap in over procedural placeholders the moment they exist.
+// ---- FRAME 2: HERO — DOM statement (the calm anchor) + TWO real project screens
+//  in frosted-glass frames, grouped under one cluster: Shadiez (PNG plane) and
+//  SmartCut (LIVE HTML via CSS3D iframe, synced to the camera). LAYOUT ONLY for now —
+//  placed statically; entrance/idle/parallax + adaptive recolor come in the next pass.
 const heroCluster = (() => {
   const group = new THREE.Group(); group.visible = false; scene.add(group);
   const ACCENT = 'rgba(95,210,255,';
   function rr(x, a, b, w, h, r) { x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r); x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath(); }
-  function glass(x, w, h) {
-    x.clearRect(0, 0, w, h); rr(x, 8, 8, w - 16, h - 16, 22);
-    const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(20,30,44,0.66)'); g.addColorStop(1, 'rgba(7,11,19,0.66)');
-    x.fillStyle = g; x.fill(); x.lineWidth = 2.5; x.strokeStyle = ACCENT + '0.5)'; x.stroke();
-  }
-  function dashboard(x, w, h) {                       // (a) mini SaaS dashboard + glowing line chart
-    glass(x, w, h);
-    x.fillStyle = 'rgba(150,195,228,0.85)'; x.font = '600 24px "source-code-pro", monospace'; x.fillText('DASHBOARD', 34, 56);
-    x.fillStyle = ACCENT + '0.16)'; rr(x, 34, 74, 150, 38, 8); x.fill(); rr(x, 198, 74, 110, 38, 8); x.fill();
-    x.strokeStyle = ACCENT + '0.95)'; x.lineWidth = 4; x.shadowColor = ACCENT + '0.9)'; x.shadowBlur = 16; x.beginPath();
-    const ys = [0.2, 0.5, 0.32, 0.7, 0.55, 0.92, 0.78];
-    for (let i = 0; i < ys.length; i++) { const px = 40 + i * (w - 96) / (ys.length - 1), py = h - 46 - ys[i] * (h - 170); i ? x.lineTo(px, py) : x.moveTo(px, py); }
-    x.stroke(); x.shadowBlur = 0;
-  }
-  function landing(x, w, h) {                         // (b) landing-page hero card
-    glass(x, w, h);
-    x.fillStyle = ACCENT + '0.14)'; rr(x, 34, 34, w - 68, 92, 12); x.fill();
-    x.fillStyle = 'rgba(235,244,255,0.92)'; x.font = '600 36px "ogg", Georgia, serif'; x.fillText('Build. Ship.', 52, 96);
-    x.fillStyle = 'rgba(150,190,220,0.7)'; x.font = '17px "acumin-pro", sans-serif'; x.fillText('A landing page that moves.', 52, 150);
-    x.fillStyle = ACCENT + '0.85)'; rr(x, 34, h - 80, 134, 46, 23); x.fill();
-    x.fillStyle = 'rgba(150,190,220,0.45)'; rr(x, 182, h - 80, 134, 46, 23); x.fill();
-  }
-  function component(x, w, h) {                       // (c) small UI component (toggle + button)
-    glass(x, w, h);
-    x.strokeStyle = ACCENT + '0.55)'; x.lineWidth = 3; rr(x, 34, 38, 100, 46, 23); x.stroke();
-    x.fillStyle = ACCENT + '0.95)'; x.shadowColor = ACCENT + '0.9)'; x.shadowBlur = 14; x.beginPath(); x.arc(111, 61, 16, 0, 7); x.fill(); x.shadowBlur = 0;
-    x.fillStyle = ACCENT + '0.85)'; rr(x, 34, h - 66, 150, 38, 10); x.fill();
-  }
-  function fallbackTex(cw, ch, draw) {
+  function frameTex(cw, ch) {                          // frosted-glass frame: faint fill + thin cyan edge
     const c = document.createElement('canvas'); c.width = cw; c.height = ch; const x = c.getContext('2d');
-    draw(x, cw, ch); const t = new THREE.CanvasTexture(c); t.anisotropy = 4; t.colorSpace = THREE.SRGBColorSpace; return t;
+    rr(x, 7, 7, cw - 14, ch - 14, 20); x.fillStyle = 'rgba(12,20,30,0.30)'; x.fill();
+    x.lineWidth = 4; x.strokeStyle = ACCENT + '0.55)'; x.stroke();
+    const t = new THREE.CanvasTexture(c); t.anisotropy = 4; t.colorSpace = THREE.SRGBColorSpace; return t;
+  }
+  function framePlane(w, h, cw, ch) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: frameTex(cw, ch), transparent: true, depthWrite: false }));
+    m.renderOrder = 1; return m;
   }
   const loader = new THREE.TextureLoader();
-  function loadArt(png, mat) {                          // swap procedural → real PNG if present (silent fallback)
-    loader.load(import.meta.env.BASE_URL + png, (tex) => { tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4; mat.map = tex; mat.needsUpdate = true; }, undefined, () => {});
-  }
-  // local layout — origin = stage at the camera; -Z goes into the scene, +X right, +Y up.
   const cards = [];
-  function add(spec) {
-    const mat = new THREE.MeshBasicMaterial({ map: fallbackTex(spec.cw, spec.ch, spec.draw), transparent: true, opacity: 0, depthWrite: false });
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(spec.w, spec.h), mat); m.renderOrder = 1; group.add(m);
-    loadArt(spec.png, mat);
-    cards.push({ m, mat, id: spec.id, enter: spec.enter, liss: spec.liss });   // position/scale/styles live from assetCfg
-  }
-  function styleVec(s) {                          // entrance/exit offset + scale-from for a transition style
-    switch (s) {
-      case 'rise': return [0, -22, 0, 1];
-      case 'fall': return [0, 22, 0, 1];
-      case 'slideL': return [-34, 0, 0, 1];
-      case 'slideR': return [34, 0, 0, 1];
-      case 'depth': return [0, 0, -18, 1];
-      case 'scale': return [0, 0, 0, 0.5];
-      default: return [0, 0, 0, 1];               // fade
-    }
-  }
-  add({ id: 'card_dashboard', png: 'assets/hero/dashboard.png',    draw: dashboard, w: 34, h: 21, cw: 520, ch: 325, enter: 0.00, liss: { ax: 1.3, ay: 0.9, sp: 0.5, rz: 0.04, ph: 0 } });
-  add({ id: 'card_landing',   png: 'assets/hero/landing-card.png', draw: landing,   w: 30, h: 19, cw: 480, ch: 320, enter: 0.10, liss: { ax: 1.6, ay: 1.1, sp: 0.42, rz: 0.05, ph: 1.7 } });
-  add({ id: 'card_component', png: 'assets/hero/component.png',    draw: component, w: 18, h: 11, cw: 300, ch: 170, enter: 0.20, liss: { ax: 1.0, ay: 1.4, sp: 0.6, rz: 0.06, ph: 3.1 } });
-  const anchor = new THREE.Vector3(-20, -1, -56);      // where the DOM statement reads (left-of-center) — line endpoint
-  const lineGeo = new THREE.BufferGeometry(); const lp = new Float32Array(12);
-  lineGeo.setAttribute('position', new THREE.BufferAttribute(lp, 3));
-  const line = new THREE.LineSegments(lineGeo, new THREE.LineBasicMaterial({ color: 0x3a86a8, transparent: true, opacity: 0, depthWrite: false }));
-  line.renderOrder = 0; line.visible = false; group.add(line);   // connecting "stripe" off — too noisy across the void
-  const C = new THREE.Vector3(), f = new THREE.Vector3(), rt = new THREE.Vector3(), uu = new THREE.Vector3(), zc = new THREE.Vector3();
-  const baseQ = new THREE.Quaternion(), pQ = new THREE.Quaternion(), basis = new THREE.Matrix4(), eul = new THREE.Euler();
-  let placed = false, op = 0;
-  function place(b) {                                   // anchor the whole cluster in the Hero beat's camera frame
+  // --- Shadiez: real screenshot on a glass-framed plane ---
+  const shRoot = new THREE.Group(); group.add(shRoot);
+  shRoot.add(framePlane(38, 25, 540, 350));
+  const shImg = new THREE.Mesh(new THREE.PlaneGeometry(34, 21.5), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, color: 0x1b2734 }));
+  shImg.position.z = 0.4; shImg.renderOrder = 2; shRoot.add(shImg);
+  loader.load(import.meta.env.BASE_URL + 'assets/hero/shadiez-landing.png', (tex) => {
+    tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+    shImg.material.map = tex; shImg.material.color.set(0xffffff); shImg.material.needsUpdate = true;
+    if (tex.image && tex.image.height) shImg.scale.set(1, (34 / (tex.image.width / tex.image.height)) / 21.5, 1);   // fit the screenshot's aspect
+  }, undefined, () => {});
+  cards.push({ id: 'card_shadiez', root: shRoot });
+  // --- SmartCut: live HTML rendered as a CSS3D iframe over a glass frame ---
+  const scRoot = new THREE.Group(); group.add(scRoot);
+  const scFrame = framePlane(34, 23, 500, 340); scRoot.add(scFrame);
+  let scIframe = null;
+  const IFRAME_W = 700, IFRAME_H = 470, IFRAME_SCALE = 30 / IFRAME_W;   // px → world (~30u wide at scale 1)
+  if (css3d) try {
+    const f = document.createElement('iframe');
+    f.src = import.meta.env.BASE_URL + 'assets/hero/smartcut-crm.html';
+    f.style.width = IFRAME_W + 'px'; f.style.height = IFRAME_H + 'px';
+    f.style.border = '0'; f.style.background = 'transparent'; f.style.pointerEvents = 'none';
+    f.setAttribute('scrolling', 'no'); f.setAttribute('title', 'SmartCut');
+    scIframe = new CSS3DObject(f); scIframe.visible = false; css3d.scene.add(scIframe);
+  } catch (e) { console.warn('[hero iframe]', e); }
+  cards.push({ id: 'card_smartcut', root: scRoot });
+  // --- anchor the cluster in the Hero beat's camera frame ---
+  const C = new THREE.Vector3(), ff = new THREE.Vector3(), rt = new THREE.Vector3(), uu = new THREE.Vector3(), zc = new THREE.Vector3();
+  const baseQ = new THREE.Quaternion(), basis = new THREE.Matrix4();
+  let placed = false;
+  function place(b) {
     if (!b || !b.cam || !b.look) return;
     C.set(b.cam[0], b.cam[1], b.cam[2]);
-    f.set(b.look[0] - C.x, b.look[1] - C.y, b.look[2] - C.z).normalize();
+    ff.set(b.look[0] - C.x, b.look[1] - C.y, b.look[2] - C.z).normalize();
     uu.set(b.up?.[0] ?? 0, b.up?.[1] ?? 1, b.up?.[2] ?? 0);
-    rt.copy(f).cross(uu).normalize(); uu.copy(rt).cross(f).normalize();
-    zc.copy(rt).cross(uu);                              // = toward camera → plane fronts face the viewer
-    basis.makeBasis(rt, uu, zc); baseQ.setFromRotationMatrix(basis);
+    rt.copy(ff).cross(uu).normalize(); uu.copy(rt).cross(ff).normalize();
+    zc.copy(rt).cross(uu); basis.makeBasis(rt, uu, zc); baseQ.setFromRotationMatrix(basis);
     placed = true;
   }
-  function update(active, t, b, scroll) {
-    op += ((active ? 1 : 0) - op) * 0.06; group.visible = op > 0.01;
-    if (!group.visible) return;
-    if (active && !placed) place(b);
+  function update(active, t, b) {                      // LAYOUT ONLY — static placement, no entrance/idle/parallax yet
+    group.visible = active;
+    if (scIframe) scIframe.visible = active;
+    if (!active) return;
+    if (!placed) place(b);
     if (!placed) return;
-    const RM = PREFERS_REDUCED;
-    const px = RM ? 0 : mouse.x, py = RM ? 0 : mouse.y, sc = RM ? 0 : (scroll || 0);
-    eul.set(py * 0.06 + sc * 0.06, -px * 0.07, 0, 'XYZ');     // whole-cluster parallax: tilt to cursor + scroll
-    pQ.setFromEuler(eul); group.quaternion.copy(baseQ).multiply(pQ);
-    group.position.copy(C).addScaledVector(rt, px * 3.0).addScaledVector(uu, -py * 2.0);
+    group.position.copy(C); group.quaternion.copy(baseQ);
     for (const cd of cards) {
       const cfg = assetCfg[cd.id] || {};
-      const ce = Math.max(0, Math.min(1, (op - cd.enter) / (1 - cd.enter)));   // staggered entrance
-      const e = ce * ce * (3 - 2 * ce);
-      const sv = styleVec(active ? (cfg.ein || 'fade') : (cfg.eout || 'fade'));   // enter vs exit style
-      const dx = RM ? 0 : Math.sin(t * cd.liss.sp + cd.liss.ph) * cd.liss.ax;  // idle Lissajous
-      const dy = RM ? 0 : Math.cos(t * cd.liss.sp * 0.8 + cd.liss.ph) * cd.liss.ay;
-      cd.m.position.set((cfg.x ?? 0) + dx + (1 - e) * sv[0], (cfg.y ?? 0) + dy + (1 - e) * sv[1], (cfg.z ?? -60) + (1 - e) * sv[2]);
-      cd.m.rotation.z = RM ? 0 : Math.sin(t * cd.liss.sp * 0.7 + cd.liss.ph) * cd.liss.rz;
-      cd.m.scale.setScalar((cfg.scale || 1) * (sv[3] + (1 - sv[3]) * e));
-      cd.mat.opacity = e * 0.96;
+      cd.root.position.set(cfg.x ?? 0, cfg.y ?? 0, cfg.z ?? -60);
+      cd.root.scale.setScalar(cfg.scale || 1);
     }
-    const a0 = cards[0].m.position, a2 = cards[2].m.position;
-    lp.set([anchor.x, anchor.y, anchor.z, a0.x, a0.y, a0.z, anchor.x, anchor.y, anchor.z, a2.x, a2.y, a2.z]);
-    lineGeo.attributes.position.needsUpdate = true; line.material.opacity = op * 0.28;
+    if (scIframe) {                                    // sync the live iframe to the SmartCut frame's world transform
+      group.updateMatrixWorld(true);
+      scIframe.position.setFromMatrixPosition(scFrame.matrixWorld);
+      scIframe.quaternion.copy(group.quaternion);
+      scIframe.scale.setScalar(IFRAME_SCALE * (assetCfg.card_smartcut.scale || 1));
+    }
   }
   return { update };
 })();
@@ -1229,14 +1209,12 @@ const ASSET_DEFS = [
   { id: 'hint',     label: 'Scroll hint',   sel: '#overlay .hint',      group: 'overlay', editable: true },
   { id: 'capTitle', label: 'Caption title', sel: '#caption .cap-title', group: 'caption', editable: false },
   { id: 'capDesc',  label: 'Caption sub',   sel: '#caption .cap-desc',  group: 'caption', editable: false },
-  { id: 'card_dashboard', label: 'Card · Dashboard', group: 'hero' },
-  { id: 'card_landing',   label: 'Card · Landing',   group: 'hero' },
-  { id: 'card_component', label: 'Card · Component',  group: 'hero' },
+  { id: 'card_shadiez',  label: 'Screen · Shadiez',  group: 'hero' },
+  { id: 'card_smartcut', label: 'Screen · SmartCut', group: 'hero' },
 ];
 const HERO_DEFAULTS = {       // local layout in the Hero cluster (x right, y up, z negative = into scene)
-  card_dashboard: { x: 18, y: 11, z: -62, scale: 1.0, ein: 'depth', eout: 'fade' },
-  card_landing:   { x: 27, y: -11, z: -50, scale: 0.9, ein: 'rise', eout: 'fade' },
-  card_component: { x: 35, y: -2, z: -74, scale: 0.7, ein: 'slideR', eout: 'fade' },
+  card_shadiez:  { x: 22, y: 12, z: -60, scale: 1.0, ein: 'depth', eout: 'fade' },
+  card_smartcut: { x: 26, y: -12, z: -46, scale: 0.95, ein: 'rise', eout: 'fade' },
 };
 const ASSET_KEY = 'voidAssets';
 const _aDefault = () => ({ text: null, size: 1, font: '', depth: 0, mesh3d: false, in: { dur: 900, delay: 120, y: 26, blur: 7, ease: 'out' }, out: { dur: 500, delay: 0, y: -12, blur: 6, ease: 'inout' } });
@@ -1832,6 +1810,7 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // cap retina: fewer fragments, big fill-rate win
   if (composer) composer.setSize(window.innerWidth, window.innerHeight);
+  if (css3d) css3d.renderer.setSize(window.innerWidth, window.innerHeight);
   if (bloom) bloom.setSize((window.innerWidth / 2) | 0, (window.innerHeight / 2) | 0);
   livingVoid.nebMat.uniforms.uA.value = window.innerWidth / window.innerHeight;
   livingVoid.sizeRT();                            // keep the half-res raymarch target in sync
@@ -2449,6 +2428,7 @@ function animate() {
     } else { water.setRect(2, 2, 2, 2); water.step(_wUV.x, _wUV.y, 0); }
   }
   if (composer) composer.render(); else renderer.render(scene, camera);
+  if (css3d) css3d.renderer.render(css3d.scene, camera);   // live HTML assets layer (SmartCut iframe), synced to the camera
   if (PROF) {
     const now = performance.now();
     if (_pf.last) { _pf.t += now - _pf.last; _pf.n++; }
