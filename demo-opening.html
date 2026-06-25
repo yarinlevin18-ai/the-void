@@ -105,33 +105,50 @@ function typeWhisper(){const el=document.querySelector('#whisper');el.style.opac
 }
 
 // formation timeline
-let t0=0, formed=false;
-function reset(){ t0=performance.now(); formed=false;
+let t0=0, formed=false, phase='form', exitT0=0;
+function reset(){ t0=performance.now(); formed=false; phase='form'; exitT0=0;
+  if(grp) grp.material.opacity=0.7;
   document.querySelector('#whisper').style.opacity='0'; document.querySelector('#whisper').innerHTML='';
   document.querySelector('#cue').style.opacity='0';
   for(let i=0;i<N*3;i++){pos[i]=start[i]; vel[i]=0;}
 }
+// EXIT: scroll / Space launches the name into the void
+function startExit(){ if(phase!=='idle') return; phase='exit'; exitT0=performance.now();
+  document.querySelector('#whisper').style.opacity='0'; document.querySelector('#cue').style.opacity='0'; }
+addEventListener('wheel',startExit,{passive:true});
+addEventListener('keydown',e=>{ if(e.code==='Space'){e.preventDefault();startExit();} });
 document.querySelector('#replay').onclick=reset;
 
 const clock=new THREE.Clock();
 function ease(x){return 1-Math.pow(1-x,3);}
 function frame(){const t=clock.getElapsedTime();neb.uTime.value=t;
   if(N){
-    const k=Math.min((performance.now()-t0)/2600,1), e=ease(k);
-    if(k<1){                                   // forming: scatter -> letters
+    if(phase==='form'){                         // scatter -> letters
+      const k=Math.min((performance.now()-t0)/2600,1), e=ease(k);
       for(let i=0;i<N*3;i++) pos[i]=start[i]+(targ[i]-start[i])*e;
-    } else {                                   // formed: spring home + cursor shatter
-      if(!formed){formed=true; typeWhisper();}
-      const hH=Math.tan(55*Math.PI/360)*camera.position.z, hW=hH*camera.aspect;
-      const mwx=mouse.x*hW, mwy=mouse.y*hH;     // cursor in world space at the name plane
-      const R=9,R2=R*R,push=2.6,spring=0.045,damp=0.86;
+      if(k>=1){ phase='idle'; if(!formed){formed=true; typeWhisper();} }
+    } else if(phase==='exit'){                  // burst apart + stream past camera, fade out
+      const ek=(performance.now()-exitT0)/1500;
       for(let i=0;i<N;i++){const ix=i*3;
-        vel[ix]  +=(targ[ix]  -pos[ix]  )*spring;   // pull back to letter
+        vel[ix]  += pos[ix]*0.006;              // explode outward from centre
+        vel[ix+1]+= pos[ix+1]*0.006;
+        vel[ix+2]+= 1.5 + Math.random()*0.7;    // stream toward / past the camera
+        vel[ix]*=0.985; vel[ix+1]*=0.985; vel[ix+2]*=0.99;
+        pos[ix]+=vel[ix]; pos[ix+1]+=vel[ix+1]; pos[ix+2]+=vel[ix+2];
+      }
+      grp.material.opacity=Math.max(0,0.7*(1-ek));
+      if(ek>=1) reset();
+    } else {                                    // idle: spring home + cursor shatter
+      const hH=Math.tan(55*Math.PI/360)*camera.position.z, hW=hH*camera.aspect;
+      const mwx=mouse.x*hW, mwy=mouse.y*hH;
+      const R=5,R2=R*R,push=1.7,spring=0.028,damp=0.9;
+      for(let i=0;i<N;i++){const ix=i*3;
+        vel[ix]  +=(targ[ix]  -pos[ix]  )*spring;
         vel[ix+1]+=(targ[ix+1]-pos[ix+1])*spring;
         vel[ix+2]+=(targ[ix+2]-pos[ix+2])*spring;
         const ex=pos[ix]-mwx, ey=pos[ix+1]-mwy, d2=ex*ex+ey*ey;
-        if(d2<R2 && d2>0.01){const d=Math.sqrt(d2), f=(1-d/R)*push;  // push away from cursor
-          vel[ix]+=ex/d*f; vel[ix+1]+=ey/d*f; vel[ix+2]+=(Math.random()-0.5)*f*0.6;}
+        if(d2<R2 && d2>0.01){const d=Math.sqrt(d2), f=(1-d/R)*push;
+          vel[ix]+=ex/d*f; vel[ix+1]+=ey/d*f; vel[ix+2]+=(Math.random()-0.5)*f*0.2;}
         vel[ix]*=damp; vel[ix+1]*=damp; vel[ix+2]*=damp;
         pos[ix]+=vel[ix]; pos[ix+1]+=vel[ix+1]; pos[ix+2]+=vel[ix+2];
       }

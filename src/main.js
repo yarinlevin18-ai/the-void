@@ -400,6 +400,18 @@ const heroCluster = (() => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: frameTex(cw, ch), transparent: true, depthWrite: false }));
     m.renderOrder = 1; return m;
   }
+  function styleVec(s) {                               // entrance/exit offset [dx, dy, dz, scaleFrom]
+    switch (s) {
+      case 'rise': return [0, -22, 0, 1];
+      case 'fall': return [0, 22, 0, 1];
+      case 'slideL': return [-34, 0, 0, 1];
+      case 'slideR': return [34, 0, 0, 1];
+      case 'depth': return [0, 0, -18, 1];
+      case 'scale': return [0, 0, 0, 0.5];
+      default: return [0, 0, 0, 1];                    // fade
+    }
+  }
+  const RMVEC = [0, 0, 0, 1];
   const WORLD_W = 22;                                  // screen world width at scale 1
   const cards = [];
   function addScreen(spec) {
@@ -416,14 +428,14 @@ const heroCluster = (() => {
       el.setAttribute('title', spec.id);
       obj = new CSS3DObject(el); obj.visible = false; css3d.scene.add(obj);
     } catch (e) { console.warn('[hero screen]', spec.id, e); }
-    cards.push({ id: spec.id, root, frame, el, obj, baseScale: WORLD_W / spec.pxW });
+    cards.push({ id: spec.id, root, frame, el, obj, baseScale: WORLD_W / spec.pxW, enter: spec.enter || 0, _e: 0, _scl: 1 });
   }
-  addScreen({ id: 'card_shadiez',  kind: 'img',    src: 'assets/hero/shadiez-landing.png', cw: 540, ch: 350, pxW: 600, pxH: 380 });
-  addScreen({ id: 'card_smartcut', kind: 'iframe', src: 'assets/hero/smartcut-crm.html',   cw: 500, ch: 340, pxW: 700, pxH: 470 });
+  addScreen({ id: 'card_shadiez',  kind: 'img',    src: 'assets/hero/shadiez-landing.png', cw: 540, ch: 350, pxW: 600, pxH: 380, enter: 0 });
+  addScreen({ id: 'card_smartcut', kind: 'iframe', src: 'assets/hero/smartcut-crm.html',   cw: 500, ch: 340, pxW: 700, pxH: 470, enter: 0.12 });
   // --- anchor the cluster in the Hero beat's camera frame ---
   const C = new THREE.Vector3(), ff = new THREE.Vector3(), rt = new THREE.Vector3(), uu = new THREE.Vector3(), zc = new THREE.Vector3();
   const baseQ = new THREE.Quaternion(), basis = new THREE.Matrix4();
-  let placed = false;
+  let placed = false, op = 0;
   function place(b) {
     if (!b || !b.cam || !b.look) return;
     C.set(b.cam[0], b.cam[1], b.cam[2]);
@@ -433,27 +445,36 @@ const heroCluster = (() => {
     zc.copy(rt).cross(uu); basis.makeBasis(rt, uu, zc); baseQ.setFromRotationMatrix(basis);
     placed = true;
   }
-  function update(active, t, b) {                      // LAYOUT ONLY — static placement; blur/scale/pos live from assetCfg
-    group.visible = active;
-    if (!active) { for (const cd of cards) if (cd.obj) cd.obj.visible = false; return; }
-    if (!placed) place(b);
+  function update(active, t, b) {                      // smooth fade + drift in/out — no hard cut when you leave
+    op += ((active ? 1 : 0) - op) * 0.08;
+    const vis = op > 0.004;
+    group.visible = vis;
+    for (const cd of cards) if (cd.obj) cd.obj.visible = vis;
+    if (!vis) return;
+    if (active && !placed) place(b);                   // anchor once at the Hero; outro plays at that pose
     if (!placed) return;
     group.position.copy(C); group.quaternion.copy(baseQ);
-    for (const cd of cards) {
+    const RM = PREFERS_REDUCED;
+    for (const cd of cards) {                          // entrance uses ein, exit uses eout (drift + fade)
       const cfg = assetCfg[cd.id] || {};
-      cd.root.position.set(cfg.x ?? 0, cfg.y ?? 0, cfg.z ?? -56);
-      cd.root.scale.setScalar(cfg.scale || 1);
+      const ce = Math.max(0, Math.min(1, (op - cd.enter) / (1 - cd.enter)));
+      const e = RM ? op : ce * ce * (3 - 2 * ce);
+      const sv = RM ? RMVEC : styleVec(active ? (cfg.ein || 'fade') : (cfg.eout || 'fade'));
+      cd._scl = sv[3] + (1 - sv[3]) * e; cd._e = e;
+      cd.root.position.set((cfg.x ?? 0) + (1 - e) * sv[0], (cfg.y ?? 0) + (1 - e) * sv[1], (cfg.z ?? -56) + (1 - e) * sv[2]);
+      cd.root.scale.setScalar((cfg.scale || 1) * cd._scl);
+      if (cd.frame) cd.frame.material.opacity = e;
     }
     group.updateMatrixWorld(true);
     for (const cd of cards) {                          // sync each DOM screen to its frame's world transform
       if (!cd.obj) continue;
       const cfg = assetCfg[cd.id] || {};
-      cd.obj.visible = true;
       cd.obj.position.setFromMatrixPosition(cd.frame.matrixWorld);
       cd.obj.quaternion.copy(group.quaternion);
-      cd.obj.scale.setScalar(cd.baseScale * (cfg.scale || 1));
+      cd.obj.scale.setScalar(cd.baseScale * (cfg.scale || 1) * cd._scl);
       const blur = cfg.blur || 0;
       cd.el.style.filter = blur > 0.05 ? `blur(${blur.toFixed(1)}px)` : '';
+      cd.el.style.opacity = String(cd._e);
     }
   }
   return { update };
