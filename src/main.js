@@ -480,6 +480,96 @@ const heroCluster = (() => {
   return { update };
 })();
 
+// ---- FRAME 1: OPENING — "Yarin Levin" formed from ~5k additive void particles
+//  (ported 1:1 from demo-opening.html): scatter→glyphs form-in, cursor-shatter idle,
+//  burst-exit on leave that hands into the flight. Glow is free — additive points + the
+//  existing UnrealBloom (threshold ~0.22). A dedicated Points set (the streaming
+//  starfield can't hold glyph positions); visually it reads as the void's own matter.
+const openingFX = (() => {
+  const group = new THREE.Group(); group.visible = false; scene.add(group);
+  const FIT = 0.3, GLYPH = 0.17;                       // group scale to fit the Opening fov; glyph px→local
+  let built = false, N = 0, posA, startA, targ, vel, geo, mat, pts;
+  function buildText() {
+    try {
+      const c = document.createElement('canvas'), W = 1100, H = 320; c.width = W; c.height = H;
+      const x = c.getContext('2d'); x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.font = '600 190px "ogg", Georgia, serif'; x.fillText('Yarin Levin', W / 2, H / 2 + 6);
+      const d = x.getImageData(0, 0, W, H).data, raw = [];
+      for (let y = 0; y < H; y += 4) for (let xx = 0; xx < W; xx += 4) if (d[(y * W + xx) * 4 + 3] > 130) raw.push([(xx - W / 2) * GLYPH, -(y - H / 2) * GLYPH, (Math.random() - 0.5) * 6]);
+      for (let i = raw.length - 1; i > 0; i--) { const j = Math.random() * i | 0;[raw[i], raw[j]] = [raw[j], raw[i]]; }
+      N = Math.min(raw.length, 5200); raw.length = N;
+      posA = new Float32Array(N * 3); startA = new Float32Array(N * 3); targ = new Float32Array(N * 3); vel = new Float32Array(N * 3);
+      for (let i = 0; i < N; i++) {
+        targ[i * 3] = raw[i][0]; targ[i * 3 + 1] = raw[i][1]; targ[i * 3 + 2] = raw[i][2];
+        const a = Math.random() * 6.28, r = 120 + Math.random() * 240;   // start scattered in a wide void cloud
+        startA[i * 3] = Math.cos(a) * r; startA[i * 3 + 1] = (Math.random() - 0.5) * 260; startA[i * 3 + 2] = -160 - Math.random() * 260;
+        posA[i * 3] = startA[i * 3]; posA[i * 3 + 1] = startA[i * 3 + 1]; posA[i * 3 + 2] = startA[i * 3 + 2];
+      }
+      geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(posA, 3));
+      mat = new THREE.PointsMaterial({ size: 1.1, color: 0x9fd8ff, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false });
+      pts = new THREE.Points(geo, mat); pts.frustumCulled = false; group.add(pts);
+      group.scale.setScalar(FIT); built = true;
+    } catch (e) { console.warn('[opening] build failed', e); }
+  }
+  if (document.fonts && document.fonts.load) document.fonts.load('600 190px "ogg"').catch(() => {}).finally(buildText); else buildText();
+  // anchor the name in the Opening beat's camera frame (at the look point, facing the camera)
+  const C = new THREE.Vector3(), ff = new THREE.Vector3(), rt = new THREE.Vector3(), uu = new THREE.Vector3(), zc = new THREE.Vector3(), basis = new THREE.Matrix4();
+  function place() {
+    const b = beats[0]; if (!b || !b.cam || !b.look) return;
+    C.set(b.cam[0], b.cam[1], b.cam[2]);
+    ff.set(b.look[0] - C.x, b.look[1] - C.y, b.look[2] - C.z); const dist = ff.length() || 1; ff.normalize();
+    uu.set(b.up?.[0] ?? 0, b.up?.[1] ?? 1, b.up?.[2] ?? 0);
+    rt.copy(ff).cross(uu).normalize(); uu.copy(rt).cross(ff).normalize();
+    zc.copy(rt).cross(uu); basis.makeBasis(rt, uu, zc); group.quaternion.setFromRotationMatrix(basis);
+    group.position.copy(C).addScaledVector(ff, dist);
+  }
+  const whisper = document.querySelector('#whisper'), overlaySub = document.querySelector('#overlay .sub');
+  let _typed = false;
+  function typeWhisper() {
+    if (!whisper || _typed) return; _typed = true;
+    const LINE = 'welcome to my world.', body = LINE.slice(0, -1); let i = 0; whisper.style.opacity = '1';
+    (function tw() { whisper.textContent = LINE.slice(0, i); i++; if (i <= LINE.length) setTimeout(tw, 42); else whisper.innerHTML = body + '<span class="dot">.</span>'; })();
+  }
+  function clearWhisper() { if (whisper) { whisper.style.opacity = '0'; whisper.innerHTML = ''; } _typed = false; }
+  let phase = 'off', t0 = 0, exitT0 = 0;
+  const ease = (k) => 1 - Math.pow(1 - k, 3);
+  function update(active, t) {
+    if (!built) return;
+    if (active && phase === 'off') { place(); for (let i = 0; i < N * 3; i++) { posA[i] = startA[i]; vel[i] = 0; } if (mat) mat.opacity = 0.7; phase = 'form'; t0 = t; clearWhisper(); }
+    if (!active && (phase === 'form' || phase === 'idle')) { phase = 'exit'; exitT0 = t; clearWhisper(); }
+    group.visible = phase !== 'off';
+    if (overlaySub) overlaySub.style.display = phase !== 'off' ? 'none' : '';   // the whisper replaces the tagline on the Opening
+    if (phase === 'off') return;
+    const RM = PREFERS_REDUCED;
+    if (phase === 'form') {
+      const k = RM ? 1 : Math.min((t - t0) / 2.6, 1), e = ease(k);
+      for (let i = 0; i < N * 3; i++) posA[i] = startA[i] + (targ[i] - startA[i]) * e;
+      if (k >= 1) { phase = 'idle'; typeWhisper(); }
+    } else if (phase === 'exit') {
+      const ek = (t - exitT0) / 1.5;
+      if (!RM) for (let i = 0; i < N; i++) { const ix = i * 3;
+        vel[ix] += posA[ix] * 0.006; vel[ix + 1] += posA[ix + 1] * 0.006; vel[ix + 2] += 1.5 + Math.random() * 0.7;
+        vel[ix] *= 0.985; vel[ix + 1] *= 0.985; vel[ix + 2] *= 0.99;
+        posA[ix] += vel[ix]; posA[ix + 1] += vel[ix + 1]; posA[ix + 2] += vel[ix + 2]; }
+      if (mat) mat.opacity = Math.max(0, 0.7 * (1 - ek));
+      if (ek >= 1) { phase = 'off'; group.visible = false; }
+    } else {                                            // idle: spring home + cursor shatter
+      const dist = camera.position.distanceTo(group.position);
+      const halfH = Math.tan((camera.fov * Math.PI / 180) / 2) * dist, halfW = halfH * camera.aspect;
+      const mwx = RM ? 1e6 : (_cN.x * halfW) / FIT, mwy = RM ? 1e6 : (_cN.y * halfH) / FIT;
+      const R = 5, R2 = R * R, push = 1.7, spring = 0.028, damp = 0.9;
+      for (let i = 0; i < N; i++) { const ix = i * 3;
+        vel[ix] += (targ[ix] - posA[ix]) * spring; vel[ix + 1] += (targ[ix + 1] - posA[ix + 1]) * spring; vel[ix + 2] += (targ[ix + 2] - posA[ix + 2]) * spring;
+        if (!RM) { const ex = posA[ix] - mwx, ey = posA[ix + 1] - mwy, d2 = ex * ex + ey * ey;
+          if (d2 < R2 && d2 > 0.01) { const dd = Math.sqrt(d2), f = (1 - dd / R) * push; vel[ix] += ex / dd * f; vel[ix + 1] += ey / dd * f; vel[ix + 2] += (Math.random() - 0.5) * f * 0.2; } }
+        vel[ix] *= damp; vel[ix + 1] *= damp; vel[ix + 2] *= damp;
+        posA[ix] += vel[ix]; posA[ix + 1] += vel[ix + 1]; posA[ix + 2] += vel[ix + 2]; }
+    }
+    if (geo) geo.attributes.position.needsUpdate = true;
+  }
+  return { update };
+})();
+
 // ---- Placeable extruded 3D text (Ogg) ---------------------------------------
 // Lights are added only for the standard-material text — the particle shaders
 // ignore them. Emissive + bloom make the letters glow; the directional light
@@ -2292,6 +2382,7 @@ function animate() {
   }
   headline3D.update(!editMode && !freeRoam && index !== 0 && !!(assetCfg.capTitle && assetCfg.capTitle.mesh3d), t, beats[index], resolveCaption(index).title);
   text3d.update(t, PREFERS_REDUCED);           // placed 3D text: light sweep + idle float
+  try { openingFX.update(!editMode && !freeRoam && index === 0 && progress < 0.06, t); } catch (e) { if (!animate._oerr) { console.error('[opening]', e); animate._oerr = 1; } }
   {                                          // neon wave ribbon — drift + warp around its section
     const w = waveRibbon;
     w.uniforms.uTime.value = t; w.uniforms.uAmp.value = FX.waveAmp; w.uniforms.uSpd.value = FX.waveSpd; w.uniforms.uCoil.value = FX.waveCoil;

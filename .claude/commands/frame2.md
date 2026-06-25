@@ -33,6 +33,23 @@ Each asset sits in a frosted-glass frame (thin cyan edge + faint bloom), tilted 
   Set up a single CSS3D layer shared with the TEEPO panel. The ONLY exception is the
   `prefers-reduced-motion` / low-GPU path (see below), which may swap to a static frame.
 
+## 3b. Screen design treatment (APPROVED — apply to BOTH screens)
+1. **Focus rule (the big one):** only ONE screen is "awake" at a time — full color, nearest (largest
+   Z toward camera), slightly larger scale. The other sits **dimmed + desaturated + pushed back**. At
+   rest BOTH are slightly muted so the **headline leads**. Focus **shifts on scroll / camera approach**
+   (this is the locked dim→brand-color plan): the focused screen lerps to full saturation + brightness
+   + forward Z; the other lerps back to muted. Drive it with one `focus` value per screen (0→1).
+   Implementation: desaturate via a grayscale/′saturation′ on the CSS3D iframe (CSS `filter:
+   saturate() brightness()`) and on the Shadiez plane (material color/again a saturation factor).
+2. **Consistent frosted-glass frame on both:** identical corner radius, **thin 1px cyan edge**, soft
+   outer glow/bloom, and a faint inner reflection/highlight — so both read unmistakably as "screens."
+   Same frame for the PNG plane and the HTML iframe (wrap the iframe in a framed container).
+3. **3D tilt + depth:** rotate each a few degrees toward the viewer (small X/Y tilt) and **stagger
+   their Z** so they float and parallax instead of lying flat. The focused one tilts closer to
+   face-on; the unfocused one stays more raked.
+4. **Tiny mono caption under each** (Source Code Pro, muted, letter-spaced): `SHADIEZ · LANDING PAGE`
+   and `SMARTCUT · BOOKING CRM`. Caption brightens with its screen's focus.
+
 ## 4. GROUP + animate (the point of the task)
 Parent the text + both screens under one `THREE.Group` **`heroCluster`**. Suggested local layout
 (origin = headline anchor; tune to live framing, keep generous black negative space):

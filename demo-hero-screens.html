@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Void — Hero screens (liquid glass)</title>
+<link rel="stylesheet" href="https://use.typekit.net/xan5bdy.css"/>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;font-family:"acumin-pro",system-ui,sans-serif;color:#cfe8ff;
+    background:radial-gradient(1200px 700px at 70% 30%,#0b1b27 0%,#050a12 55%,#03060d 100%)}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;background:
+    radial-gradient(620px 420px at 16% 82%,rgba(40,95,125,.22),transparent 60%),
+    radial-gradient(720px 520px at 86% 14%,rgba(95,60,150,.18),transparent 60%)}
+  .wrap{position:fixed;inset:0;display:flex;align-items:center}
+  .copy{width:34%;padding-left:6vw;z-index:6}
+  .copy h1{font-family:"ogg",serif;font-weight:600;color:#fff;font-size:clamp(2rem,3.4vw,3.4rem);line-height:1.05;text-shadow:0 0 30px rgba(120,200,255,.25)}
+  .copy .sub{margin-top:1rem;color:#8fb0cc;font-size:.95rem}
+  .stage{position:absolute;right:0;top:0;width:70%;height:100%;perspective:1600px}
+  .screen{position:absolute;transition:transform 1s cubic-bezier(.2,.8,.2,1),filter 1s ease;transform-style:preserve-3d;cursor:pointer}
+
+  /* the screen body */
+  .frame{position:relative;border-radius:22px;
+    box-shadow:0 46px 100px -34px rgba(0,0,0,.85), 0 0 60px -12px rgba(90,180,255,.30)}
+  .inner{border-radius:22px;overflow:hidden;position:relative;z-index:1}
+  .inner img{display:block;width:100%;height:auto}
+  .inner iframe{display:block;border:0;background:#0d0d0d}
+
+  /* ---- LIQUID GLASS pane laid OVER the whole screen ---- */
+  .glass{position:absolute;inset:0;border-radius:22px;pointer-events:none;z-index:2;overflow:hidden;
+    /* edge refraction + rim + convex shading */
+    box-shadow:
+      inset 0 1.5px 0 rgba(255,255,255,.65),
+      inset 0 0 0 1px rgba(190,228,255,.45),
+      inset 0 -26px 50px -16px rgba(8,16,34,.55),
+      inset 0 30px 60px -30px rgba(180,220,255,.30);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.16) 0%, rgba(255,255,255,0) 20%),      /* top gloss */
+      radial-gradient(130% 70% at 50% -15%, rgba(210,235,255,.20), transparent 55%),   /* dome highlight */
+      radial-gradient(140% 120% at 115% 120%, rgba(120,90,180,.16), transparent 55%);  /* caustic tint */}
+  /* travelling specular streak across the surface */
+  .glass::before{content:"";position:absolute;top:-20%;bottom:-20%;left:-40%;width:36%;
+    background:linear-gradient(105deg,transparent,rgba(255,255,255,.38),transparent);
+    filter:blur(2px);transform:skewX(-12deg);mix-blend-mode:screen;animation:sweep 6.5s ease-in-out infinite}
+  @keyframes sweep{0%{left:-45%}55%,100%{left:115%}}
+
+  .cap{margin-top:.85rem;text-align:center;font-family:"source-code-pro",monospace;font-size:.62rem;
+    letter-spacing:.28em;text-transform:uppercase;color:#4d6a82;transition:color 1s ease}
+
+  #shadiez{left:5%;top:53%}     #shadiez .frame{width:440px}
+  #smartcut{right:6%;top:13%}   #smartcut .frame{width:480px;height:308px}
+  #smartcut .inner{width:480px;height:308px}
+  #smartcut iframe{width:800px;height:513px;transform:scale(.6);transform-origin:top left}
+
+  /* RESTING — muted, raked */
+  .screen{filter:saturate(.5) brightness(.74)}
+  #shadiez{transform:translateZ(-130px) rotateY(15deg) rotateX(5deg) scale(.9)}
+  #smartcut{transform:translateZ(-130px) rotateY(-15deg) rotateX(5deg) scale(.9)}
+  /* FOCUSED — awake, wetter glass, nearer, face-on */
+  .screen.focus{filter:saturate(1.05) brightness(1.03);z-index:4}
+  .screen.focus .frame{box-shadow:0 64px 120px -36px rgba(0,0,0,.9),0 0 100px -10px rgba(100,190,255,.55)}
+  .screen.focus .glass::before{animation-duration:3.4s}
+  #shadiez.focus{transform:translateZ(70px) rotateY(6deg) rotateX(2deg) scale(1.05)}
+  #smartcut.focus{transform:translateZ(70px) rotateY(-6deg) rotateX(2deg) scale(1.05)}
+  .screen.focus .cap{color:#cfeaff}
+  .hint{position:fixed;left:0;right:0;bottom:4%;text-align:center;font-family:"source-code-pro",monospace;font-size:.6rem;letter-spacing:.25em;text-transform:uppercase;color:#3a5570}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="copy">
+    <h1>From knowing nothing about coding and design.</h1>
+    <div class="sub">Self-taught — everything here, I built.</div>
+  </div>
+  <div class="stage">
+    <div class="screen focus" id="shadiez">
+      <div class="frame"><div class="inner"><img src="public/assets/hero/shadiez-landing.png" alt="Shadiez"/></div><div class="glass"></div></div>
+      <div class="cap">Shadiez · Landing Page</div>
+    </div>
+    <div class="screen" id="smartcut">
+      <div class="frame"><div class="inner"><iframe src="public/assets/hero/smartcut-crm.html" scrolling="no"></iframe></div><div class="glass"></div></div>
+      <div class="cap">SmartCut · Booking CRM</div>
+    </div>
+  </div>
+</div>
+<div class="hint">hover a screen to focus · auto-cycles otherwise</div>
+<script>
+  const screens=[...document.querySelectorAll('.screen')]; let idx=0, hover=false;
+  const focus=i=>{screens.forEach((s,k)=>s.classList.toggle('focus',k===i));idx=i;};
+  setInterval(()=>{ if(!hover) focus((idx+1)%screens.length); },4000);
+  screens.forEach((s,i)=>{ s.addEventListener('pointerenter',()=>{hover=true;focus(i);});
+    s.addEventListener('pointerleave',()=>{hover=false;}); });
+</script>
+</body>
+</html>
