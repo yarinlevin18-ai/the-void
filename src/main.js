@@ -410,10 +410,10 @@ const heroCluster = (() => {
       const inner = spec.kind === 'iframe'
         ? `<div class="inner" style="width:${spec.fw}px;height:${spec.fh}px"><iframe src="${src}" scrolling="no" style="width:${spec.iw}px;height:${spec.ih}px;transform:scale(${(spec.fw / spec.iw).toFixed(3)});transform-origin:top left"></iframe></div>`
         : `<div class="inner" style="width:${spec.fw}px"><img src="${src}" alt="${spec.id}"/></div>`;
-      el.innerHTML = `<div class="frame">${inner}<div class="glass"></div></div><div class="cap">${spec.cap}</div>`;
+      el.innerHTML = `<div class="frame">${inner}<div class="dim"></div><div class="glass"></div></div><div class="cap">${spec.cap}</div>`;
       obj = new CSS3DObject(el); obj.visible = false; css3d.scene.add(obj);
     } catch (e) { console.warn('[hero screen]', spec.id, e); }
-    cards.push({ id: spec.id, el, obj, baseScale: WORLD_W / spec.fw, enter: spec.enter || 0, liss: spec.liss, tilt: spec.tilt, focus: spec.focus0 || 0 });
+    cards.push({ id: spec.id, el, obj, dim: el ? el.querySelector('.dim') : null, baseScale: WORLD_W / spec.fw, enter: spec.enter || 0, liss: spec.liss, tilt: spec.tilt, focus: spec.focus0 || 0, _f: -1, _o: -1 });
   }
   // fw = native CSS resolution (rendered big, scaled DOWN in 3D → crisp, not upscaled-blurry); iframe at 1:1 native.
   addScreen({ id: 'card_shadiez',  kind: 'img',    src: 'assets/hero/shadiez-landing.png', fw: 920, cap: 'Shadiez · Landing Page', enter: 0, tilt: 1, focus0: 1, liss: { ax: 1.2, ay: 0.8, sp: 0.4, ph: 0 } });
@@ -463,8 +463,11 @@ const heroCluster = (() => {
       _eul.set(rx, ry, 0, 'XYZ'); _tq.setFromEuler(_eul); cd.obj.quaternion.copy(group.quaternion).multiply(_tq);
       cd.obj.scale.setScalar(cd.baseScale * (cfg.scale || 1) * (0.92 + fo * 0.14) * (sv[3] + (1 - sv[3]) * e));
       const blur = cfg.blur || 0;
-      cd.el.style.filter = `saturate(${(0.55 + fo * 0.5).toFixed(2)}) brightness(${(0.78 + fo * 0.27).toFixed(2)})` + (blur > 0.05 ? ` blur(${blur.toFixed(1)}px)` : '');
-      cd.el.style.opacity = String(e);
+      const dimv = Math.round((1 - fo) * 50) / 100;    // 0..0.5 dark overlay (cheap — no filter re-raster of the live iframe)
+      if (cd.dim && dimv !== cd._f) { cd.dim.style.opacity = String(dimv); cd._f = dimv; }
+      if (blur > 0.05) cd.el.style.filter = `blur(${blur.toFixed(1)}px)`; else if (cd.el.style.filter) cd.el.style.filter = '';
+      const ev = Math.round(e * 100) / 100;
+      if (ev !== cd._o) { cd.el.style.opacity = String(ev); cd._o = ev; }   // only write on change → no needless re-composite
       cd.el.classList.toggle('wet', fo > 0.5);
     }
   }
