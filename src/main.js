@@ -415,8 +415,9 @@ const heroCluster = (() => {
     } catch (e) { console.warn('[hero screen]', spec.id, e); }
     cards.push({ id: spec.id, el, obj, baseScale: WORLD_W / spec.fw, enter: spec.enter || 0, liss: spec.liss, tilt: spec.tilt, focus: spec.focus0 || 0 });
   }
-  addScreen({ id: 'card_shadiez',  kind: 'img',    src: 'assets/hero/shadiez-landing.png', fw: 440, cap: 'Shadiez · Landing Page', enter: 0, tilt: 1, focus0: 1, liss: { ax: 1.2, ay: 0.8, sp: 0.4, ph: 0 } });
-  addScreen({ id: 'card_smartcut', kind: 'iframe', src: 'assets/hero/smartcut-crm.html', fw: 480, fh: 308, iw: 800, ih: 513, cap: 'SmartCut · Booking CRM', enter: 0.12, tilt: -1, focus0: 0, liss: { ax: 1.5, ay: 1.0, sp: 0.36, ph: 1.7 } });
+  // fw = native CSS resolution (rendered big, scaled DOWN in 3D → crisp, not upscaled-blurry); iframe at 1:1 native.
+  addScreen({ id: 'card_shadiez',  kind: 'img',    src: 'assets/hero/shadiez-landing.png', fw: 920, cap: 'Shadiez · Landing Page', enter: 0, tilt: 1, focus0: 1, liss: { ax: 1.2, ay: 0.8, sp: 0.4, ph: 0 } });
+  addScreen({ id: 'card_smartcut', kind: 'iframe', src: 'assets/hero/smartcut-crm.html', fw: 800, fh: 513, iw: 800, ih: 513, cap: 'SmartCut · Booking CRM', enter: 0.12, tilt: -1, focus0: 0, liss: { ax: 1.5, ay: 1.0, sp: 0.36, ph: 1.7 } });
   // --- anchor the cluster in the Hero beat's camera frame ---
   const C = new THREE.Vector3(), ff = new THREE.Vector3(), rt = new THREE.Vector3(), uu = new THREE.Vector3(), zc = new THREE.Vector3();
   const baseQ = new THREE.Quaternion(), basis = new THREE.Matrix4();
