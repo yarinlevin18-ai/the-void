@@ -41,9 +41,16 @@ Each asset sits in a frosted-glass frame (thin cyan edge + faint bloom), tilted 
    + forward Z; the other lerps back to muted. Drive it with one `focus` value per screen (0→1).
    Implementation: desaturate via a grayscale/′saturation′ on the CSS3D iframe (CSS `filter:
    saturate() brightness()`) and on the Shadiez plane (material color/again a saturation factor).
-2. **Consistent frosted-glass frame on both:** identical corner radius, **thin 1px cyan edge**, soft
-   outer glow/bloom, and a faint inner reflection/highlight — so both read unmistakably as "screens."
-   Same frame for the PNG plane and the HTML iframe (wrap the iframe in a framed container).
+2. **Liquid-glass pane OVER the whole screen (not a border ring).** Source of truth for exact CSS:
+   **`demo-hero-screens.html`** (repo root) — port its `.glass` overlay 1:1. The glass is a layer laid
+   on top of each screen's content (same rounded radius ~22px), giving: a bright **edge-refraction rim**
+   hugging all sides, **convex shading** (inset top highlight + bottom shadow), a **top gloss + dome
+   highlight**, a faint **caustic tint** in one corner, and a blurred **specular streak that sweeps
+   diagonally across the surface** on a loop. The screen UI stays readable underneath. Apply identically
+   to BOTH the Shadiez PNG plane and the SmartCut iframe (wrap the iframe in the same framed container;
+   the glass `.glass` div sits above it). Do NOT rely on `backdrop-filter` over the opaque screen — it
+   does nothing there; the glass is built from overlay gradients + inset shadows + the moving streak.
+   On **focus** the glass "wets": brighter rim, stronger glow, and the specular sweep speeds up.
 3. **3D tilt + depth:** rotate each a few degrees toward the viewer (small X/Y tilt) and **stagger
    their Z** so they float and parallax instead of lying flat. The focused one tilts closer to
    face-on; the unfocused one stays more raked.

@@ -55,6 +55,35 @@ html, body {
 }
 #whisper .dot { color: #7fe0ff; animation: dotblink 1.05s steps(1, end) infinite; }
 @keyframes dotblink { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0; } }
+
+/* Hero project screens — liquid-glass pane laid over each screen (ported 1:1 from demo-hero-screens.html) */
+.hero-screen { position: relative; }
+.hero-screen .frame { position: relative; border-radius: 22px; box-shadow: 0 46px 100px -34px rgba(0,0,0,.85), 0 0 60px -12px rgba(90,180,255,.30); transition: box-shadow .8s ease; }
+.hero-screen .inner { border-radius: 22px; overflow: hidden; position: relative; z-index: 1; }
+.hero-screen .inner img { display: block; width: 100%; height: auto; }
+.hero-screen .inner iframe { display: block; border: 0; background: #0d0d0d; }
+.hero-screen .glass {
+  position: absolute; inset: 0; border-radius: 22px; pointer-events: none; z-index: 2; overflow: hidden;
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,.65),
+    inset 0 0 0 1px rgba(190,228,255,.45),
+    inset 0 -26px 50px -16px rgba(8,16,34,.55),
+    inset 0 30px 60px -30px rgba(180,220,255,.30);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.16) 0%, rgba(255,255,255,0) 20%),
+    radial-gradient(130% 70% at 50% -15%, rgba(210,235,255,.20), transparent 55%),
+    radial-gradient(140% 120% at 115% 120%, rgba(120,90,180,.16), transparent 55%);
+}
+.hero-screen .glass::before {
+  content: ""; position: absolute; top: -20%; bottom: -20%; left: -40%; width: 36%;
+  background: linear-gradient(105deg, transparent, rgba(255,255,255,.38), transparent);
+  filter: blur(2px); transform: skewX(-12deg); mix-blend-mode: screen; animation: heroSweep 6.5s ease-in-out infinite;
+}
+@keyframes heroSweep { 0% { left: -45%; } 55%, 100% { left: 115%; } }
+.hero-screen .cap { margin-top: .85rem; text-align: center; font-family: "source-code-pro", monospace; font-size: .62rem; letter-spacing: .28em; text-transform: uppercase; color: #4d6a82; transition: color .8s ease; }
+.hero-screen.wet .frame { box-shadow: 0 64px 120px -36px rgba(0,0,0,.9), 0 0 100px -10px rgba(100,190,255,.55); }
+.hero-screen.wet .glass::before { animation-duration: 3.4s; }
+.hero-screen.wet .cap { color: #cfeaff; }
 #overlay.revealed h1 { opacity: 1; transform: none; filter: none; }
 #overlay.revealed .sub { opacity: 1; transform: none; }
 #overlay.revealed .hint { opacity: 1; }

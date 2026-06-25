@@ -389,18 +389,6 @@ const meteors = (() => {
 //  placed statically; entrance/idle/parallax + adaptive recolor come in the next pass.
 const heroCluster = (() => {
   const group = new THREE.Group(); group.visible = false; scene.add(group);
-  const ACCENT = 'rgba(95,210,255,';
-  function rr(x, a, b, w, h, r) { x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r); x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath(); }
-  function frameTex(cw, ch) {                          // frosted-glass frame: faint fill + thin cyan edge
-    const c = document.createElement('canvas'); c.width = cw; c.height = ch; const x = c.getContext('2d');
-    rr(x, 7, 7, cw - 14, ch - 14, 20); x.fillStyle = 'rgba(12,20,30,0.30)'; x.fill();
-    x.lineWidth = 4; x.strokeStyle = ACCENT + '0.55)'; x.stroke();
-    const t = new THREE.CanvasTexture(c); t.anisotropy = 4; t.colorSpace = THREE.SRGBColorSpace; return t;
-  }
-  function framePlane(w, h, cw, ch) {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: frameTex(cw, ch), transparent: true, depthWrite: false }));
-    m.renderOrder = 1; return m;
-  }
   function styleVec(s) {                               // entrance/exit offset [dx, dy, dz, scaleFrom]
     switch (s) {
       case 'rise': return [0, -22, 0, 1];
@@ -412,31 +400,28 @@ const heroCluster = (() => {
       default: return [0, 0, 0, 1];                    // fade
     }
   }
-  const RMVEC = [0, 0, 0, 1];
-  const WORLD_W = 22;                                  // screen world width at scale 1
+  const RMVEC = [0, 0, 0, 1], WORLD_W = 26;            // target screen world width at scale 1
   const cards = [];
-  function addScreen(spec) {
-    const aspect = spec.pxW / spec.pxH, sw = WORLD_W, sh = WORLD_W / aspect;
-    const root = new THREE.Group(); group.add(root);
-    const frame = framePlane(sw * 1.12, sh * 1.12, spec.cw, spec.ch); root.add(frame);
+  function addScreen(spec) {                           // each screen = a DOM container (content + liquid-glass pane + caption) on the CSS3D layer
     let el = null, obj = null;
-    if (css3d) try {                                   // the screen itself is a DOM element on the shared CSS3D layer
-      el = document.createElement(spec.kind);
-      el.src = import.meta.env.BASE_URL + spec.src;
-      if (spec.kind === 'iframe') el.setAttribute('scrolling', 'no'); else el.style.objectFit = 'cover';
-      el.style.width = spec.pxW + 'px'; el.style.height = spec.pxH + 'px';
-      el.style.border = '0'; el.style.background = 'transparent'; el.style.pointerEvents = 'none'; el.style.borderRadius = '12px'; el.style.display = 'block';
-      el.setAttribute('title', spec.id);
+    if (css3d) try {
+      el = document.createElement('div'); el.className = 'hero-screen'; el.style.width = spec.fw + 'px';
+      const src = import.meta.env.BASE_URL + spec.src;
+      const inner = spec.kind === 'iframe'
+        ? `<div class="inner" style="width:${spec.fw}px;height:${spec.fh}px"><iframe src="${src}" scrolling="no" style="width:${spec.iw}px;height:${spec.ih}px;transform:scale(${(spec.fw / spec.iw).toFixed(3)});transform-origin:top left"></iframe></div>`
+        : `<div class="inner" style="width:${spec.fw}px"><img src="${src}" alt="${spec.id}"/></div>`;
+      el.innerHTML = `<div class="frame">${inner}<div class="glass"></div></div><div class="cap">${spec.cap}</div>`;
       obj = new CSS3DObject(el); obj.visible = false; css3d.scene.add(obj);
     } catch (e) { console.warn('[hero screen]', spec.id, e); }
-    cards.push({ id: spec.id, root, frame, el, obj, baseScale: WORLD_W / spec.pxW, enter: spec.enter || 0, _e: 0, _scl: 1 });
+    cards.push({ id: spec.id, el, obj, baseScale: WORLD_W / spec.fw, enter: spec.enter || 0, liss: spec.liss, tilt: spec.tilt, focus: spec.focus0 || 0 });
   }
-  addScreen({ id: 'card_shadiez',  kind: 'img',    src: 'assets/hero/shadiez-landing.png', cw: 540, ch: 350, pxW: 600, pxH: 380, enter: 0 });
-  addScreen({ id: 'card_smartcut', kind: 'iframe', src: 'assets/hero/smartcut-crm.html',   cw: 500, ch: 340, pxW: 700, pxH: 470, enter: 0.12 });
+  addScreen({ id: 'card_shadiez',  kind: 'img',    src: 'assets/hero/shadiez-landing.png', fw: 440, cap: 'Shadiez · Landing Page', enter: 0, tilt: 1, focus0: 1, liss: { ax: 1.2, ay: 0.8, sp: 0.4, ph: 0 } });
+  addScreen({ id: 'card_smartcut', kind: 'iframe', src: 'assets/hero/smartcut-crm.html', fw: 480, fh: 308, iw: 800, ih: 513, cap: 'SmartCut · Booking CRM', enter: 0.12, tilt: -1, focus0: 0, liss: { ax: 1.5, ay: 1.0, sp: 0.36, ph: 1.7 } });
   // --- anchor the cluster in the Hero beat's camera frame ---
   const C = new THREE.Vector3(), ff = new THREE.Vector3(), rt = new THREE.Vector3(), uu = new THREE.Vector3(), zc = new THREE.Vector3();
   const baseQ = new THREE.Quaternion(), basis = new THREE.Matrix4();
-  let placed = false, op = 0;
+  const eul = new THREE.Euler(), pQ = new THREE.Quaternion(), _lp = new THREE.Vector3(), _eul = new THREE.Euler(), _tq = new THREE.Quaternion();
+  let placed = false, op = 0, focusIdx = 0, focusT = 0, _pt = 0;
   function place(b) {
     if (!b || !b.cam || !b.look) return;
     C.set(b.cam[0], b.cam[1], b.cam[2]);
@@ -446,36 +431,40 @@ const heroCluster = (() => {
     zc.copy(rt).cross(uu); basis.makeBasis(rt, uu, zc); baseQ.setFromRotationMatrix(basis);
     placed = true;
   }
-  function update(active, t, b) {                      // smooth fade + drift in/out — no hard cut when you leave
-    op += ((active ? 1 : 0) - op) * 0.08;
+  function update(active, t, b, scroll) {              // entrance/idle/parallax + focus rule + liquid-glass wetness
+    const dt = _pt ? Math.min(t - _pt, 0.05) : 0; _pt = t;
+    op += ((active ? 1 : 0) - op) * 0.06;
     const vis = op > 0.004;
     group.visible = vis;
     for (const cd of cards) if (cd.obj) cd.obj.visible = vis;
     if (!vis) return;
-    if (active && !placed) place(b);                   // anchor once at the Hero; outro plays at that pose
+    if (active && !placed) place(b);
     if (!placed) return;
-    group.position.copy(C); group.quaternion.copy(baseQ);
     const RM = PREFERS_REDUCED;
-    for (const cd of cards) {                          // entrance uses ein, exit uses eout (drift + fade)
-      const cfg = assetCfg[cd.id] || {};
-      const ce = Math.max(0, Math.min(1, (op - cd.enter) / (1 - cd.enter)));
-      const e = RM ? op : ce * ce * (3 - 2 * ce);
-      const sv = RM ? RMVEC : styleVec(active ? (cfg.ein || 'fade') : (cfg.eout || 'fade'));
-      cd._scl = sv[3] + (1 - sv[3]) * e; cd._e = e;
-      cd.root.position.set((cfg.x ?? 0) + (1 - e) * sv[0], (cfg.y ?? 0) + (1 - e) * sv[1], (cfg.z ?? -56) + (1 - e) * sv[2]);
-      cd.root.scale.setScalar((cfg.scale || 1) * cd._scl);
-      if (cd.frame) cd.frame.material.opacity = e;
-    }
+    if (active && !RM) { focusT += dt; if (focusT > 4.5) { focusT = 0; focusIdx = (focusIdx + 1) % cards.length; } }   // focus auto-cycles
+    const px = RM ? 0 : mouse.x, py = RM ? 0 : mouse.y, sc = RM ? 0 : (scroll || 0);
+    eul.set(py * 0.05 + sc * 0.05, -px * 0.06, 0, 'XYZ'); pQ.setFromEuler(eul);
+    group.position.copy(C).addScaledVector(rt, px * 2.5).addScaledVector(uu, -py * 1.8);   // whole-cluster parallax
+    group.quaternion.copy(baseQ).multiply(pQ);
     group.updateMatrixWorld(true);
-    for (const cd of cards) {                          // sync each DOM screen to its frame's world transform
-      if (!cd.obj) continue;
+    for (let i = 0; i < cards.length; i++) {
+      const cd = cards[i]; if (!cd.obj) continue;
       const cfg = assetCfg[cd.id] || {};
-      cd.obj.position.setFromMatrixPosition(cd.frame.matrixWorld);
-      cd.obj.quaternion.copy(group.quaternion);
-      cd.obj.scale.setScalar(cd.baseScale * (cfg.scale || 1) * cd._scl);
+      cd.focus += (((i === focusIdx) ? 1 : 0) - cd.focus) * (RM ? 1 : 0.05);   // one screen awake at a time
+      const fo = cd.focus;
+      const ce = Math.max(0, Math.min(1, (op - cd.enter) / (1 - cd.enter))), e = RM ? op : ce * ce * (3 - 2 * ce);
+      const sv = RM ? RMVEC : styleVec(active ? (cfg.ein || 'fade') : (cfg.eout || 'fade'));
+      const dx = RM ? 0 : Math.sin(t * cd.liss.sp + cd.liss.ph) * cd.liss.ax, dy = RM ? 0 : Math.cos(t * cd.liss.sp * 0.8 + cd.liss.ph) * cd.liss.ay;
+      const zf = (cfg.z ?? -56) + (RM ? 0 : (-10 + fo * 18));   // focused screen pulls forward, unfocused pushes back
+      _lp.set((cfg.x ?? 0) + dx + (1 - e) * sv[0], (cfg.y ?? 0) + dy + (1 - e) * sv[1], zf + (1 - e) * sv[2]).applyMatrix4(group.matrixWorld);
+      cd.obj.position.copy(_lp);
+      const ry = RM ? 0 : THREE.MathUtils.degToRad((15 - fo * 9) * cd.tilt), rx = RM ? 0 : THREE.MathUtils.degToRad(5 - fo * 3);   // raked → face-on on focus
+      _eul.set(rx, ry, 0, 'XYZ'); _tq.setFromEuler(_eul); cd.obj.quaternion.copy(group.quaternion).multiply(_tq);
+      cd.obj.scale.setScalar(cd.baseScale * (cfg.scale || 1) * (0.92 + fo * 0.14) * (sv[3] + (1 - sv[3]) * e));
       const blur = cfg.blur || 0;
-      cd.el.style.filter = blur > 0.05 ? `blur(${blur.toFixed(1)}px)` : '';
-      cd.el.style.opacity = String(cd._e);
+      cd.el.style.filter = `saturate(${(0.55 + fo * 0.5).toFixed(2)}) brightness(${(0.78 + fo * 0.27).toFixed(2)})` + (blur > 0.05 ? ` blur(${blur.toFixed(1)}px)` : '');
+      cd.el.style.opacity = String(e);
+      cd.el.classList.toggle('wet', fo > 0.5);
     }
   }
   return { update };
