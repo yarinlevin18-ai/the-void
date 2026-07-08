@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Void — Sandbox</title>
+<link rel="stylesheet" href="https://use.typekit.net/xan5bdy.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<style>
+  :root{--cyan:#4fd2ff;--ink:#eaf4ff;--dim:#8fb0cc;--panelbg:rgba(8,14,22,.9)}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:#04060a;font-family:"acumin-pro",system-ui,sans-serif;color:var(--ink)}
+  #scene{position:fixed;inset:0;display:block}
+
+  /* ---- control panel ---- */
+  #panel{position:fixed;top:1rem;right:1rem;z-index:8;width:280px;max-height:calc(100vh - 2rem);overflow-y:auto;
+    background:var(--panelbg);border:1px solid rgba(79,210,255,.3);border-radius:12px;padding:.7rem .85rem;
+    backdrop-filter:blur(8px);font-size:.72rem;scrollbar-width:thin;scrollbar-color:rgba(79,210,255,.4) transparent}
+  #panel::-webkit-scrollbar{width:7px}#panel::-webkit-scrollbar-thumb{background:rgba(79,210,255,.35);border-radius:4px}
+  #panel h2{font-family:"source-code-pro",monospace;color:#fff;letter-spacing:.18em;text-transform:uppercase;font-size:.7rem;margin-bottom:.2rem}
+  #panel .sub{font-family:"source-code-pro",monospace;color:#5b768f;font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;margin-bottom:.7rem}
+  details{border-top:1px solid rgba(79,210,255,.16);padding:.45rem 0}
+  details[open]{padding-bottom:.6rem}
+  summary{font-family:"source-code-pro",monospace;color:var(--cyan);letter-spacing:.18em;text-transform:uppercase;font-size:.6rem;cursor:pointer;list-style:none;user-select:none;padding:.15rem 0}
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:"▸ ";color:#3a6577}
+  details[open]>summary::before{content:"▾ "}
+  label{display:block;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;font-size:.56rem;margin:.55rem 0 .18rem}
+  label .v{float:right;color:#cfe8ff;font-family:"source-code-pro",monospace}
+  input[type=range]{width:100%;accent-color:var(--cyan);height:14px}
+  select,button,input[type=text]{width:100%;font:inherit;font-size:.68rem;color:var(--ink);background:#0c1822;border:1px solid rgba(79,210,255,.4);border-radius:7px;padding:.38rem .5rem;cursor:pointer}
+  input[type=text]{cursor:text}
+  select option{background:#0a141d;color:#eaf4ff}
+  .chk{display:flex;gap:.5rem;align-items:center;color:var(--dim);margin:.5rem 0;text-transform:uppercase;letter-spacing:.1em;font-size:.6rem;cursor:pointer}
+  .chk input{cursor:pointer;accent-color:var(--cyan)}
+  button{text-transform:uppercase;letter-spacing:.1em;margin-top:.5rem}
+  button:hover{background:rgba(79,210,255,.28)}
+  button.go{background:rgba(79,210,255,.2);border-color:rgba(79,210,255,.6)}
+  button.danger{background:rgba(255,90,80,.14);border-color:rgba(255,90,80,.45);color:#ffb3ad}
+  button.danger:hover{background:rgba(255,90,80,.24)}
+  .row{display:flex;gap:.4rem}.row>*{flex:1;margin-top:.5rem}
+  .row3{display:flex;gap:.35rem;align-items:flex-end}.row3>div{flex:1}
+  input[type=color]{width:100%;height:26px;padding:0;border:1px solid rgba(79,210,255,.4);border-radius:6px;background:#0c1822;cursor:pointer}
+  #drop{margin-top:.55rem;border:1px dashed rgba(79,210,255,.45);border-radius:9px;padding:.8rem .5rem;text-align:center;color:var(--dim);
+    font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;transition:.15s}
+  #drop.hot{background:rgba(79,210,255,.12);border-color:var(--cyan);color:var(--ink)}
+  .assetctl{border:1px solid rgba(79,210,255,.18);border-radius:8px;padding:.5rem;margin-top:.5rem;background:rgba(6,12,18,.5)}
+  .hint{color:#5b768f;font-size:.55rem;letter-spacing:.06em;margin-top:.3rem;line-height:1.4}
+  #readout{position:fixed;left:1rem;bottom:1rem;z-index:8;font-family:"source-code-pro",monospace;font-size:.62rem;
+    letter-spacing:.1em;color:#5b768f;background:rgba(8,14,22,.78);border:1px solid rgba(79,210,255,.2);border-radius:9px;padding:.5rem .7rem;line-height:1.6}
+  #readout b{color:var(--cyan)}#readout .warn{color:#ffb86b}
+  #toast{position:fixed;left:50%;bottom:1.4rem;transform:translateX(-50%);z-index:9;background:rgba(79,210,255,.92);color:#04141c;
+    font-family:"source-code-pro",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:.55rem 1.1rem;border-radius:999px;opacity:0;transition:opacity .25s;pointer-events:none}
+
+  /* asset HTML overlay (kicker/title/desc mocking a real section) */
+  #overlay{position:fixed;inset:0;z-index:3;pointer-events:none;display:flex;flex-direction:column;justify-content:center;padding-left:8vw;opacity:0;transition:opacity .4s}
+  #overlay.on{opacity:1}
+  #overlay .ok{font-family:"source-code-pro",monospace;color:var(--cyan);font-size:.72rem;letter-spacing:.28em;text-transform:uppercase;margin-bottom:.9rem}
+  #overlay .ot{font-family:"ogg",serif;font-weight:600;font-size:clamp(2.6rem,7vw,6rem);line-height:.95;color:#fff;text-shadow:0 0 40px rgba(79,210,255,.25)}
+  #overlay .od{max-width:40ch;margin-top:1rem;color:var(--dim);font-size:clamp(.95rem,1.4vw,1.15rem);line-height:1.6}
+</style>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+  <div id="overlay"><div class="ok"></div><div class="ot"></div><div class="od"></div></div>
+
+  <div id="panel">
+    <h2>Void Sandbox</h2>
+    <div class="sub">live FX + asset staging</div>
+
+    <!-- ================= A. VOID / PARTICLES ================= -->
+    <details open>
+      <summary>A · Void / particles</summary>
+      <label>Particle count <span class="v" id="vCount"></span></label>
+      <input type="range" id="count" min="100" max="3000" step="50">
+      <label>Particle size <span class="v" id="vSize"></span></label>
+      <input type="range" id="size" min="1" max="28" step="0.5">
+      <label>Field spread <span class="v" id="vSpread"></span></label>
+      <input type="range" id="spread" min="200" max="1400" step="20">
+      <div class="chk"><input type="checkbox" id="drift"> organic drift</div>
+      <label>Drift amount <span class="v" id="vDriftAmt"></span></label>
+      <input type="range" id="driftAmt" min="0" max="3" step="0.05">
+      <div class="chk"><input type="checkbox" id="twinkle"> twinkle</div>
+      <label>Link distance <span class="v" id="vLinkDist"></span></label>
+      <input type="range" id="linkDist" min="0" max="180" step="2">
+      <label>Max links / node <span class="v" id="vMaxLinks"></span></label>
+      <input type="range" id="maxLinks" min="0" max="6" step="1">
+      <label>Line flow speed <span class="v" id="vFlow"></span></label>
+      <input type="range" id="flow" min="0" max="3" step="0.05">
+      <div class="chk"><input type="checkbox" id="nebula"> nebula clouds</div>
+      <label>Nebula intensity <span class="v" id="vNeb"></span></label>
+      <input type="range" id="neb" min="0" max="1.6" step="0.05">
+      <label>Fog density <span class="v" id="vFog"></span></label>
+      <input type="range" id="fog" min="0" max="0.004" step="0.0001">
+      <label>Colour mix &amp; ratio (cyan / white / ember)</label>
+      <div class="row3">
+        <div><input type="color" id="colA"><input type="range" id="ratA" min="0" max="1" step="0.02"></div>
+        <div><input type="color" id="colB"><input type="range" id="ratB" min="0" max="1" step="0.02"></div>
+        <div><input type="color" id="colC"><input type="range" id="ratC" min="0" max="1" step="0.02"></div>
+      </div>
+    </details>
+
+    <!-- ================= B. BLOOM / CAMERA / INTERACTION ================= -->
+    <details open>
+      <summary>B · Bloom / camera / interaction</summary>
+      <div class="chk"><input type="checkbox" id="bloom"> bloom glow</div>
+      <label>Bloom strength <span class="v" id="vBStr"></span></label>
+      <input type="range" id="bStr" min="0" max="2.5" step="0.05">
+      <label>Bloom radius <span class="v" id="vBRad"></span></label>
+      <input type="range" id="bRad" min="0" max="1.5" step="0.02">
+      <label>Bloom threshold <span class="v" id="vBThr"></span></label>
+      <input type="range" id="bThr" min="0" max="1" step="0.01">
+      <label>Camera mode</label>
+      <select id="camMode">
+        <option value="lean">Mouse-lean</option>
+        <option value="orbit">Auto-orbit</option>
+        <option value="fly">Fly-forward</option>
+        <option value="lookup">Look-up (final beat)</option>
+      </select>
+      <label>Camera FOV <span class="v" id="vFov"></span></label>
+      <input type="range" id="fov" min="30" max="100" step="1">
+      <label>Base distance <span class="v" id="vDist"></span></label>
+      <input type="range" id="dist" min="40" max="600" step="5">
+      <button id="warp">⚡ Warp burst</button>
+      <label>Brand recolour colour</label>
+      <input type="color" id="brand">
+      <button class="go" id="pulse">◐ Pulse recolour</button>
+      <div class="chk"><input type="checkbox" id="autoRecolor"> auto-recolour when asset centred</div>
+    </details>
+
+    <!-- ================= C. ASSETS / CONTENT ================= -->
+    <details open>
+      <summary>C · Assets / content</summary>
+      <div class="row">
+        <button data-bundled="/electric.png">electric</button>
+        <button data-bundled="/particle.png">particle</button>
+        <button data-bundled="/plexus.png">plexus</button>
+      </div>
+      <div id="drop">drop image here &nbsp;·&nbsp; or
+        <label style="display:inline;color:var(--cyan);cursor:pointer;text-transform:none;letter-spacing:0;margin:0">browse<input type="file" id="file" accept="image/*" hidden></label>
+      </div>
+      <label>Active panel</label>
+      <select id="assetSel"><option value="-1">— none —</option></select>
+      <div class="assetctl" id="assetCtl" style="display:none">
+        <label>Reveal style</label>
+        <select id="aReveal">
+          <option value="resolve">Resolve + glow</option>
+          <option value="sweep">Scan-line sweep</option>
+          <option value="drop">Drop from depth</option>
+          <option value="rise">Rise up</option>
+        </select>
+        <label>Scale <span class="v" id="vAScale"></span></label>
+        <input type="range" id="aScale" min="0.2" max="4" step="0.05">
+        <label>Position X <span class="v" id="vAX"></span></label>
+        <input type="range" id="aX" min="-300" max="300" step="2">
+        <label>Position Y <span class="v" id="vAY"></span></label>
+        <input type="range" id="aY" min="-200" max="200" step="2">
+        <label>Position Z <span class="v" id="vAZ"></span></label>
+        <input type="range" id="aZ" min="-300" max="200" step="2">
+        <div class="chk"><input type="checkbox" id="aFloat"> idle float</div>
+        <div class="row">
+          <button class="go" id="aPlay">▶ Play reveal</button>
+          <button class="danger" id="aRemove">✕ Remove</button>
+        </div>
+        <label>Overlay text (mock a section)</label>
+        <input type="text" id="oKicker" placeholder="kicker — e.g. Project 01">
+        <input type="text" id="oTitle" placeholder="title" style="margin-top:.35rem">
+        <input type="text" id="oDesc" placeholder="description" style="margin-top:.35rem">
+        <div class="chk"><input type="checkbox" id="oShow"> show overlay text</div>
+      </div>
+    </details>
+
+    <!-- ================= GLOBAL ================= -->
+    <details open>
+      <summary>Global</summary>
+      <button class="go" id="copy">⧉ Copy config</button>
+      <label>Presets</label>
+      <select id="presetSel"><option value="">— select preset —</option></select>
+      <div class="row">
+        <input type="text" id="presetName" placeholder="preset name">
+        <button class="go" id="savePreset" style="flex:0 0 auto;width:auto">Save</button>
+      </div>
+      <div class="row">
+        <button id="loadPreset">Load</button>
+        <button class="danger" id="delPreset">Delete</button>
+      </div>
+      <button id="reset" style="margin-top:.7rem">↺ Reset to defaults</button>
+    </details>
+  </div>
+
+  <div id="readout"></div>
+  <div id="toast"></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+const $ = s => document.querySelector(s);
+const PRESET_KEY = 'voidSandbox.presets';
+const LAST_KEY   = 'voidSandbox.last';
+
+/* ============================================================
+   1. STATE — single source of truth
+   ============================================================ */
+const DEFAULTS = {
+  void: {
+    count: 750, size: 9, spread: 700,
+    drift: true, driftAmt: 1, twinkle: true,
+    linkDist: 70, maxLinks: 3, flow: 1,
+    nebula: true, nebInt: 1, fog: 0.0016,
+    colA: '#6fe0ff', colB: '#eaf4ff', colC: '#ff7a3d',
+    ratA: 0.50, ratB: 0.38, ratC: 0.12,
+  },
+  bloom: { on: true, strength: 1.0, radius: 0.7, threshold: 0.22 },
+  cam:   { mode: 'lean', fov: 60, dist: 160 },
+  brand: { color: '#ff7a3d', auto: false },
+};
+const clone = o => JSON.parse(JSON.stringify(o));
+let state = clone(DEFAULTS);
+
+/* ============================================================
+   2. THREE setup
+   ============================================================ */
+const canvas = $('#scene');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x04060a, state.void.fog);
+const camera = new THREE.PerspectiveCamera(state.cam.fov, innerWidth / innerHeight, 0.1, 6000);
+camera.position.set(0, 0, state.cam.dist);
+
+const world = new THREE.Group();           // holds points + lines (rotates with mouse-lean)
+scene.add(world);
+
+/* ---- animated nebula background (from demo-living-void) ---- */
+const bgMat = new THREE.ShaderMaterial({
+  depthTest: false, depthWrite: false, fog: false,
+  uniforms: { uTime: { value: 0 }, uIntensity: { value: state.void.nebInt }, uAspect: { value: innerWidth / innerHeight } },
+  vertexShader: `varying vec2 vUv; void main(){vUv=uv; gl_Position=vec4(position.xy,0.999,1.0);}`,
+  fragmentShader: `
+    varying vec2 vUv; uniform float uTime,uIntensity,uAspect;
+    float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+    float noise(vec2 p){vec2 i=floor(p),f=fract(p);float a=hash(i),b=hash(i+vec2(1,0)),c=hash(i+vec2(0,1)),d=hash(i+vec2(1,1));vec2 u=f*f*(3.0-2.0*f);return mix(mix(a,b,u.x),mix(c,d,u.x),u.y);}
+    float fbm(vec2 p){float v=0.0,a=0.5;for(int i=0;i<5;i++){v+=a*noise(p);p=p*2.02+vec2(1.7);a*=0.5;}return v;}
+    void main(){
+      vec2 uv=vUv; uv.x*=uAspect;
+      float t=uTime*0.03;
+      float n =fbm(uv*2.4+vec2(t,t*0.6));
+      float n2=fbm(uv*1.5-vec2(t*0.5,t*0.2)+5.0);
+      vec3 base=vec3(0.012,0.020,0.030), teal=vec3(0.05,0.17,0.24), violet=vec3(0.11,0.06,0.20), ember=vec3(0.22,0.09,0.03);
+      vec3 col=base;
+      col+=teal  *smoothstep(0.35,0.95,n)*0.9;
+      col+=violet*smoothstep(0.55,1.05,n2)*0.55;
+      col+=ember *smoothstep(0.72,1.05,n*n2)*0.7;
+      float d=distance(vUv,vec2(0.5)); col*=1.0-0.55*smoothstep(0.35,0.95,d);
+      gl_FragColor=vec4(col*uIntensity,1.0);
+    }`
+});
+const bg = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), bgMat);
+bg.frustumCulled = false; bg.renderOrder = -10; bg.visible = state.void.nebula;
+scene.add(bg);
+
+/* ---- shared point-field materials (rebuilt geometry, persistent material) ---- */
+const pmat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  uniforms: { uTime: { value: 0 }, uSize: { value: state.void.size }, uTwinkle: { value: 1 }, uWarp: { value: 0 } },
+  vertexShader: `attribute float aPhase; attribute float aScale; attribute vec3 aColor;
+    uniform float uTime,uSize,uTwinkle,uWarp; varying vec3 vC; varying float vTw;
+    void main(){float tw=mix(1.0,0.55+0.45*sin(uTime*1.6+aPhase),uTwinkle);vC=aColor;vTw=tw;
+      vec4 mv=modelViewMatrix*vec4(position,1.0);gl_Position=projectionMatrix*mv;
+      gl_PointSize=aScale*uSize*tw*(1.0+uWarp*1.6)*(300.0/ -mv.z);}`,
+  fragmentShader: `varying vec3 vC; varying float vTw;
+    void main(){float d=length(gl_PointCoord-0.5);if(d>0.5)discard;float a=smoothstep(0.5,0.0,d);gl_FragColor=vec4(vC*(0.7+vTw),a*vTw);}`
+});
+const lmat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  uniforms: { uTime: { value: 0 }, uOn: { value: 1 }, uFlow: { value: state.void.flow } },
+  vertexShader: `attribute float aT; attribute float aLPhase; attribute vec3 aLColor; varying float vT;varying float vP;varying vec3 vC;
+    void main(){vT=aT;vP=aLPhase;vC=aLColor;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+  fragmentShader: `varying float vT;varying float vP;varying vec3 vC;uniform float uTime,uOn,uFlow;
+    void main(){float ft=uTime*uFlow;float life=0.10+0.18*sin(ft*0.35+vP*6.2831);float head=fract(ft*0.22+vP);float pulse=smoothstep(0.05,0.0,abs(vT-head));
+      float a=clamp(life+pulse*0.9,0.0,1.0)*uOn;gl_FragColor=vec4(vC+pulse*vec3(0.5),a);}`
+});
+
+/* ---- field data (sized to current count) ---- */
+let N, base, pos, amp, fre, pha, aColor, baseColor, points = null, pgeo = null;
+let pairs = [], L = 0, lpos, lgeo = null, lines = null;
+
+function buildField() {
+  N = state.void.count;
+  const S = state.void.spread;
+  base = new Float32Array(N * 3); pos = new Float32Array(N * 3);
+  amp = new Float32Array(N * 3); fre = new Float32Array(N * 3); pha = new Float32Array(N * 3);
+  const aPhase = new Float32Array(N), aScale = new Float32Array(N);
+  aColor = new Float32Array(N * 3); baseColor = new Float32Array(N * 3);
+
+  const cols = [new THREE.Color(state.void.colA), new THREE.Color(state.void.colB), new THREE.Color(state.void.colC)];
+  const r = [state.void.ratA, state.void.ratB, state.void.ratC];
+  const sum = r[0] + r[1] + r[2] || 1; const w0 = r[0] / sum, w1 = (r[0] + r[1]) / sum;
+
+  for (let i = 0; i < N; i++) {
+    base[i*3]   = (Math.random() - .5) * S;
+    base[i*3+1] = (Math.random() - .5) * S * 0.7;
+    base[i*3+2] = (Math.random() - .5) * S - 150;
+    for (let k = 0; k < 3; k++) { amp[i*3+k] = 4 + Math.random()*14; fre[i*3+k] = 0.2 + Math.random()*0.6; pha[i*3+k] = Math.random()*6.28; }
+    aPhase[i] = Math.random()*6.28; aScale[i] = 0.6 + Math.random()*1.8;
+    const rr = Math.random(); const c = rr < w0 ? cols[0] : (rr < w1 ? cols[1] : cols[2]);
+    aColor[i*3] = baseColor[i*3] = c.r; aColor[i*3+1] = baseColor[i*3+1] = c.g; aColor[i*3+2] = baseColor[i*3+2] = c.b;
+  }
+  if (points) { world.remove(points); pgeo.dispose(); }
+  pgeo = new THREE.BufferGeometry();
+  pgeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  pgeo.setAttribute('aPhase', new THREE.BufferAttribute(aPhase, 1));
+  pgeo.setAttribute('aScale', new THREE.BufferAttribute(aScale, 1));
+  pgeo.setAttribute('aColor', new THREE.BufferAttribute(aColor, 3));
+  points = new THREE.Points(pgeo, pmat);
+  points.frustumCulled = false;
+  world.add(points);
+  buildLinks();
+}
+
+function buildLinks() {
+  pairs = [];
+  const TH = state.void.linkDist, MAX = state.void.maxLinks;
+  if (TH > 0 && MAX > 0) {
+    for (let i = 0; i < N; i++) {
+      let c = 0;
+      for (let j = i + 1; j < N && c < MAX; j++) {
+        const dx = base[i*3]-base[j*3], dy = base[i*3+1]-base[j*3+1], dz = base[i*3+2]-base[j*3+2];
+        if (dx*dx + dy*dy + dz*dz < TH*TH) { pairs.push(i, j); c++; }
+      }
+    }
+  }
+  L = pairs.length / 2;
+  lpos = new Float32Array(L*2*3);
+  const lT = new Float32Array(L*2), lPhase = new Float32Array(L*2), lCol = new Float32Array(L*2*3);
+  for (let k = 0; k < L; k++) {
+    const ph = Math.random(), a = pairs[k*2], b = pairs[k*2+1];
+    lT[k*2] = 0; lT[k*2+1] = 1; lPhase[k*2] = lPhase[k*2+1] = ph;
+    for (let v = 0; v < 2; v++) { const idx = v === 0 ? a : b; lCol[(k*2+v)*3] = aColor[idx*3]; lCol[(k*2+v)*3+1] = aColor[idx*3+1]; lCol[(k*2+v)*3+2] = aColor[idx*3+2]; }
+  }
+  if (lines) { world.remove(lines); lgeo.dispose(); }
+  lgeo = new THREE.BufferGeometry();
+  lgeo.setAttribute('position', new THREE.BufferAttribute(lpos, 3));
+  lgeo.setAttribute('aT', new THREE.BufferAttribute(lT, 1));
+  lgeo.setAttribute('aLPhase', new THREE.BufferAttribute(lPhase, 1));
+  lgeo.setAttribute('aLColor', new THREE.BufferAttribute(lCol, 3));
+  lines = new THREE.LineSegments(lgeo, lmat);
+  lines.frustumCulled = false;
+  world.add(lines);
+}
+
+/* ---- bloom ---- */
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), state.bloom.strength, state.bloom.radius, state.bloom.threshold);
+composer.addPass(bloom);
+composer.setSize(innerWidth, innerHeight);
+
+/* ============================================================
+   3. ASSET PANELS (from demo-effects: plane + frame + glow + sweep)
+   ============================================================ */
+const loader = new THREE.TextureLoader();
+const assets = [];           // { group,img,frame,glow,sweep,pw,ph,src,reveal,scale,x,y,z,float,overlay:{kicker,title,desc,show} }
+let active = -1;
+
+function radial(c0, c1) {
+  const s = 256, cv = document.createElement('canvas'); cv.width = cv.height = s;
+  const ctx = cv.getContext('2d'); const g = ctx.createRadialGradient(s/2, s/2, 0, s/2, s/2, s/2);
+  g.addColorStop(0, c0); g.addColorStop(1, c1); ctx.fillStyle = g; ctx.fillRect(0, 0, s, s);
+  return new THREE.CanvasTexture(cv);
+}
+
+function addAsset(src, label) {
+  loader.load(src, tex => {
+    tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+    const aspect = (tex.image.width && tex.image.height) ? tex.image.width / tex.image.height : 1.6;
+    const PW = 92, PH = PW / aspect;
+    const group = new THREE.Group();
+    const img = new THREE.Mesh(new THREE.PlaneGeometry(PW, PH), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0 }));
+    group.add(img);
+    const frame = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(PW, PH)), new THREE.LineBasicMaterial({ color: 0x4fd2ff, transparent: true, opacity: 0 }));
+    group.add(frame);
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: radial('rgba(79,210,255,.55)', 'rgba(79,210,255,0)'), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+    glow.scale.set(PW * 1.9, PH * 2.0, 1); glow.position.z = -6; group.add(glow);
+    const sweep = new THREE.Mesh(new THREE.PlaneGeometry(3, PH), new THREE.MeshBasicMaterial({ color: 0xbff0ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+    sweep.position.z = 1; group.add(sweep);
+    scene.add(group);
+    const a = { group, img, frame, glow, sweep, pw: PW, ph: PH, src: src.startsWith('blob:') ? null : src, label,
+      reveal: 'resolve', scale: 1, x: 0, y: 0, z: -20, float: true,
+      overlay: { kicker: '', title: '', desc: '', show: false } };
+    assets.push(a);
+    active = assets.length - 1;
+    applyAssetTransform(a);
+    refreshAssetSelect();
+    syncAssetControls();
+    playReveal(a);
+    toast(`Added ${label}`);
+  }, undefined, () => toast('Image failed to load'));
+}
+
+function applyAssetTransform(a) {
+  a.group.position.set(a.x, a.y, a.z);
+  a.group.scale.setScalar(a.scale);
+}
+
+function playReveal(a) {
+  const { img, frame, glow, sweep, pw, ph } = a;
+  gsap.killTweensOf([img.material, frame.material, glow.material, sweep.material, img.position, img.scale, a.group.rotation]);
+  gsap.set([img.material, frame.material, glow.material, sweep.material], { opacity: 0 });
+  gsap.set(img.position, { x: 0, y: 0, z: 0 }); gsap.set(img.scale, { x: 1, y: 1 }); gsap.set(a.group.rotation, { y: 0 });
+  const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+  tl.to(glow.material, { opacity: .9, duration: 1.2 }, 0);
+  const s = a.reveal;
+  if (s === 'resolve')
+    tl.to(img.material, { opacity: 1, duration: 1 }, .1).fromTo(img.scale, { x: .85, y: .85 }, { x: 1, y: 1, duration: 1.2 }, .1).to(frame.material, { opacity: .9, duration: 1 }, .1);
+  else if (s === 'sweep')
+    tl.to(frame.material, { opacity: .9, duration: .6 }, 0).set(sweep.position, { x: -pw/2 }, 0).to(sweep.material, { opacity: 1, duration: .2 }, .2)
+      .to(sweep.position, { x: pw/2, duration: .9, ease: 'power2.inOut' }, .2).to(img.material, { opacity: 1, duration: .9, ease: 'none' }, .25).to(sweep.material, { opacity: 0, duration: .2 }, 1.1);
+  else if (s === 'drop')
+    tl.fromTo(img.position, { z: -120 }, { z: 0, duration: 1.2 }, 0).fromTo(a.group.rotation, { y: .5 }, { y: 0, duration: 1.3 }, 0).to(img.material, { opacity: 1, duration: .9 }, .2).to(frame.material, { opacity: .9, duration: .9 }, .2);
+  else if (s === 'rise')
+    tl.fromTo(img.position, { y: -ph }, { y: 0, duration: 1.1 }, 0).to(img.material, { opacity: 1, duration: .8 }, .2).to(frame.material, { opacity: .9, duration: .8 }, .2);
+  updateOverlay();
+}
+
+function removeAsset(i) {
+  const a = assets[i]; if (!a) return;
+  scene.remove(a.group);
+  a.img.geometry.dispose(); a.img.material.map?.dispose(); a.img.material.dispose();
+  a.frame.geometry.dispose(); a.frame.material.dispose();
+  a.glow.material.map?.dispose(); a.glow.material.dispose();
+  a.sweep.geometry.dispose(); a.sweep.material.dispose();
+  assets.splice(i, 1);
+  active = assets.length ? Math.min(i, assets.length - 1) : -1;
+  refreshAssetSelect(); syncAssetControls(); updateOverlay();
+}
+
+/* ============================================================
+   4. RECOLOUR-ON-APPROACH (from demo-effects transition tween)
+   ============================================================ */
+let recolorK = 0, recolorTween = null;
+function applyRecolor(k) {
+  const brand = new THREE.Color(state.brand.color);
+  const col = pgeo.attributes.aColor.array;
+  for (let i = 0; i < N; i++) {
+    col[i*3]   = baseColor[i*3]   + (brand.r - baseColor[i*3])   * k;
+    col[i*3+1] = baseColor[i*3+1] + (brand.g - baseColor[i*3+1]) * k;
+    col[i*3+2] = baseColor[i*3+2] + (brand.b - baseColor[i*3+2]) * k;
+  }
+  pgeo.attributes.aColor.needsUpdate = true;
+}
+function pulseRecolor() {
+  if (recolorTween) recolorTween.kill();
+  const o = { k: 0 };
+  recolorTween = gsap.to(o, { k: 1, duration: 1.4, yoyo: true, repeat: 1, ease: 'sine.inOut', onUpdate: () => applyRecolor(o.k) });
+}
+
+/* ============================================================
+   5. CONTROLS — every input writes state then apply*()
+   ============================================================ */
+const fmt = (n, d = 0) => (+n).toFixed(d);
+function bindRange(id, vId, get, set, dec, onApply) {
+  const el = $('#' + id), out = vId ? $('#' + vId) : null;
+  const refresh = () => { el.value = get(); if (out) out.textContent = fmt(get(), dec); };
+  el.addEventListener('input', () => { set(parseFloat(el.value)); if (out) out.textContent = fmt(el.value, dec); onApply && onApply(); persistLast(); });
+  el._refresh = refresh; return refresh;
+}
+function bindCheck(id, get, set, onApply) {
+  const el = $('#' + id);
+  const refresh = () => el.checked = get();
+  el.addEventListener('change', () => { set(el.checked); onApply && onApply(); persistLast(); });
+  el._refresh = refresh; return refresh;
+}
+function bindColor(id, get, set, onApply) {
+  const el = $('#' + id);
+  const refresh = () => el.value = get();
+  el.addEventListener('input', () => { set(el.value); onApply && onApply(); persistLast(); });
+  el._refresh = refresh; return refresh;
+}
+
+const refreshers = [];
+const R = f => { refreshers.push(f); return f; };
+
+// A. void / particles
+R(bindRange('count', 'vCount', () => state.void.count, v => state.void.count = v, 0, buildField));
+R(bindRange('size', 'vSize', () => state.void.size, v => { state.void.size = v; pmat.uniforms.uSize.value = v; }, 1));
+R(bindRange('spread', 'vSpread', () => state.void.spread, v => state.void.spread = v, 0, buildField));
+R(bindCheck('drift', () => state.void.drift, v => state.void.drift = v));
+R(bindRange('driftAmt', 'vDriftAmt', () => state.void.driftAmt, v => state.void.driftAmt = v, 2));
+R(bindCheck('twinkle', () => state.void.twinkle, v => { state.void.twinkle = v; pmat.uniforms.uTwinkle.value = v ? 1 : 0; }));
+R(bindRange('linkDist', 'vLinkDist', () => state.void.linkDist, v => state.void.linkDist = v, 0, buildLinks));
+R(bindRange('maxLinks', 'vMaxLinks', () => state.void.maxLinks, v => state.void.maxLinks = v, 0, buildLinks));
+R(bindRange('flow', 'vFlow', () => state.void.flow, v => { state.void.flow = v; lmat.uniforms.uFlow.value = v; }, 2));
+R(bindCheck('nebula', () => state.void.nebula, v => { state.void.nebula = v; bg.visible = v; }));
+R(bindRange('neb', 'vNeb', () => state.void.nebInt, v => { state.void.nebInt = v; bgMat.uniforms.uIntensity.value = v; }, 2));
+R(bindRange('fog', 'vFog', () => state.void.fog, v => { state.void.fog = v; scene.fog.density = v; }, 4));
+R(bindColor('colA', () => state.void.colA, v => state.void.colA = v, buildField));
+R(bindColor('colB', () => state.void.colB, v => state.void.colB = v, buildField));
+R(bindColor('colC', () => state.void.colC, v => state.void.colC = v, buildField));
+R(bindRange('ratA', null, () => state.void.ratA, v => state.void.ratA = v, 2, buildField));
+R(bindRange('ratB', null, () => state.void.ratB, v => state.void.ratB = v, 2, buildField));
+R(bindRange('ratC', null, () => state.void.ratC, v => state.void.ratC = v, 2, buildField));
+
+// B. bloom / camera / interaction
+R(bindCheck('bloom', () => state.bloom.on, v => state.bloom.on = v));
+R(bindRange('bStr', 'vBStr', () => state.bloom.strength, v => { state.bloom.strength = v; bloom.strength = v; }, 2));
+R(bindRange('bRad', 'vBRad', () => state.bloom.radius, v => { state.bloom.radius = v; bloom.radius = v; }, 2));
+R(bindRange('bThr', 'vBThr', () => state.bloom.threshold, v => { state.bloom.threshold = v; bloom.threshold = v; }, 2));
+R(() => { const el = $('#camMode'); el.value = state.cam.mode; });
+$('#camMode').addEventListener('change', e => { state.cam.mode = e.target.value; persistLast(); });
+R(bindRange('fov', 'vFov', () => state.cam.fov, v => { state.cam.fov = v; camera.fov = v; camera.updateProjectionMatrix(); }, 0));
+R(bindRange('dist', 'vDist', () => state.cam.dist, v => state.cam.dist = v, 0));
+$('#warp').addEventListener('click', () => warp = 1);
+R(bindColor('brand', () => state.brand.color, v => state.brand.color = v));
+$('#pulse').addEventListener('click', pulseRecolor);
+R(bindCheck('autoRecolor', () => state.brand.auto, v => state.brand.auto = v));
+
+// C. assets
+document.querySelectorAll('[data-bundled]').forEach(b =>
+  b.addEventListener('click', () => addAsset(b.dataset.bundled, b.textContent)));
+const drop = $('#drop');
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('hot'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('hot'); }));
+drop.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f && f.type.startsWith('image/')) addAsset(URL.createObjectURL(f), f.name); });
+$('#file').addEventListener('change', e => { const f = e.target.files[0]; if (f) addAsset(URL.createObjectURL(f), f.name); e.target.value = ''; });
+
+$('#assetSel').addEventListener('change', e => { active = +e.target.value; syncAssetControls(); updateOverlay(); });
+function refreshAssetSelect() {
+  const sel = $('#assetSel');
+  sel.innerHTML = '<option value="-1">— none —</option>' + assets.map((a, i) => `<option value="${i}">${i + 1}. ${a.label}</option>`).join('');
+  sel.value = active;
+  $('#assetCtl').style.display = active >= 0 ? '' : 'none';
+}
+function syncAssetControls() {
+  $('#assetSel').value = active;
+  $('#assetCtl').style.display = active >= 0 ? '' : 'none';
+  const a = assets[active]; if (!a) return;
+  $('#aReveal').value = a.reveal;
+  $('#aScale').value = a.scale; $('#vAScale').textContent = fmt(a.scale, 2);
+  $('#aX').value = a.x; $('#vAX').textContent = a.x;
+  $('#aY').value = a.y; $('#vAY').textContent = a.y;
+  $('#aZ').value = a.z; $('#vAZ').textContent = a.z;
+  $('#aFloat').checked = a.float;
+  $('#oKicker').value = a.overlay.kicker; $('#oTitle').value = a.overlay.title; $('#oDesc').value = a.overlay.desc; $('#oShow').checked = a.overlay.show;
+}
+const withActive = fn => { const a = assets[active]; if (a) { fn(a); persistLast(); } };
+$('#aReveal').addEventListener('change', e => withActive(a => a.reveal = e.target.value));
+$('#aScale').addEventListener('input', e => withActive(a => { a.scale = +e.target.value; $('#vAScale').textContent = fmt(e.target.value, 2); applyAssetTransform(a); }));
+$('#aX').addEventListener('input', e => withActive(a => { a.x = +e.target.value; $('#vAX').textContent = a.x; applyAssetTransform(a); }));
+$('#aY').addEventListener('input', e => withActive(a => { a.y = +e.target.value; $('#vAY').textContent = a.y; applyAssetTransform(a); }));
+$('#aZ').addEventListener('input', e => withActive(a => { a.z = +e.target.value; $('#vAZ').textContent = a.z; applyAssetTransform(a); }));
+$('#aFloat').addEventListener('change', e => withActive(a => a.float = e.target.checked));
+$('#aPlay').addEventListener('click', () => withActive(a => playReveal(a)));
+$('#aRemove').addEventListener('click', () => { if (active >= 0) removeAsset(active); });
+['oKicker', 'oTitle', 'oDesc'].forEach(id => $('#' + id).addEventListener('input', () => withActive(a => { a.overlay[id.slice(1).toLowerCase()] = $('#' + id).value; updateOverlay(); })));
+$('#oShow').addEventListener('change', e => withActive(a => { a.overlay.show = e.target.checked; updateOverlay(); }));
+
+function updateOverlay() {
+  const ov = $('#overlay'), a = assets[active];
+  if (a && a.overlay.show && (a.overlay.kicker || a.overlay.title || a.overlay.desc)) {
+    ov.querySelector('.ok').textContent = a.overlay.kicker;
+    ov.querySelector('.ot').textContent = a.overlay.title;
+    ov.querySelector('.od').textContent = a.overlay.desc;
+    ov.classList.add('on');
+  } else ov.classList.remove('on');
+}
+
+/* ============================================================
+   6. GLOBAL — copy / presets / reset
+   ============================================================ */
+function configJSON() {
+  return JSON.stringify({
+    ...clone(state),
+    assets: assets.filter(a => a.src).map(a => ({ src: a.src, label: a.label, reveal: a.reveal, scale: a.scale, x: a.x, y: a.y, z: a.z, float: a.float, overlay: clone(a.overlay) })),
+  }, null, 2);
+}
+$('#copy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(configJSON()); toast('Config copied'); }
+  catch { toast('Clipboard blocked — see console'); console.log(configJSON()); }
+});
+
+function applyStateToScene() {
+  scene.fog.density = state.void.fog;
+  camera.fov = state.cam.fov; camera.updateProjectionMatrix();
+  pmat.uniforms.uSize.value = state.void.size;
+  pmat.uniforms.uTwinkle.value = state.void.twinkle ? 1 : 0;
+  lmat.uniforms.uFlow.value = state.void.flow;
+  bgMat.uniforms.uIntensity.value = state.void.nebInt;
+  bg.visible = state.void.nebula;
+  bloom.strength = state.bloom.strength; bloom.radius = state.bloom.radius; bloom.threshold = state.bloom.threshold;
+  buildField();
+  refreshers.forEach(f => f());
+}
+function applyConfig(cfg, withAssets) {
+  const { assets: as, ...rest } = cfg;
+  state = { void: { ...DEFAULTS.void, ...rest.void }, bloom: { ...DEFAULTS.bloom, ...rest.bloom }, cam: { ...DEFAULTS.cam, ...rest.cam }, brand: { ...DEFAULTS.brand, ...rest.brand } };
+  applyStateToScene();
+  if (withAssets && Array.isArray(as)) {
+    while (assets.length) removeAsset(0);
+    as.forEach(d => {
+      loader.load(d.src, tex => {
+        tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+        const aspect = (tex.image.width && tex.image.height) ? tex.image.width / tex.image.height : 1.6;
+        const PW = 92, PH = PW / aspect;
+        const group = new THREE.Group();
+        const img = new THREE.Mesh(new THREE.PlaneGeometry(PW, PH), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0 })); group.add(img);
+        const frame = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(PW, PH)), new THREE.LineBasicMaterial({ color: 0x4fd2ff, transparent: true, opacity: 0 })); group.add(frame);
+        const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: radial('rgba(79,210,255,.55)', 'rgba(79,210,255,0)'), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+        glow.scale.set(PW * 1.9, PH * 2.0, 1); glow.position.z = -6; group.add(glow);
+        const sweep = new THREE.Mesh(new THREE.PlaneGeometry(3, PH), new THREE.MeshBasicMaterial({ color: 0xbff0ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })); sweep.position.z = 1; group.add(sweep);
+        scene.add(group);
+        const a = { group, img, frame, glow, sweep, pw: PW, ph: PH, src: d.src, label: d.label || 'asset', reveal: d.reveal || 'resolve', scale: d.scale ?? 1, x: d.x ?? 0, y: d.y ?? 0, z: d.z ?? -20, float: d.float ?? true, overlay: { kicker: '', title: '', desc: '', show: false, ...d.overlay } };
+        assets.push(a); active = assets.length - 1; applyAssetTransform(a); refreshAssetSelect(); syncAssetControls(); playReveal(a);
+      });
+    });
+  }
+}
+
+const presets = () => JSON.parse(localStorage.getItem(PRESET_KEY) || '{}');
+function refreshPresetSelect() {
+  const names = Object.keys(presets());
+  $('#presetSel').innerHTML = '<option value="">— select preset —</option>' + names.map(n => `<option value="${n}">${n}</option>`).join('');
+}
+$('#savePreset').addEventListener('click', () => {
+  const name = $('#presetName').value.trim(); if (!name) return toast('Name the preset first');
+  const p = presets(); p[name] = JSON.parse(configJSON()); localStorage.setItem(PRESET_KEY, JSON.stringify(p));
+  refreshPresetSelect(); $('#presetSel').value = name; toast(`Saved "${name}"`);
+});
+$('#loadPreset').addEventListener('click', () => {
+  const name = $('#presetSel').value; if (!name) return toast('Pick a preset');
+  applyConfig(presets()[name], true); persistLast(); toast(`Loaded "${name}"`);
+});
+$('#delPreset').addEventListener('click', () => {
+  const name = $('#presetSel').value; if (!name) return;
+  const p = presets(); delete p[name]; localStorage.setItem(PRESET_KEY, JSON.stringify(p));
+  refreshPresetSelect(); toast(`Deleted "${name}"`);
+});
+$('#reset').addEventListener('click', () => { applyConfig(clone(DEFAULTS), false); persistLast(); toast('Reset to defaults'); });
+
+function persistLast() { try { localStorage.setItem(LAST_KEY, JSON.stringify(state)); } catch {} }
+
+/* ============================================================
+   7. interaction state + helpers
+   ============================================================ */
+let warp = 0;
+const mouse = { x: 0, y: 0 };
+addEventListener('pointermove', e => { mouse.x = (e.clientX / innerWidth) * 2 - 1; mouse.y = -(e.clientY / innerHeight) * 2 + 1; });
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
+  bgMat.uniforms.uAspect.value = innerWidth / innerHeight;
+});
+let toastT;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.style.opacity = 1; clearTimeout(toastT); toastT = setTimeout(() => t.style.opacity = 0, 1600); }
+
+/* ============================================================
+   8. render loop
+   ============================================================ */
+const clock = new THREE.Clock();
+let orbitAngle = 0, flyZ = 0, lastT = 0;
+const _v = new THREE.Vector3();
+let frames = 0, fpsT = 0, fps = 60;
+
+function frame() {
+  const t = clock.getElapsedTime(), dt = Math.min(t - lastT, 0.05); lastT = t;
+  pmat.uniforms.uTime.value = t; lmat.uniforms.uTime.value = t; bgMat.uniforms.uTime.value = t;
+
+  // drift
+  const da = state.void.drift ? state.void.driftAmt : 0;
+  for (let i = 0; i < N; i++) {
+    pos[i*3]   = base[i*3]   + da * amp[i*3]   * Math.sin(t * fre[i*3]   + pha[i*3]);
+    pos[i*3+1] = base[i*3+1] + da * amp[i*3+1] * Math.sin(t * fre[i*3+1] + pha[i*3+1]);
+    pos[i*3+2] = base[i*3+2] + da * amp[i*3+2] * Math.sin(t * fre[i*3+2] + pha[i*3+2]);
+  }
+  pgeo.attributes.position.needsUpdate = true;
+  for (let k = 0; k < L; k++) {
+    const a = pairs[k*2], b = pairs[k*2+1];
+    lpos[(k*2)*3] = pos[a*3]; lpos[(k*2)*3+1] = pos[a*3+1]; lpos[(k*2)*3+2] = pos[a*3+2];
+    lpos[(k*2+1)*3] = pos[b*3]; lpos[(k*2+1)*3+1] = pos[b*3+1]; lpos[(k*2+1)*3+2] = pos[b*3+2];
+  }
+  if (lgeo) lgeo.attributes.position.needsUpdate = true;
+
+  // warp burst
+  warp *= 0.94; if (warp < 0.001) warp = 0;
+  pmat.uniforms.uWarp.value = warp;
+  bloom.strength = state.bloom.strength + warp * 0.9;
+
+  // camera modes
+  const D = state.cam.dist;
+  if (state.cam.mode === 'lean') {
+    camera.up.set(0, 1, 0);
+    camera.position.set(0, 0, D - warp * 55);
+    camera.lookAt(0, 0, 0);
+    world.rotation.y += ((mouse.x * 0.25) - world.rotation.y) * 0.04;
+    world.rotation.x += ((-mouse.y * 0.18) - world.rotation.x) * 0.04;
+  } else if (state.cam.mode === 'orbit') {
+    world.rotation.set(0, 0, 0);
+    orbitAngle += dt * 0.15;
+    camera.up.set(0, 1, 0);
+    camera.position.set(Math.sin(orbitAngle) * D, Math.sin(orbitAngle * 0.5) * D * 0.2, Math.cos(orbitAngle) * D);
+    camera.lookAt(0, 0, -150);
+  } else if (state.cam.mode === 'fly') {
+    world.rotation.y += ((mouse.x * 0.08) - world.rotation.y) * 0.03;
+    world.rotation.x += ((-mouse.y * 0.06) - world.rotation.x) * 0.03;
+    const halfZ = state.void.spread * 0.5 + 150;
+    flyZ -= dt * (40 + warp * 200);
+    if (flyZ < -halfZ) flyZ += halfZ * 2;        // recycle for an endless tunnel
+    camera.up.set(0, 1, 0);
+    camera.position.set(0, 0, flyZ);
+    camera.lookAt(0, 0, flyZ - 120);
+  } else if (state.cam.mode === 'lookup') {
+    world.rotation.set(0, 0, 0);
+    camera.position.set(0, -D * 0.3, 0);
+    camera.up.set(0, 0, -1);
+    camera.lookAt(Math.sin(t * 0.05) * 8, 600, Math.cos(t * 0.05) * 8);
+  }
+
+  // auto-recolor when an asset sits near screen centre
+  if (state.brand.auto && assets.length) {
+    let near = false;
+    for (const a of assets) {
+      _v.copy(a.group.position).project(camera);
+      if (_v.z < 1 && Math.hypot(_v.x, _v.y) < 0.28) { near = true; break; }
+    }
+    const target = near ? 1 : 0;
+    if (!recolorTween || !recolorTween.isActive()) { recolorK += (target - recolorK) * 0.06; applyRecolor(recolorK); }
+  }
+
+  // idle float per asset
+  for (const a of assets) if (a.float) a.group.position.y = a.y + Math.sin(t * 0.8 + a.x * 0.01) * 1.6;
+    else a.group.position.y = a.y;
+
+  if (state.bloom.on) composer.render(); else renderer.render(scene, camera);
+
+  // fps readout
+  frames++;
+  if (t - fpsT > 0.5) { fps = Math.round(frames / (t - fpsT)); frames = 0; fpsT = t; updateReadout(); }
+  requestAnimationFrame(frame);
+}
+
+function updateReadout() {
+  const warnHi = state.void.count > 2000;
+  $('#readout').innerHTML =
+    `<b>${fps}</b> fps &nbsp;·&nbsp; <b>${N}</b> nodes &nbsp;·&nbsp; <b>${L}</b> links &nbsp;·&nbsp; <b>${assets.length}</b> assets` +
+    (warnHi ? `<br><span class="warn">⚠ high count — may drop frames</span>` : '');
+}
+
+/* ============================================================
+   9. boot — restore last session, init UI, run
+   ============================================================ */
+(function boot() {
+  try { const last = localStorage.getItem(LAST_KEY); if (last) state = { void: { ...DEFAULTS.void, ...JSON.parse(last).void }, bloom: { ...DEFAULTS.bloom, ...JSON.parse(last).bloom }, cam: { ...DEFAULTS.cam, ...JSON.parse(last).cam }, brand: { ...DEFAULTS.brand, ...JSON.parse(last).brand } }; } catch {}
+  buildField();
+  applyStateToScene();
+  refreshPresetSelect();
+  refreshAssetSelect();
+  updateReadout();
+  frame();
+})();
+</script>
+</body>
+</html>
