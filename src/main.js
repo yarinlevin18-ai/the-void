@@ -281,7 +281,15 @@ const livingVoid = (() => {
     smat.uniforms.uTime.value = time;
     spotMat.uniforms.uTime.value = time;
   }
-  const setTint = (hex, amt) => { smat.uniforms.uTint.value.set(hex); smat.uniforms.uTintAmt.value = amt; };
+  const _tintTarget = new THREE.Color(0x4fd2ff);
+  // Ease the hue toward the target so brand→brand transitions glide instead of
+  // snapping when the nearest-beat index flips at a midpoint (amt is ~0 there,
+  // but a moving hue reads more cinematic than a hard set). Amount stays direct.
+  const setTint = (hex, amt) => {
+    _tintTarget.set(hex);
+    smat.uniforms.uTint.value.lerp(_tintTarget, PREFERS_REDUCED ? 1 : 0.06);
+    smat.uniforms.uTintAmt.value = amt;
+  };
   const setWarp = (v) => { smat.uniforms.uWarp.value = v; };           // stars swell on a chapter warp burst
   return { composite, nebMat, nebRT, fsScene, fsCam, sizeRT, smat, sgeo, STAR_N, spots, update, setTint, setWarp };
 })();
@@ -672,6 +680,14 @@ applyVoidDensity();
 // hue on approach, fading back to neutral cyan between beats. (Placeholder
 // palette — swap to real project brand colors in Phase A/C.)
 const CHAPTER_COLORS = [0x4fd2ff, 0x9b8cff, 0x36e0c0, 0xff9e7a, 0x7fb4ff, 0xff8fb0, 0xffd27f];
+
+// The recolor hue for a beat: prefer the bound project's real brand color
+// (Phase C adaptive palette) so approaching a project tints the void its brand;
+// fall back to the decorative CHAPTER_COLORS cycle for non-project beats.
+function chapterColor(i) {
+  const c = beats[i] && beats[i].project && beats[i].project.color;
+  return (typeof c === 'number') ? c : CHAPTER_COLORS[i % CHAPTER_COLORS.length];
+}
 
 // Warp streaks: forward-rushing lines that only appear while the camera is
 // flying fast between chapters — a cinematic whoosh, invisible when settled.
@@ -2555,7 +2571,7 @@ function animate() {
       if (d < bd) { bd = d; bi = i; }
     }
     const s = clamp(1 - Math.sqrt(bd) / curFX.colorReach, 0, 1) * curFX.colorIntensity;   // 1 at a section, 0 far between
-    livingVoid.setTint(CHAPTER_COLORS[bi % CHAPTER_COLORS.length], s);
+    livingVoid.setTint(chapterColor(bi), s);
   }
   {                                          // kinetic caption: reveal on arrival, hide while moving / in editor
     if (editMode || freeRoam) hideCaption();
