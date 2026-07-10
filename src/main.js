@@ -638,6 +638,55 @@ const DEFAULT_BEATS = [
   { name: 'Final / Footer', cam: [0, 49, -560], look: [1, 290, -560], up: [0, 0, -1], fov: 52, dur: 3, desc: '', img: '', link: '', panel: { pos: [1, 290, -560], size: [70, 44], billboard: false, rot: [89, 0, 180] } },
 ];
 
+// ---- PROJECTS: the single content source of truth (BUILD_PLAN Phase B item 1)
+// Each entry binds to a camera beat by `beatName` and stamps its content onto that
+// beat (see applyProjectsToBeats below). Only string values need locking per project
+// — the wiring is done. `color` feeds Phase C recolor; `previewSrc` feeds Phase F
+// lazy previews; `screens` are live-HTML assets mounted on the CSS3D layer the same
+// way the hero cluster mounts SmartCut. (SmartCut lives in the hero, not here.)
+const PROJECTS = [
+  {
+    id: 'teepo', beatName: 'Project 1',
+    title: 'TEEPO', tags: ['Product', 'AI', 'UI'],
+    desc: 'A second-brain productivity app — capture, plan, and review your week.',
+    link: '',                 // TODO: TEEPO live URL
+    color: 0x3aa655,          // TEEPO green
+    previewSrc: '',           // uses live screens instead of a static preview
+    screens: [
+      { id: 'teepo_brain', src: 'assets/teepo/teepo-brain.html',     iw: 1120, ih: 760, cap: 'TEEPO · Second Brain' },
+      { id: 'teepo_dash',  src: 'assets/teepo/teepo-dashboard.html', iw: 680,  ih: 900, cap: 'TEEPO · Weekly Dashboard' },
+    ],
+  },
+  {
+    id: 'shadiez', beatName: 'Project 2',
+    title: 'Shadiez', tags: ['Landing', 'Web'],
+    desc: 'A landing page for an eyewear brand.',
+    link: '',                 // TODO: Shadiez live URL
+    color: 0x4fd2ff, previewSrc: 'assets/hero/shadiez-landing.png', screens: [],
+  },
+  {
+    id: 'slot4', beatName: 'Project 3 & 4',
+    title: 'PLACEHOLDER', tags: [],   // TODO: AeroCy vs Mentorship — title/impact/tags/url/color
+    desc: '', link: '', color: 0x9b8cff, previewSrc: '', screens: [],
+  },
+];
+
+// Stamp PROJECTS content onto beats by matching beat.name === project.beatName.
+// Non-destructive to camera keyframes — only touches content fields (desc, img,
+// link) and attaches a `project` back-ref for later phases (recolor, live screens).
+// Runs at boot after load() so it applies over both DEFAULT_BEATS and saved beats.
+function applyProjectsToBeats() {
+  for (const p of PROJECTS) {
+    const b = beats.find((bt) => (bt.name || '').trim() === p.beatName);
+    if (!b) { console.warn('[projects] no beat named', p.beatName); continue; }
+    b.project = p;                       // back-ref for recolor (Phase C) + screens (Task 4)
+    b.desc = p.desc || b.desc || '';
+    b.link = p.link || b.link || '';
+    if (p.previewSrc) b.img = import.meta.env.BASE_URL + p.previewSrc;
+    if (!b.panel) b.panel = defaultPanelFor(b);   // ensure title/desc/visit-live render
+  }
+}
+
 // ---- State -----------------------------------------------------------------
 let beats = [];
 let speedMul = 1;    // global flight-speed multiplier (scales per-shot durations)
@@ -737,6 +786,7 @@ function applyGlobals() {
 }
 load();
 beats.forEach(ensureBeatFX);   // ensure every beat (incl. defaults) carries a full FX keyframe set
+applyProjectsToBeats();         // stamp PROJECTS content onto matched beats (before derived/panels)
 { // anchor the wave ribbon around the "My Projects" section (now that beats exist)
   const _ai = Math.max(0, beats.findIndex((b) => /projects/i.test(b.name)));
   const la = beats[_ai] && beats[_ai].look;
