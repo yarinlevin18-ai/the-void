@@ -580,6 +580,101 @@ const beatScreens = (() => {
   return { update };
 })();
 
+// ---- Sound: ambient hum + approach whoosh (BUILD_PLAN Phase D) ---------------
+// Pure Web Audio (no deps). MUTED BY DEFAULT and the AudioContext is not even
+// created until the visitor clicks the toggle — so there is never an autoplay-
+// policy violation. Unmuted, a low detuned drone breathes with the flight
+// (its filter/gain lift with `voidWarp`), and each section jump fires a short
+// filtered-noise whoosh. Mute choice persists in localStorage.
+const sound = (() => {
+  const KEY = 'voidSound';
+  let on = false;                              // default OFF (no autoplay, honors reduced-motion)
+  try { on = localStorage.getItem(KEY) === 'on'; } catch (e) {}
+  let ctx = null, master = null, humLP = null, humGain = null, noiseBuf = null;
+  let started = false, listeners = [];
+  const BASE_HUM = 0.05;                        // very quiet baseline drone
+
+  function ensureContext() {                    // built once, on the first unmute gesture
+    if (ctx) return true;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+    try {
+      ctx = new AC();
+      master = ctx.createGain(); master.gain.value = 0; master.connect(ctx.destination);
+      // ambient drone: root + a detuned fifth through a gentle lowpass
+      humGain = ctx.createGain(); humGain.gain.value = BASE_HUM;
+      humLP = ctx.createBiquadFilter(); humLP.type = 'lowpass'; humLP.frequency.value = 320; humLP.Q.value = 0.7;
+      humGain.connect(humLP); humLP.connect(master);
+      for (const [f, d] of [[55, 0], [82.4, 4], [55, -3]]) {
+        const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f; o.detune.value = d;
+        const g = ctx.createGain(); g.gain.value = f < 60 ? 0.6 : 0.28;
+        o.connect(g); g.connect(humGain); o.start();
+      }
+      // a slow LFO wobble on the drone gain so it's alive, not a flat tone
+      const lfo = ctx.createOscillator(); lfo.frequency.value = 0.13;
+      const lfoG = ctx.createGain(); lfoG.gain.value = BASE_HUM * 0.4;
+      lfo.connect(lfoG); lfoG.connect(humGain.gain); lfo.start();
+      // pre-render one second of white noise for whoosh bursts
+      noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+      const ch = noiseBuf.getChannelData(0);
+      for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
+      started = true;
+      return true;
+    } catch (e) { console.warn('[sound] init failed', e); ctx = null; return false; }
+  }
+
+  function applyGain(t) {                        // fade master toward on/off (no clicks)
+    if (!master || !ctx) return;
+    const now = ctx.currentTime;
+    master.gain.cancelScheduledValues(now);
+    master.gain.setValueAtTime(master.gain.value, now);
+    master.gain.linearRampToValueAtTime(on ? 1 : 0, now + 0.4);
+  }
+
+  function whoosh(intensity = 1) {               // filtered-noise burst on a section jump
+    if (!on || !started || !ctx) return;
+    const now = ctx.currentTime;
+    const src = ctx.createBufferSource(); src.buffer = noiseBuf;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.8;
+    const g = ctx.createGain();
+    const amp = 0.16 * Math.min(1.4, Math.max(0.4, intensity));
+    bp.frequency.setValueAtTime(300, now);
+    bp.frequency.exponentialRampToValueAtTime(1400, now + 0.18);   // sweep up…
+    bp.frequency.exponentialRampToValueAtTime(240, now + 0.6);     // …then down (a "whoosh by")
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(amp, now + 0.06);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
+    src.connect(bp); bp.connect(g); g.connect(master);
+    src.start(now); src.stop(now + 0.65);
+  }
+
+  function setOn(v) {
+    on = !!v;
+    try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch (e) {}
+    if (on) { if (!ensureContext()) { on = false; return; } if (ctx.state === 'suspended') ctx.resume(); }
+    applyGain();
+    listeners.forEach((fn) => { try { fn(on); } catch (e) {} });
+  }
+  const toggle = () => setOn(!on);
+  const isOn = () => on;
+  const onChange = (fn) => { listeners.push(fn); try { fn(on); } catch (e) {} };
+
+  // per-frame: let the flight breathe — warp lifts the drone's cutoff + a little
+  // gain. Only reschedule when warp actually moved (it's ~0 most frames), so we
+  // don't spam the audio graph 60×/s while parked.
+  let _lastWarp = -1;
+  function update(warp) {
+    if (!on || !started || !ctx) return;
+    if (Math.abs(warp - _lastWarp) < 0.02) return;
+    _lastWarp = warp;
+    const now = ctx.currentTime;
+    humLP.frequency.setTargetAtTime(320 + warp * 900, now, 0.08);
+    humGain.gain.setTargetAtTime(BASE_HUM * (1 + warp * 2.2), now, 0.08);
+  }
+
+  return { toggle, setOn, isOn, onChange, whoosh, update };
+})();
+
 // ---- FRAME 1: OPENING — "Yarin Levin" formed from ~5k additive void particles
 //  (ported 1:1 from demo-opening.html): scatter→glyphs form-in, cursor-shatter idle,
 //  burst-exit on leave that hands into the flight. Glow is free — additive points + the
@@ -1343,6 +1438,7 @@ function step(dir) {
   const dur = (beats[index]?.dur ?? DEF_DUR) / Math.max(0.05, speedMul);
   tween = { from: progress, to: target, t: 0, dur: Math.max(0.15, dur) };
   freeBtn.hidden = index !== lastIdx();
+  sound.whoosh();                              // soft filtered-noise whoosh on the jump (no-op while muted)
 }
 // One section per scroll GESTURE: a trackpad swipe fires dozens of wheel events,
 // so we step once on the first event, then stay locked until the scroll has
@@ -1485,6 +1581,18 @@ const overlay = document.querySelector('#overlay');
 const hudBeat = document.querySelector('#hud-beat');
 const hudProgress = document.querySelector('#hud-progress');
 const visitBtn = document.querySelector('#visitlive');
+
+// ---- Sound toggle wiring: click flips it; UI mirrors on/off state ------------
+const soundBtn = document.querySelector('#sound');
+if (soundBtn) {
+  soundBtn.addEventListener('click', () => sound.toggle());
+  const lbl = soundBtn.querySelector('.lbl');
+  sound.onChange((isOn) => {
+    soundBtn.setAttribute('aria-pressed', isOn ? 'true' : 'false');
+    soundBtn.title = isOn ? 'Sound (on)' : 'Sound (muted)';
+    if (lbl) lbl.textContent = isOn ? 'sound on' : 'sound off';
+  });
+}
 
 // ---- Text assets: per-asset content + in/out animation + DOF blur -------------
 //  Every text box on the site is an "asset" you can re-word and re-time. The reveal
@@ -2685,6 +2793,7 @@ function animate() {
   if (index !== _lastBeatIdx) { voidWarp = Math.max(voidWarp, 0.9); _lastBeatIdx = index; } // warp burst on chapter change
   voidWarp *= 0.94; if (voidWarp < 0.001) voidWarp = 0;
   livingVoid.setWarp(voidWarp);
+  sound.update(voidWarp);                       // drone breathes with the flight warp (no-op while muted)
   if (bloom) bloom.strength = curFX.bloomStrength + voidWarp * 0.9;
   if (bokeh) bokeh.enabled = !(editMode || freeRoam);   // DOF only in play; bloom stays on in all modes
   _cVel += (_cVelRaw - _cVel) * 0.12; _cVelRaw *= 0.90;   // smoothed cursor velocity drives the FX

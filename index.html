@@ -32,6 +32,11 @@
     <button id="freeroam" hidden data-magnetic>Enter free roam</button>
     <a id="visitlive" hidden target="_blank" rel="noopener" data-magnetic>Visit live ↗</a>
 
+    <!-- Sound toggle (muted by default; no autoplay — click unlocks audio) -->
+    <button id="sound" data-magnetic aria-pressed="false" aria-label="Toggle sound" title="Sound (muted)">
+      <span class="ico" aria-hidden="true">♪</span><span class="lbl">sound off</span>
+    </button>
+
     <!-- Journey waypoint rail (a dot per section, lights up as you arrive) -->
     <nav id="waypoints" hidden aria-label="Sections"></nav>
 

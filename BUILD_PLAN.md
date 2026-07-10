@@ -53,9 +53,9 @@ brand reactivity, polish, accessibility, and ship.** This plan starts there.
 - **Exit:** approaching a project feels cinematic and on-brand; read order is correct.
 
 ## Phase D — Sound  (PRD Phase 6, part 2)
-- [ ] Low ambient hum + soft whoosh on approach; **muted by default**, visible toggle (no autoplay).
-- [ ] Persist mute choice; ensure no console/autoplay errors.
-- **Exit:** sound deepens the dive, never annoys, never blocks.
+- [x] Low ambient hum + soft whoosh on approach; **muted by default**, visible toggle (no autoplay).  → `sound` module (Web Audio, no deps): detuned drone that breathes with `voidWarp` + filtered-noise whoosh fired from `step()`; top-right toggle. AudioContext isn't even created until the first unmute click.
+- [x] Persist mute choice; ensure no console/autoplay errors.  → choice in `localStorage['voidSound']`; verified in headless Chromium with `--autoplay-policy=document-user-activation-required`: muted boot = 0 AudioContexts + 0 errors; click → running ctx + whoosh; reduced-motion boots muted.
+- **Exit:** sound deepens the dive, never annoys, never blocks.  ✅
 
 ## Phase E — Accessibility & fallback  (REQUIRED — PRD §5.4)
 - [ ] `prefers-reduced-motion` → static, scrollable version with the **same content** (projects + contact).
