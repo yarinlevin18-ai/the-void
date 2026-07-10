@@ -45,7 +45,7 @@ brand reactivity, polish, accessibility, and ship.** This plan starts there.
 - **Note:** touch-swipe nav (a Phase-E item) was also landed early — one section per swipe, hooks into `step()`. Full mobile perf/fallback pass still pending.
 
 ## Phase C — Brand reactivity & motion polish  (PRD Phase 6, part 1)
-- [ ] **Adaptive palette:** lerp void point/line colors to the focused project's brand on approach; fade to neutral on departure.
+- [x] **Adaptive palette:** lerp void point/line colors to the focused project's brand on approach; fade to neutral on departure.  → `chapterColor()` prefers `PROJECTS[].color`; `setTint` eases the hue. Recolors to TEEPO-green / Shadiez-cyan on approach, decorative cycle between. **Lights up fully once real brand hexes land in `PROJECTS`.**
 - [ ] Apply **reveal recipes** to panel content (headline y+16–24 / opacity 0→100; image scale 0.96→1 blur 8→0; CTA outline→filled) — per `DESIGN_WORKFLOW` Step 5.
 - [ ] Tune **timing & easing** (custom curves over linear); one focal point per beat, limit concurrency.
 - [ ] Rhythm change at beats 5–6 (path tilts up, Projects 3 & 4 flank) feels deliberate.
@@ -59,7 +59,7 @@ brand reactivity, polish, accessibility, and ship.** This plan starts there.
 
 ## Phase E — Accessibility & fallback  (REQUIRED — PRD §5.4)
 - [ ] `prefers-reduced-motion` → static, scrollable version with the **same content** (projects + contact).
-- [ ] Mobile / low-GPU path: reduce particle count, or a **flat 2D fallback** that still shows all projects + contact.
+- [~] Mobile / low-GPU path: reduce particle count, or a **flat 2D fallback** that still shows all projects + contact.  → `LOW_GPU` tier (coarse pointer / mobile UA / ≤4 cores / ≤4GB; `?hi`/`?lo` override): thins `starFrac`/`nebFrac`, caps pixel ratio 1.5→1.0, drops the live CSS3D iframes (still-image panel stays). Particle-thinning path done; a full flat-2D fallback still open.
 - [ ] Keyboard reachable: advance, focus a project, open live link, hit contact.
 - [ ] Contrast pass on every panel; readable type sizes.
 - [ ] Hide/disable Director Mode (`E`) and editor UI in production build.
@@ -67,7 +67,7 @@ brand reactivity, polish, accessibility, and ship.** This plan starts there.
 
 ## Phase F — Performance pass
 - [ ] Set a hard payload ceiling; lazy-load previews; compress assets.
-- [ ] Cap particle count / pixel ratio for 60fps on a mid laptop.
+- [~] Cap particle count / pixel ratio for 60fps on a mid laptop.  → pixel ratio already capped (1.5 desktop / 1.0 low-GPU, honored on resize); `LOW_GPU` thins particles on weak devices. Mid-laptop frame profiling still to run.
 - [ ] Quick profile (frame time) on the slowest target device available.
 - **Exit:** smooth on mid hardware; payload under ceiling.
 
