@@ -33,14 +33,16 @@ brand reactivity, polish, accessibility, and ship.** This plan starts there.
 - **Exit:** a filled content table + assets on disk, ready to wire in.
 
 ## Phase B — Content placement  (PRD Phase 5)
-- [ ] Define a single `PROJECTS` data array (title, desc, tags, url, color, previewSrc, beatId).
-- [ ] Bind each featured project to its path beat (reuse Director Mode beats).
-- [ ] Render the **in-world structure** per project (panel/frame that resolves on approach).
-- [ ] Wire **live preview** (image/loop) onto the structure, lazy-loaded.
-- [ ] Wire the existing `#visitlive` button to the focused project's URL.
+- [x] Define a single `PROJECTS` data array (title, desc, tags, url, color, previewSrc, beatId).  → `src/main.js`, bound via `applyProjectsToBeats()`
+- [x] Bind each featured project to its path beat (reuse Director Mode beats).  → matched by beat name
+- [~] Render the **in-world structure** per project (panel/frame that resolves on approach).  → machinery done + TEEPO live screens; slot #4 still a placeholder pending content
+- [x] Wire **live preview** (image/loop) onto the structure, lazy-loaded.  → TEEPO brain+dashboard as lazy CSS3D iframes (`beatScreens`); Shadiez PNG on its panel
+- [x] Wire the existing `#visitlive` button to the focused project's URL.  → reads `PROJECTS[].link`; shows once URLs land
 - [ ] Build the **"My Projects" hub** beat: compact list/grid of the full body of work (incl. labs, Worldiez).
 - [ ] Build the **contact** beat: CTA + email/links, reachable by keyboard.
 - **Exit:** all 6 beats show real content; every project opens its live site.
+- **Remaining to close Phase B:** lock slot #4 (AeroCy vs Mentorship) + per-project live URLs & brand colors; then the hub + contact beats.
+- **Note:** touch-swipe nav (a Phase-E item) was also landed early — one section per swipe, hooks into `step()`. Full mobile perf/fallback pass still pending.
 
 ## Phase C — Brand reactivity & motion polish  (PRD Phase 6, part 1)
 - [ ] **Adaptive palette:** lerp void point/line colors to the focused project's brand on approach; fade to neutral on departure.
