@@ -474,6 +474,79 @@ const heroCluster = (() => {
   return { update };
 })();
 
+// ---- Project live-HTML screens (BUILD_PLAN Phase B item 4) -------------------
+// Mounts each PROJECTS[].screens entry as a CSS3D iframe on its beat, reusing the
+// hero cluster's placement math (a camera-frame basis) and its `.hero-screen` CSS.
+// Screens build lazily on a beat's FIRST activation — so the iframes (which run
+// their own JS) don't load until you fly there. When a project owns 2+ screens
+// they cross-fade every ~5s; one is awake at a time.
+const beatScreens = (() => {
+  const built = new Map();   // project.id -> [{ obj, el, slot }]
+  const C = new THREE.Vector3(), ff = new THREE.Vector3(), rt = new THREE.Vector3(),
+        uu = new THREE.Vector3(), zc = new THREE.Vector3(), basis = new THREE.Matrix4(),
+        baseQ = new THREE.Quaternion(), _p = new THREE.Vector3();
+  const WORLD_W = 30;        // screen world width at scale 1
+  const Z_OFF = -46;         // distance in front of the beat camera (seed — tune)
+  function build(p) {        // create the CSS3D objects for one project (once)
+    const items = [];
+    if (css3d) for (let sx = 0; sx < p.screens.length; sx++) {
+      const s = p.screens[sx];
+      try {
+        const fw = Math.min(s.iw, 900), fh = Math.round(fw * (s.ih / s.iw));
+        const el = document.createElement('div'); el.className = 'hero-screen'; el.style.width = fw + 'px';
+        const url = import.meta.env.BASE_URL + s.src;
+        el.innerHTML =
+          `<div class="frame"><div class="inner" style="width:${fw}px;height:${fh}px">` +
+          `<iframe src="${url}" scrolling="no" loading="lazy" ` +
+          `style="width:${s.iw}px;height:${s.ih}px;transform:scale(${(fw / s.iw).toFixed(3)});transform-origin:top left"></iframe>` +
+          `</div><div class="dim"></div><div class="glass"></div></div><div class="cap">${s.cap}</div>`;
+        const obj = new CSS3DObject(el); obj.visible = false; css3d.scene.add(obj);
+        items.push({ obj, el, baseScale: WORLD_W / fw, slot: sx, op: 0, _o: -1 });
+      } catch (e) { console.warn('[beatScreen]', s.id, e); }
+    }
+    return items;
+  }
+  function frame(b) {        // this beat's camera basis (matches heroCluster.place)
+    C.set(...b.cam);
+    ff.set(b.look[0] - C.x, b.look[1] - C.y, b.look[2] - C.z).normalize();
+    uu.set(b.up?.[0] ?? 0, b.up?.[1] ?? 1, b.up?.[2] ?? 0);
+    rt.copy(ff).cross(uu).normalize(); uu.copy(rt).cross(ff).normalize();
+    zc.copy(rt).cross(uu); basis.makeBasis(rt, uu, zc); baseQ.setFromRotationMatrix(basis);
+  }
+  let cycleT = 0, cycleIdx = 0, _pt = 0, _lastProj = null;
+  function update(active, t, b) {
+    const dt = _pt ? Math.min(t - _pt, 0.05) : 0; _pt = t;
+    const proj = active && b && b.project && b.project.screens.length ? b.project : null;
+    // lazily build this project's screens the first time we land on it
+    let mine = null;
+    if (proj) {
+      if (!built.has(proj.id)) built.set(proj.id, build(proj));
+      mine = built.get(proj.id);
+      frame(b);
+    }
+    if (proj !== _lastProj) { cycleT = 0; cycleIdx = 0; _lastProj = proj; }
+    if (mine && mine.length > 1 && !PREFERS_REDUCED) { cycleT += dt; if (cycleT > 5) { cycleT = 0; cycleIdx = (cycleIdx + 1) % mine.length; } }
+    // fade every built screen: on only if it belongs to the active project and is the awake slot
+    for (const [pid, items] of built) {
+      const isActive = proj && pid === proj.id;
+      for (const it of items) {
+        const on = isActive && (items.length < 2 || it.slot === cycleIdx || PREFERS_REDUCED);
+        it.op += ((on ? 1 : 0) - it.op) * (PREFERS_REDUCED ? 1 : 0.08);
+        const vis = it.op > 0.01;
+        it.obj.visible = vis;
+        if (!vis) continue;
+        _p.copy(C).addScaledVector(zc, Z_OFF);   // centered, Z_OFF in front of the camera
+        it.obj.position.copy(_p);
+        it.obj.quaternion.copy(baseQ);
+        it.obj.scale.setScalar(it.baseScale);
+        const o = Math.round(it.op * 100) / 100;
+        if (o !== it._o) { it.el.style.opacity = String(o); it._o = o; }
+      }
+    }
+  }
+  return { update };
+})();
+
 // ---- FRAME 1: OPENING — "Yarin Levin" formed from ~5k additive void particles
 //  (ported 1:1 from demo-opening.html): scatter→glyphs form-in, cursor-shatter idle,
 //  burst-exit on leave that hands into the flight. Glow is free — additive points + the
@@ -2439,6 +2512,7 @@ function animate() {
     const hsc = heroOn ? Math.max(-0.5, Math.min(0.5, progress * Math.max(1, lastIdx()) - index)) : 0;
     heroCluster.update(heroOn, t, beats[index], hsc);
   }
+  try { beatScreens.update(!editMode && !freeRoam, t, beats[index]); } catch (e) { if (!animate._serr) { console.error('[beatScreens]', e); animate._serr = 1; } }
   headline3D.update(!editMode && !freeRoam && index !== 0 && !!(assetCfg.capTitle && assetCfg.capTitle.mesh3d), t, beats[index], resolveCaption(index).title);
   text3d.update(t, PREFERS_REDUCED);           // placed 3D text: light sweep + idle float
   try { openingFX.update(!editMode && !freeRoam && index === 0 && progress < 0.06, t); } catch (e) { if (!animate._oerr) { console.error('[opening]', e); animate._oerr = 1; } }
