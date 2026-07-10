@@ -1323,6 +1323,21 @@ window.addEventListener('keydown', (e) => {
   if (['ArrowDown','PageDown',' ','Spacebar'].includes(e.key)) { e.preventDefault(); step(1); }
   else if (['ArrowUp','PageUp'].includes(e.key)) { e.preventDefault(); step(-1); }
 });
+// Touch: one section per vertical swipe (mirrors the wheel one-gesture lock). This is
+// the input handler only — the full mobile pass (perf caps, CSS3D-on-mobile, layout)
+// is its own phase. Swipe UP = advance (content moves toward you), like a scroll.
+let _touchY = null;
+window.addEventListener('touchstart', (e) => {
+  if (editMode || freeRoam) return;
+  if (e.touches.length === 1) _touchY = e.touches[0].clientY;
+}, { passive: true });
+window.addEventListener('touchend', (e) => {
+  if (editMode || freeRoam || _touchY === null) return;
+  const endY = e.changedTouches[0]?.clientY ?? _touchY;
+  const dy = endY - _touchY; _touchY = null;
+  if (Math.abs(dy) < 40) return;              // ignore taps / tiny drags
+  step(dy < 0 ? 1 : -1);
+}, { passive: true });
 
 freeBtn.addEventListener('click', () => setFreeRoam(!freeRoam));
 function setFreeRoam(on) {
