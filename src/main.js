@@ -871,6 +871,8 @@ function drawImageCover(ctx, img, x, y, w, h) {
   else { sw = img.width; sh = sw / br; sx = 0; sy = (img.height - sh) / 2; }
   ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
 }
+// the human-facing title for a beat: its project title if bound, else the beat name
+const beatTitle = (b) => (b && b.project && b.project.title) ? b.project.title : (b?.name || '');
 function drawPanelCanvas(b) {
   const W = 512, H = clamp(Math.round(W * (b.panel.size[1] / b.panel.size[0])), 96, 1024);
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
@@ -888,7 +890,7 @@ function drawPanelCanvas(b) {
     y += ih + 18;
   }
   ctx.fillStyle = '#eaf4ff'; ctx.font = `800 ${Math.round(W * 0.085)}px Inter, system-ui, sans-serif`;
-  y = drawWrapped(ctx, b.name || '', pad, y, W - pad * 2, Math.round(W * 0.1));
+  y = drawWrapped(ctx, beatTitle(b), pad, y, W - pad * 2, Math.round(W * 0.1));
   if (b.desc) {
     y += 8; ctx.fillStyle = '#9fc2e0'; ctx.font = `400 ${Math.round(W * 0.044)}px Inter, system-ui, sans-serif`;
     y = drawWrapped(ctx, b.desc, pad, y, W - pad * 2, Math.round(W * 0.06));
@@ -1309,8 +1311,9 @@ const HERO_SUBLINE = true;   // Frame 2: set false to show the headline alone (n
 function resolveCaption(i) {                      // per-section caption text — beat.cap override wins, else the default
   const b = beats[i] || {};
   const isHero = /^hero$/i.test((b.name || '').trim());
-  const baseTitle = isHero ? 'From knowing nothing about coding and design.' : (b.name || '');
-  const baseDesc = isHero ? (HERO_SUBLINE ? 'Self-taught — everything here, I built.' : '') : 'Placeholder copy — real section content drops in here.';
+  const baseTitle = isHero ? 'From knowing nothing about coding and design.' : beatTitle(b);
+  const baseDesc = isHero ? (HERO_SUBLINE ? 'Self-taught — everything here, I built.' : '')
+                          : (b.desc || 'Placeholder copy — real section content drops in here.');
   const ov = b.cap || {};
   return { label: '', title: (ov.title !== undefined && ov.title !== '') ? ov.title : baseTitle, desc: ov.desc !== undefined ? ov.desc : baseDesc };
 }
