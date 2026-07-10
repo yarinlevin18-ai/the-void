@@ -65,11 +65,33 @@ const DEV_TOOLS = import.meta.env.DEV || new URLSearchParams(location.search).ha
 const UP_NORMAL = [0, 1, 0];
 const UP_VERTICAL = [0, 0, -1]; // "look straight up" orientation
 
+// ---- Low-GPU / mobile tier -------------------------------------------------
+// A 3D site's biggest risk is phones & weak GPUs (BUILD_PLAN §Risks). Detect a
+// constrained device up front and thin the void BEFORE it's built: fewer star
+// fragments + nebula density (the dominant fill-rate cost) and a lower pixel
+// ratio. Reuses the existing FX.starFrac/nebFrac knobs — no new render systems.
+// `?hi` forces the full tier (for testing on a capable phone); `?lo` forces low.
+const LOW_GPU = (() => {
+  const q = new URLSearchParams(location.search);
+  if (q.has('hi')) return false;
+  if (q.has('lo')) return true;
+  const coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  const mobileUA = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+  const fewCores = (navigator.hardwareConcurrency || 8) <= 4;
+  const lowMem = (navigator.deviceMemory || 8) <= 4;   // Chromium-only; undefined elsewhere → false
+  return coarse || mobileUA || fewCores || lowMem;
+})();
+if (LOW_GPU) {                       // thin the void's two heaviest layers (draw-range + shader uniform, no rebuild)
+  FX.starFrac = Math.min(FX.starFrac, 0.5);
+  FX.nebFrac = Math.min(FX.nebFrac, 0.55);
+}
+const MAX_PR = LOW_GPU ? 1.0 : 1.5;  // pixel-ratio ceiling — the single biggest fill-rate lever on retina phones
+
 // ---- Renderer / scene / camera --------------------------------------------
 const canvas = document.querySelector('#scene');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: false }); // composer renders the scene to its own targets — MSAA on the canvas is wasted
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // cap retina: fewer fragments, big fill-rate win
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PR)); // cap retina: fewer fragments, big fill-rate win
 // Shared CSS3D layer — live HTML assets (SmartCut, TEEPO) rendered as real iframes
 // positioned in 3D and synced to the camera. Sits above the canvas, below the UI.
 let css3d = null;
@@ -524,7 +546,10 @@ const beatScreens = (() => {
   let cycleT = 0, cycleIdx = 0, _pt = 0, _lastProj = null;
   function update(active, t, b) {
     const dt = _pt ? Math.min(t - _pt, 0.05) : 0; _pt = t;
-    const proj = active && b && b.project && b.project.screens.length ? b.project : null;
+    // On the low-GPU tier, never mount the live iframes (each runs its own JS +
+    // compositing — the real mobile cost). The beat's still-image panel preview
+    // stays as the fallback, so the project is still represented.
+    const proj = (!LOW_GPU && active && b && b.project && b.project.screens.length) ? b.project : null;
     // lazily build this project's screens the first time we land on it
     let mine = null;
     if (proj) {
@@ -2070,7 +2095,7 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // cap retina: fewer fragments, big fill-rate win
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PR)); // cap retina: fewer fragments, big fill-rate win (honors low-GPU tier)
   if (composer) composer.setSize(window.innerWidth, window.innerHeight);
   if (css3d) css3d.renderer.setSize(window.innerWidth, window.innerHeight);
   if (bloom) bloom.setSize((window.innerWidth / 2) | 0, (window.innerHeight / 2) | 0);
