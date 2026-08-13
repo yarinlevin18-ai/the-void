@@ -45,6 +45,15 @@ landing pages & SaaS interfaces. Audience: hiring teams + clients.
 npm install
 npm run dev      # http://localhost:5173
 ```
+
+## Deploy (LIVE)
+- Production: **https://the-void-khaki-pi.vercel.app** (Vercel project `the-void`,
+  team yarinlevin18-6288s-projects; deployment protection OFF; repo is public).
+- It's a BOOTSTRAP deploy: the Vercel build runs a `build.sh` that downloads
+  this repo's main tarball and runs `vite build` — so pushing to main does NOT
+  auto-deploy; trigger "Redeploy" in the Vercel dashboard (it pulls latest
+  main), or connect the repo properly in Project Settings → Git and drop the
+  custom build command (the clean end state).
 HMR can be flaky over this drive — hard-refresh (Ctrl+Shift+R) if a change
 doesn't show.
 
