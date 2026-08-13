@@ -4,8 +4,11 @@
 > Status: **LOCKED & WIRED 2026-08-13** — Yarin confirmed Kiara's Club for
 > slot #4; Phase B content is in `DEFAULT_BEATS` (src/main.js, save v7).
 > Previews captured to `public/previews/*.jpg` (42–115KB each).
-> OPEN: deploy Kiara's Club to Vercel (its beat has no live link until then);
-> optional: retake LifeRPG preview with a more dramatic in-game moment.
+> Kiara's Club is LIVE: https://kiaras-club.vercel.app (deployed 2026-08-13,
+> Vercel project `kiaras-club`, prod alias auto-claimed; deployed via MCP file
+> deploy — repo still has no git remote, push it when convenient).
+> OPEN (optional): retake LifeRPG preview with a more dramatic in-game moment;
+> point kiarasclub.com at the Vercel project when the domain is bought.
 
 ## Locked decisions (defaults — confirm)
 
