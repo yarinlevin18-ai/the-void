@@ -601,9 +601,10 @@ function applyVoidDensity() {
 applyVoidDensity();
 
 // Per-chapter "color world": the network recolors toward the nearest section's
-// hue on approach, fading back to neutral cyan between beats. (Placeholder
-// palette — swap to real project brand colors in Phase A/C.)
-const CHAPTER_COLORS = [0x4fd2ff, 0x9b8cff, 0x36e0c0, 0xff9e7a, 0x7fb4ff, 0xff8fb0, 0xffd27f];
+// hue on approach, fading back to neutral cyan between beats. Real brand hues
+// (CONTENT.md): Opening/Hero cyan · hub violet · SHADIEZ coastal dusty-blue ·
+// TEEPO green · LifeRPG+Kiara mustard/amber · contact warm ember.
+const CHAPTER_COLORS = [0x4fd2ff, 0x9fd8ff, 0x9b8cff, 0x8fb8cc, 0x3fc978, 0xeab04e, 0xff9e7a];
 
 // Warp streaks: forward-rushing lines that only appear while the camera is
 // flying fast between chapters — a cinematic whoosh, invisible when settled.
@@ -850,14 +851,15 @@ const makeHeroBeat = () => ({
   img: '', link: '', panel: mkPanel(0, 2, 35, 120, 64),
 });
 // Baked from the user's exported path (Copy config) — kept exactly as-is.
+// Real content per CONTENT.md (Phase B). Cameras kept exactly as authored.
 const DEFAULT_BEATS = [
   { name: 'Opening', cam: [-56, 2, 120], look: [-11, 59, 42], up: [0, 1, 0], fov: 25, dur: 1.4, desc: 'Landing pages & SaaS interfaces — fly through the work.', img: '', link: '', panel: null },
   { name: 'Hero', cam: [1, 53, 33], look: [192, -55, -56], up: [0, 1, 0], fov: 41, dur: 1.6, desc: '', img: '', link: '', panel: null },
-  { name: 'My Projects', cam: [9, 10, -69], look: [15, 4, -119], up: [-0.66418640324206, 0.7376001166578326, -0.1216654825935754], fov: 83, dur: 1.6, desc: '', img: '', link: '', panel: { pos: [15, 4, -119], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
-  { name: 'Project 1', cam: [0, 2, -190], look: [-22, 0, -235], up: [0, 1, 0], fov: 87, dur: 1.6, desc: '', img: '', link: '', panel: { pos: [-22, 0, -235], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
-  { name: 'Project 2', cam: [0, 2, -310], look: [22, 0, -355], up: [0, 1, 0], fov: 80, dur: 1.6, desc: '', img: '', link: '', panel: { pos: [22, 0, -355], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
-  { name: 'Project 3 & 4', cam: [0, 35, -410], look: [0, 60, -475], up: [0, 1, 0], fov: 68, dur: 1.6, desc: '', img: '', link: '', panel: { pos: [0, 60, -475], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
-  { name: 'Final / Footer', cam: [0, 49, -560], look: [1, 290, -560], up: [0, 0, -1], fov: 52, dur: 3, desc: '', img: '', link: '', panel: { pos: [1, 290, -560], size: [70, 44], billboard: false, rot: [89, 0, 180] } },
+  { name: 'My Projects', cam: [9, 10, -69], look: [15, 4, -119], up: [-0.66418640324206, 0.7376001166578326, -0.1216654825935754], fov: 83, dur: 1.6, desc: 'Four featured builds ahead — plus Worldiez, Mentorship, AeroCy, SecScan, BodyLoop, and a daily practice of motion labs.', cap: { desc: 'A glimpse of the full body of work — keep flying.' }, img: '', link: '', panel: { pos: [15, 4, -119], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
+  { name: 'SHADIEZ', cam: [0, 2, -190], look: [-22, 0, -235], up: [0, 1, 0], fov: 87, dur: 1.6, desc: 'Client e-commerce landing for a premium beach shade — 3D product hero, scroll-driven storytelling, live lead capture.', img: '/previews/shadiez.jpg', link: 'https://shadiez.vercel.app', fx: { bloomStrength: 0.5 }, panel: { pos: [-22, 0, -235], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
+  { name: 'TEEPO', cam: [0, 2, -310], look: [22, 0, -355], up: [0, 1, 0], fov: 80, dur: 1.6, desc: 'Full SaaS study platform for Israeli students — Hebrew RTL, Moodle scraping via a Chrome extension, Google Drive as the datastore, a Claude-powered assistant.', img: '/previews/teepo.jpg', link: 'https://bgu-study-organizer.vercel.app', fx: { bloomStrength: 0.5 }, panel: { pos: [22, 0, -355], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
+  { name: 'LifeRPG & Kiara’s Club', cam: [0, 35, -410], look: [0, 60, -475], up: [0, 1, 0], fov: 68, dur: 1.6, desc: 'A desktop life-RPG where real habits grow a 3D world — and a dachshund-first store brand, built from palette to cart.', img: '/previews/liferpg.jpg', img2: '/previews/kiaras-club.jpg', link: '', fx: { bloomStrength: 0.5 }, panel: { pos: [0, 60, -475], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
+  { name: 'Let’s build something', cam: [0, 49, -560], look: [1, 290, -560], up: [0, 0, -1], fov: 52, dur: 3, desc: 'Have a landing page or product interface in mind? I reply fast.', cap: { desc: 'yarinlevin18@gmail.com — or hit the button.' }, img: '', link: 'mailto:yarinlevin18@gmail.com', panel: { pos: [1, 290, -560], size: [70, 44], billboard: false, rot: [89, 0, 180] } },
 ];
 
 // ---- State -----------------------------------------------------------------
@@ -891,7 +893,7 @@ const SAVE_KEY = 'voidConfig';
 // fill in fields that didn't exist in earlier saved versions
 function backfillBeat(b) {
   b.fov ??= DEF_FOV; b.dur ??= DEF_DUR;
-  b.desc ??= ''; b.img ??= ''; b.link ??= '';
+  b.desc ??= ''; b.img ??= ''; b.img2 ??= ''; b.link ??= '';
   b.water ??= false;   // per-section water swipe (enable per asset)
   if (b.panel === undefined) b.panel = defaultPanelFor(b);
   if (b.panel) {
@@ -927,6 +929,24 @@ function load() {
           if (tr) tr.name = 'Hero';                                               // Frame 2: the statement beat
           migrated = true;
         }
+        if (!(d.version >= 7)) {
+          // Phase B: pour the real content into saved paths (authored cameras stay;
+          // only rename the generic beats and fill EMPTY content fields).
+          const fill = (re, src) => {
+            const b = beats.find((x) => re.test((x.name || '').trim())); if (!b) return;
+            b.name = src.name;
+            if (!b.desc) b.desc = src.desc;
+            if (!b.img) b.img = src.img;
+            if (src.img2 && !b.img2) b.img2 = src.img2;
+            if (!b.link) b.link = src.link;
+          };
+          fill(/^my projects$/i, DEFAULT_BEATS[2]);
+          fill(/^project ?1$/i, DEFAULT_BEATS[3]);
+          fill(/^project ?2$/i, DEFAULT_BEATS[4]);
+          fill(/^project ?3 ?& ?4$/i, DEFAULT_BEATS[5]);
+          fill(/^final/i, DEFAULT_BEATS[6]);
+          migrated = true;
+        }
         if (migrated) save();
         return;
       }
@@ -937,7 +957,7 @@ function load() {
 }
 function save() {
   const g = {}; for (const k of GLOBAL_KEYS) g[k] = FX[k]; g.ease = txEaseName;
-  localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 6 }));
+  localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 7 }));
 }
 // push the global (saved) FX/UX/transition state into the live scene + DOM
 function applyGlobals() {
@@ -1055,11 +1075,37 @@ function drawPanelCanvas(b) {
   ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(79,210,255,0.5)'; ctx.strokeRect(1.5, 1.5, W - 3, H - 3);
   ctx.textBaseline = 'top'; ctx.textAlign = 'left';
   const pad = 26; let y = pad;
-  const img = getImage(b.img);
-  if (img) {
+  const img = getImage(b.img), img2 = getImage(b.img2);
+  // Screens in a dark void run dim: a dark multiply keeps bright site pixels
+  // (~1.0 luminance) under control so UnrealBloom halos the preview instead of
+  // detonating it — same rule as the card header.
+  const meanLum = (im) => {                // sampled once per image, cached on it
+    if (im._lum != null) return im._lum;
+    try {
+      const c = document.createElement('canvas'); c.width = 32; c.height = 20;
+      const x = c.getContext('2d'); x.drawImage(im, 0, 0, 32, 20);
+      const d = x.getImageData(0, 0, 32, 20).data; let s = 0;
+      for (let i = 0; i < d.length; i += 4) s += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+      im._lum = s / (d.length / 4) / 255;
+    } catch (e) { im._lum = 0.5; }
+    return im._lum;
+  };
+  const drawDimmed = (im, x0, y0, w0, h0) => {
+    drawImageCover(ctx, im, x0, y0, w0, h0);
+    // adaptive: pale screenshots (cream dashboards, skies) get dimmed harder so
+    // no preview can hand bloom a giant über-threshold surface
+    const dim = clamp(0.30 + (meanLum(im) - 0.30) * 0.85, 0.30, 0.66);
+    ctx.fillStyle = `rgba(6,14,22,${dim.toFixed(2)})`; ctx.fillRect(x0, y0, w0, h0);
+    ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(79,210,255,0.3)'; ctx.strokeRect(x0, y0, w0, h0);
+  };
+  if (img && img2) {                       // twin-project beat: two previews side by side
+    const iw = (W - pad * 2 - 14) / 2, ih = Math.min(H * 0.52, iw * 0.68);
+    drawDimmed(img, pad, y, iw, ih);
+    drawDimmed(img2, pad + iw + 14, y, iw, ih);
+    y += ih + 18;
+  } else if (img) {
     const iw = W - pad * 2, ih = Math.min(H * 0.5, iw * (img.height / img.width));
-    drawImageCover(ctx, img, pad, y, iw, ih);
-    ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(79,210,255,0.3)'; ctx.strokeRect(pad, y, iw, ih);
+    drawDimmed(img, pad, y, iw, ih);
     y += ih + 18;
   }
   // mid-luminance header: bright enough to read, dim enough that UnrealBloom
@@ -1069,18 +1115,19 @@ function drawPanelCanvas(b) {
   ctx.fillStyle = '#9cc0d8'; ctx.font = `700 ${Math.round(W * 0.062)}px Inter, system-ui, sans-serif`;
   y = drawWrapped(ctx, b.name || '', pad, y, W - pad * 2, Math.round(W * 0.075));
   ctx.shadowBlur = 0;
-  if (b.desc) {
+  if (b.desc && !img) {                    // cards with a preview let the image speak — the kinetic caption carries the story
     y += 8; ctx.fillStyle = '#9fc2e0'; ctx.font = `400 ${Math.round(W * 0.044)}px Inter, system-ui, sans-serif`;
     y = drawWrapped(ctx, b.desc, pad, y, W - pad * 2, Math.round(W * 0.06));
   }
   if (b.link) {
-    const ph = Math.round(W * 0.085), pw = Math.round(W * 0.34), px = pad, py = H - pad - ph;
+    const mail = /^mailto:/i.test(b.link), label = mail ? 'GET IN TOUCH' : 'VISIT LIVE';
+    const ph = Math.round(W * 0.085), pw = Math.round(W * (mail ? 0.42 : 0.34)), px = pad, py = H - pad - ph;
     ctx.fillStyle = '#1f9fd6';
     if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(px, py, pw, ph, ph / 2); ctx.fill(); }
     else ctx.fillRect(px, py, pw, ph);
     ctx.fillStyle = '#ffffff'; ctx.font = `700 ${Math.round(W * 0.04)}px Inter, system-ui, sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('VISIT LIVE', px + pw / 2, py + ph / 2 + 1);
+    ctx.fillText(label, px + pw / 2, py + ph / 2 + 1);
     ctx.textAlign = 'left'; ctx.textBaseline = 'top';
   }
   return cv;
@@ -1490,7 +1537,7 @@ function resolveCaption(i) {                      // per-section caption text �
   const b = beats[i] || {};
   const isHero = /^hero$/i.test((b.name || '').trim());
   const baseTitle = isHero ? 'From knowing nothing about coding and design.' : (b.name || '');
-  const baseDesc = isHero ? (HERO_SUBLINE ? 'Self-taught — everything here, I built.' : '') : 'Placeholder copy — real section content drops in here.';
+  const baseDesc = isHero ? (HERO_SUBLINE ? 'Self-taught — everything here, I built.' : '') : (b.desc || '');
   const ov = b.cap || {};
   return { label: '', title: (ov.title !== undefined && ov.title !== '') ? ov.title : baseTitle, desc: ov.desc !== undefined ? ov.desc : baseDesc };
 }
@@ -2694,8 +2741,11 @@ function animate() {
 
   // "visit live" button for the section currently in view (play mode only)
   const cur = beats[index];
-  if (!editMode && !freeRoam && cur && cur.link) { visitBtn.hidden = false; visitBtn.href = cur.link; }
-  else visitBtn.hidden = true;
+  if (!editMode && !freeRoam && cur && cur.link) {
+    visitBtn.hidden = false; visitBtn.href = cur.link;
+    const lbl = /^mailto:/i.test(cur.link) ? 'Get in touch ↗' : 'Visit live ↗';
+    if (visitBtn.textContent !== lbl) visitBtn.textContent = lbl;
+  } else visitBtn.hidden = true;
 
   if (bokeh && bokeh.uniforms && bokeh.uniforms.focus) {   // lock focus onto the NEAREST section
     if (editMode || freeRoam) _focusV.copy(controls.target);

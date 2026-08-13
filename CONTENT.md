@@ -1,9 +1,11 @@
 # CONTENT.md — Phase A content lock ("The Void")
 
 > The filled content table BUILD_PLAN Phase A requires. Drives Phase B wiring.
-> Status: **PROVISIONAL — PAUSED 2026-08-13** ("skip for now" — Yarin).
-> Defaults below were locked without Yarin's confirmation; every ⚠ needs his
-> sign-off before Phase B. Repo data below is real (audited from the 4 repos).
+> Status: **LOCKED & WIRED 2026-08-13** — Yarin confirmed Kiara's Club for
+> slot #4; Phase B content is in `DEFAULT_BEATS` (src/main.js, save v7).
+> Previews captured to `public/previews/*.jpg` (42–115KB each).
+> OPEN: deploy Kiara's Club to Vercel (its beat has no live link until then);
+> optional: retake LifeRPG preview with a more dramatic in-game moment.
 
 ## Locked decisions (defaults — confirm)
 
