@@ -49,6 +49,15 @@ applies: the background supports the content; nodes/lines stay the focal read.
   demo look; `meshline` remains an option if a thicker read is ever wanted.
 - Tunables: FX panel → Density "Nodes"/"Links" sliders + "Energy lines" toggle;
   chapter tint + warp burst + cursor stir are wired like the stars.
+- **Cursor links** (ENVIRONMENT.md Layer 3): up to 8 faint threads reach from
+  the nodes around the pointer toward a point along the cursor ray, swelling
+  with pointer speed, melting away when idle (`cursorLinks` in main.js). Kept
+  deliberately faint — the no-cursor-lamp lock stands (glow-spot and node
+  cursor boosts are capped so nothing ever reads as a following light).
+- **Lighting rules learned (2026-08-13):** panel canvas text must stay
+  mid-luminance (~#9cc0d8) — pure white at panel scale gets smeared to mush by
+  bloom; hub halos need radius ≥ ~50u and ≤ 2 links/node or they tangle into
+  yarn balls; additive brightness boosts always get a hard cap.
 
 ### 5. Bloom
 - `postprocessing` UnrealBloom. **threshold ≈ 0.22** so only bright nodes glow —

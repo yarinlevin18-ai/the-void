@@ -40,7 +40,7 @@ const FX = {
   lightning: true, glowSpots: true,                                            // in-nebula lightning + flickering glow spots
   lightInt: 1, lightReach: 280, lightRate: 3, glowBright: 1, glowFlick: 1, cursorDrive: 1,   // lightning + glow + cursor-reactivity controls
   waterStr: 0.18, waterRad: 0.018, waterAtt: 0.992, waterDisp: 0.22, waterSheen: 1.0,         // water swipe (APPROVED tuning — see water.md)
-  openFit: 0.3, openSize: 1.1, openGlow: 0.7, openForm: 2.6, openShatterR: 5, openPush: 1.7, openSpring: 0.028, openColor: '#9fd8ff',   // Frame 1 opening particles
+  openFit: 0.3, openSize: 1.1, openGlow: 0.55, openForm: 2.6, openShatterR: 5, openPush: 1.7, openSpring: 0.028, openColor: '#9fd8ff',   // Frame 1 opening particles (glow 0.55 — 0.7 fused the letterforms)
 };
 const fxEl = document.querySelector('#fxpanel');
 // FX keyframes: these params live PER BEAT (beat.fx) and are interpolated across
@@ -265,7 +265,7 @@ const livingVoid = (() => {
         float rate=(1.5+spSeed)*uFlick; float fl=0.25+0.75*pow(0.5+0.5*sin(uTime*rate+spSeed),6.0);  // sharp flicker
         vec4 mv=modelViewMatrix*vec4(position,1.0); vec4 clip=projectionMatrix*mv;
         vec2 ndc=clip.xy/clip.w; float near=smoothstep(0.5,0.0,length(ndc-uPtN));
-        fl*=1.0+near*(1.5+uVel*3.0)*uDrive;                 // cursor proximity + speed brighten the flicker
+        fl*=1.0+near*(0.7+uVel*1.1)*uDrive;                 // cursor proximity + speed brighten the flicker (kept gentle — no cursor lamp)
         vF=fl*uBright;
         gl_PointSize=spSize*fl*(360.0/max(1.0,-mv.z)); gl_Position=clip; }`,
     fragmentShader: `varying vec3 vC; varying float vF;
@@ -630,7 +630,7 @@ const _vel = new THREE.Vector3(), _dir = new THREE.Vector3();
 //  line endpoints move identically with zero per-frame CPU work. Line thickness
 //  stays 1px (approved look); swap to meshline only if a thicker read is wanted.
 function buildNetwork() {
-  const N = 900, MAX_LINKS = 3, LINK_DIST = 62;
+  const N = 900, MAX_LINKS = 2, LINK_DIST = 62;   // 2 links/node — 3 tangled the hub halos into yarn balls
   const cams = beats.map((b) => new THREE.Vector3(...b.cam));
   const hubs = beats.filter((b) => b.panel).map((b) => new THREE.Vector3(...b.look));
   const bbox = new THREE.Box3().setFromPoints(cams.concat(hubs)).expandByScalar(320);
@@ -649,7 +649,7 @@ function buildNetwork() {
   const sampleHub = (out) => {                 // halo around a section's panel
     const h = hubs.length ? hubs[Math.floor(Math.random() * hubs.length)] : cams[0];
     _s.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
-    return out.copy(h).addScaledVector(_s, 34 + Math.random() * 65);
+    return out.copy(h).addScaledVector(_s, 48 + Math.random() * 110);   // wide halo — tight radii knotted the links
   };
   const sampleWide = (out) => out.set(         // sparse far scatter for depth
     THREE.MathUtils.lerp(bbox.min.x, bbox.max.x, Math.random()),
@@ -693,7 +693,8 @@ function buildNetwork() {
         vec4 mv=modelViewMatrix*vec4(p,1.0); float depth=-mv.z;
         vec4 clip=projectionMatrix*mv; vec2 ndc=clip.xy/clip.w;
         float near=smoothstep(0.5,0.0,length(ndc-uPtN));
-        tw*=1.0+near*(0.9+uVel*1.6);                                      // cursor stirs nearby nodes
+        tw*=1.0+near*(0.5+uVel*0.9);                                      // cursor stirs nearby nodes
+        tw=min(tw,1.45);                                                  // cap: additive clusters must never stack to white
         vA=tw*smoothstep(16.0,44.0,depth)*smoothstep(950.0,520.0,depth);  // near+far fade
         vC=aColor;
         gl_PointSize=min(aScale*uSize*tw*(1.0+uWarp*1.6)*(420.0/max(depth,1.0)), 24.0);
@@ -751,7 +752,7 @@ function buildNetwork() {
     fragmentShader: `varying float vT,vP,vFade; varying vec3 vC;
       uniform float uTime,uWarp,uTintAmt; uniform vec3 uTint;
       void main(){
-        float life=0.10+0.18*sin(uTime*0.35+vP*6.2831);                    // slow form/dissolve
+        float life=0.08+0.15*sin(uTime*0.35+vP*6.2831);                    // slow form/dissolve (restraint: lines support, never shout)
         float head=fract(uTime*0.22+vP);
         float pulse=smoothstep(0.05,0.0,abs(vT-head));                     // bright spark travelling A->B
         float a=clamp(life+pulse*0.9,0.0,1.0)*vFade*(1.0+uWarp*0.8);
@@ -770,8 +771,75 @@ function buildNetwork() {
   }
   const setTint = (hex, amt) => { pmat.uniforms.uTint.value.set(hex); pmat.uniforms.uTintAmt.value = amt; lmat.uniforms.uTint.value.set(hex); lmat.uniforms.uTintAmt.value = amt; };
   const setWarp = (v) => { pmat.uniforms.uWarp.value = v; lmat.uniforms.uWarp.value = v; };
-  return { N, L, nodes, lines, pgeo, lgeo, pmat, lmat, update, setTint, setWarp };
+  return { N, L, nodes, lines, pgeo, lgeo, pmat, lmat, update, setTint, setWarp, base, amp, fre, pha, aColor };
 }
+
+// ---- Cursor links (ENVIRONMENT.md Layer 3) — the network reaches toward the
+//  cursor: up to K thin threads from nearby nodes to a point along the cursor
+//  ray, brightening with pointer speed and melting away when idle. Deliberately
+//  NOT a glowing cursor blob (BACKGROUND.md lock) — no endpoint sprite, just
+//  faint filaments. CPU cost: re-derive the K nodes' drift + project ~900
+//  points once per frame (same math the demo ran for every node every frame).
+const cursorLinks = (() => {
+  const K = 8, NDC_R = 0.30;
+  const pos = new Float32Array(K * 6), col = new Float32Array(K * 8);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 4));
+  const mat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 1, depthWrite: false, blending: THREE.AdditiveBlending });
+  const obj = new THREE.LineSegments(geo, mat);
+  obj.renderOrder = -5; obj.frustumCulled = false; obj.visible = false;
+  scene.add(obj);
+  const _v = new THREE.Vector3(), _anchor = new THREE.Vector3();
+  const near = [];                              // scratch: { d, x, y, z }
+  let strength = 0;
+  function update(t, active, ptN, vel, driftOn) {
+    const net = network;
+    // links live while the pointer is in the scene, swell with its speed
+    const target = (active && ptN.x > -2 && ptN.x < 2) ? Math.min(1, 0.42 + vel * 0.9) : 0;
+    strength += (target - strength) * 0.10;
+    obj.visible = strength > 0.02 && !PREFERS_REDUCED && !!net;
+    if (!obj.visible) return;
+    near.length = 0;
+    const { base, amp, fre, pha, aColor, N } = net;
+    let meanDepth = 0;
+    for (let i = 0; i < N; i++) {
+      const o = i * 3;
+      const x = base[o] + driftOn * amp[o] * Math.sin(t * fre[o] + pha[o]);
+      const y = base[o + 1] + driftOn * amp[o + 1] * Math.sin(t * fre[o + 1] + pha[o + 1]);
+      const z = base[o + 2] + driftOn * amp[o + 2] * Math.sin(t * fre[o + 2] + pha[o + 2]);
+      _v.set(x, y, z).project(camera);
+      if (_v.z < 0 || _v.z > 1) continue;                     // behind the camera / past far
+      const dx = _v.x - ptN.x, dy = _v.y - ptN.y, d = Math.sqrt(dx * dx + dy * dy);
+      if (d > NDC_R) continue;
+      near.push({ d, x, y, z, i });
+    }
+    near.sort((a, b) => a.d - b.d);
+    const n = Math.min(K, near.length);
+    // anchor just in front of the picked cluster so the threads have real length
+    for (let k = 0; k < n; k++) { _v.set(near[k].x, near[k].y, near[k].z); meanDepth += camera.position.distanceTo(_v); }
+    meanDepth = n ? (meanDepth / n) * 0.82 : 150;
+    _anchor.set(ptN.x, ptN.y, 0.5).unproject(camera).sub(camera.position).normalize();
+    _anchor.multiplyScalar(meanDepth).add(camera.position);
+    for (let k = 0; k < K; k++) {
+      const p6 = k * 6, c8 = k * 8;
+      if (k < n) {
+        const nd = near[k], co = nd.i * 3;
+        const a = Math.min(0.85, strength * Math.pow(1 - nd.d / NDC_R, 0.6));   // nearest = brightest
+        pos[p6] = _anchor.x; pos[p6 + 1] = _anchor.y; pos[p6 + 2] = _anchor.z;
+        pos[p6 + 3] = nd.x; pos[p6 + 4] = nd.y; pos[p6 + 5] = nd.z;
+        col[c8] = aColor[co]; col[c8 + 1] = aColor[co + 1]; col[c8 + 2] = aColor[co + 2]; col[c8 + 3] = 0; // cursor end: transparent
+        col[c8 + 4] = aColor[co]; col[c8 + 5] = aColor[co + 1]; col[c8 + 6] = aColor[co + 2]; col[c8 + 7] = a; // node end: lit
+      } else {
+        for (let m = 0; m < 6; m++) pos[p6 + m] = 0;
+        for (let m = 0; m < 8; m++) col[c8 + m] = 0;
+      }
+    }
+    geo.attributes.position.needsUpdate = true;
+    geo.attributes.color.needsUpdate = true;
+  }
+  return { update };
+})();
 
 // ---- Default path (used until the user edits / loads saved) -----------------
 const mkPanel = (x, y, z, w, h, rot = [0, 0, 0]) => ({ pos: [x, y, z], size: [w, h], rot, billboard: false });
@@ -983,7 +1051,7 @@ function drawPanelCanvas(b) {
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d');
   // light frosted-glass card: pale fill, hairline slate border, ink text
-  ctx.fillStyle = 'rgba(8,16,26,0.82)'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(8,16,26,0.93)'; ctx.fillRect(0, 0, W, H);   // near-opaque: the next beat's panel must not ghost through
   ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(79,210,255,0.5)'; ctx.strokeRect(1.5, 1.5, W - 3, H - 3);
   ctx.textBaseline = 'top'; ctx.textAlign = 'left';
   const pad = 26; let y = pad;
@@ -994,8 +1062,13 @@ function drawPanelCanvas(b) {
     ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(79,210,255,0.3)'; ctx.strokeRect(pad, y, iw, ih);
     y += ih + 18;
   }
-  ctx.fillStyle = '#eaf4ff'; ctx.font = `800 ${Math.round(W * 0.085)}px Inter, system-ui, sans-serif`;
-  y = drawWrapped(ctx, b.name || '', pad, y, W - pad * 2, Math.round(W * 0.1));
+  // mid-luminance header: bright enough to read, dim enough that UnrealBloom
+  // (threshold .22) halos it gently instead of smearing it to a white blob —
+  // the big glowing title is the kinetic caption's job, not the card's.
+  ctx.shadowColor = 'rgba(79,210,255,0.35)'; ctx.shadowBlur = 10;
+  ctx.fillStyle = '#9cc0d8'; ctx.font = `700 ${Math.round(W * 0.062)}px Inter, system-ui, sans-serif`;
+  y = drawWrapped(ctx, b.name || '', pad, y, W - pad * 2, Math.round(W * 0.075));
+  ctx.shadowBlur = 0;
   if (b.desc) {
     y += 8; ctx.fillStyle = '#9fc2e0'; ctx.font = `400 ${Math.round(W * 0.044)}px Inter, system-ui, sans-serif`;
     y = drawWrapped(ctx, b.desc, pad, y, W - pad * 2, Math.round(W * 0.06));
@@ -2541,6 +2614,7 @@ function animate() {
   livingVoid.nebMat.uniforms.uDens.value = curFX.nebula;   // per-section nebula density (keyframed)
   livingVoid.update(t);                      // advance nebula + starfield time
   if (network) network.update(t, (FX.driftOn && !PREFERS_REDUCED) ? 1 : 0, _cN, _cVel * FX.cursorDrive);   // data network: drift + cursor stir
+  cursorLinks.update(t, !editMode && !freeRoam && FX.cursorDrive > 0, _cN, _cVel * FX.cursorDrive, (FX.driftOn && !PREFERS_REDUCED) ? 1 : 0);   // Layer 3: the network reaches toward the cursor
   meteors.update(dt, !editMode && !freeRoam && index === 0);   // falling stars on the start frame only
   {                                          // Frame 2 — the grouped Hero cluster (assets parallax to cursor + scroll)
     const heroOn = !editMode && !freeRoam && /^hero$/i.test(beats[index]?.name || '');
