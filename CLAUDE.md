@@ -24,9 +24,9 @@ landing pages & SaaS interfaces. Audience: hiring teams + clients.
   - Mono / HUD labels → **Source Code Pro**
   - Embed kit (one link): `https://use.typekit.net/xan5bdy.css`
   - CSS stacks: `"ogg",serif` · `"acumin-pro",sans-serif` · `"source-code-pro",monospace`
-  - NOTE: `src/style.css` currently also has a local `@font-face` for "Ogg"
-    pointing at `/fonts/Ogg-Roman.woff2`. Pick ONE approach — the Adobe kit link
-    (no files needed) OR drop real Ogg files in `public/fonts/`. Don't ship both.
+  - CSS uses the Adobe kit names only (no local `@font-face` — resolved).
+    The 3D extruded text (`src/text3d.js`) is separate: it looks for Ogg files
+    in `public/fonts/` and falls back to a bundled serif if absent.
 - **Navigation:** section-snapping flight (scroll/arrows fly to the next composed
   camera shot). Per-shot FOV + duration; straight-between-beats position with
   quaternion-slerp orientation; final beat looks straight up.
@@ -63,8 +63,10 @@ ignore.)
 ## Next work (from BUILD_PLAN — do in order)
 1. **Phase A — content:** confirm the 4 featured projects + assets (see PRD §6).
 2. **Phase B:** place real content (panels/previews/live links + My Projects hub + contact).
-3. **Phase C:** the void atmosphere — connecting **lines + flowing energy
-   (MeshLine) + UnrealBloom**, and the **adaptive brand-color recolor** on approach.
+3. **Phase C:** the void atmosphere — ✅ connecting lines + flowing energy are
+   IN (the data network: `buildNetwork()`, see BACKGROUND.md layer 4); bloom was
+   already in. Remaining: swap `CHAPTER_COLORS` placeholders for real project
+   brand colors once Phase A content is locked (see CONTENT.md).
 4. **Mobile/touch** navigation (currently wheel+keys only — unusable on phones).
 5. **Accessibility:** `prefers-reduced-motion` + low-GPU fallback.
 6. **Before ship:** strip/disable Director Mode (`E`) so visitors can't open it.

@@ -83,6 +83,7 @@ try {
   css3d = { renderer: cssR, scene: new THREE.Scene() };
 } catch (e) { console.warn('[css3d] disabled:', e); }
 let composer = null, bokeh = null, bloom = null;   // post-FX (set up below)
+let network = null;                                // data network (nodes + energy lines) — built after the beats load
 let _lastBeatIdx = 0, voidWarp = 0;                // warp burst on chapter change
 let _flash = 0, _nextFlash = 2.5;                  // nebula lightning strikes
 let _cVel = 0, _cVelRaw = 0, _flickCD = 0, _pPX = null, _pPY = null;   // smoothed cursor velocity
@@ -592,6 +593,10 @@ text3d.loadFont().then((r) => { const el = document.querySelector('#text-status'
 function applyVoidDensity() {
   livingVoid.sgeo.setDrawRange(0, Math.max(0, Math.floor(livingVoid.STAR_N * FX.starFrac)));
   livingVoid.nebMat.uniforms.uNebFrac.value = FX.nebFrac;   // Clouds = nebula density (smooth fade)
+  if (network) {
+    network.pgeo.setDrawRange(0, Math.max(0, Math.floor(network.N * FX.nodeFrac)));
+    network.lgeo.setDrawRange(0, 2 * Math.max(0, Math.floor(network.L * FX.lineFrac)));
+  }
 }
 applyVoidDensity();
 
@@ -617,7 +622,156 @@ const warp = (() => {
 let _prevCamPos = null;
 const _vel = new THREE.Vector3(), _dir = new THREE.Vector3();
 
-// (electric energy sprites removed — a dedicated lightning repo will go here)
+// ---- The data network — nodes + living energy lines (BACKGROUND.md layer 4,
+//  ENVIRONMENT.md Layer 2; look ported from demo-living-void.html, APPROVED).
+//  World-space, built AFTER the beats load so hubs cluster around each section:
+//  the "CRM/SaaS network" read from the PRD. All motion runs in the vertex
+//  shader (drift = layered sines from per-vertex attrs), so nodes and their
+//  line endpoints move identically with zero per-frame CPU work. Line thickness
+//  stays 1px (approved look); swap to meshline only if a thicker read is wanted.
+function buildNetwork() {
+  const N = 900, MAX_LINKS = 3, LINK_DIST = 62;
+  const cams = beats.map((b) => new THREE.Vector3(...b.cam));
+  const hubs = beats.filter((b) => b.panel).map((b) => new THREE.Vector3(...b.look));
+  const bbox = new THREE.Box3().setFromPoints(cams.concat(hubs)).expandByScalar(320);
+  const _p = new THREE.Vector3(), _s = new THREE.Vector3();
+  const clearOf = (p) => {                     // keep the corridor + panel faces readable
+    for (const c of cams) if (p.distanceToSquared(c) < 25 * 25) return false;
+    for (const h of hubs) if (p.distanceToSquared(h) < 30 * 30) return false;
+    return true;
+  };
+  const sampleOnPath = (out) => {              // random point along the cam polyline + lateral offset
+    const i = Math.floor(Math.random() * (cams.length - 1));
+    out.lerpVectors(cams[i], cams[i + 1], Math.random());
+    _s.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
+    return out.addScaledVector(_s, 55 + Math.random() * 225);
+  };
+  const sampleHub = (out) => {                 // halo around a section's panel
+    const h = hubs.length ? hubs[Math.floor(Math.random() * hubs.length)] : cams[0];
+    _s.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
+    return out.copy(h).addScaledVector(_s, 34 + Math.random() * 65);
+  };
+  const sampleWide = (out) => out.set(         // sparse far scatter for depth
+    THREE.MathUtils.lerp(bbox.min.x, bbox.max.x, Math.random()),
+    THREE.MathUtils.lerp(bbox.min.y, bbox.max.y, Math.random()),
+    THREE.MathUtils.lerp(bbox.min.z, bbox.max.z, Math.random()));
+  const base = new Float32Array(N * 3), amp = new Float32Array(N * 3), fre = new Float32Array(N * 3), pha = new Float32Array(N * 3);
+  const aPhase = new Float32Array(N), aScale = new Float32Array(N), aColor = new Float32Array(N * 3);
+  const cCyan = new THREE.Color(0x6fe0ff), cWhite = new THREE.Color(0xeaf4ff), cEmber = new THREE.Color(0xff7a3d), _tc = new THREE.Color();
+  for (let i = 0; i < N; i++) {
+    const r = Math.random();
+    for (let tries = 0; tries < 8; tries++) {  // rejection-sample away from the camera line + panels
+      if (r < 0.45) sampleOnPath(_p); else if (r < 0.78) sampleHub(_p); else sampleWide(_p);
+      if (clearOf(_p)) break;
+    }
+    base[i * 3] = _p.x; base[i * 3 + 1] = _p.y; base[i * 3 + 2] = _p.z;
+    for (let k = 0; k < 3; k++) { amp[i * 3 + k] = 3 + Math.random() * 10; fre[i * 3 + k] = 0.15 + Math.random() * 0.55; pha[i * 3 + k] = Math.random() * 6.28; }
+    aPhase[i] = Math.random() * 6.28; aScale[i] = 0.6 + Math.random() * 1.8;
+    const cr = Math.random(); _tc.copy(cr < 0.12 ? cEmber : (cr < 0.5 ? cWhite : cCyan));   // ~12% ember accents per BACKGROUND.md
+    aColor[i * 3] = _tc.r; aColor[i * 3 + 1] = _tc.g; aColor[i * 3 + 2] = _tc.b;
+  }
+  const DRIFT_GLSL = `vec3 drifted(vec3 b, vec3 A, vec3 F, vec3 P, float t, float on){
+    return b + on * vec3(A.x*sin(t*F.x+P.x), A.y*sin(t*F.y+P.y), A.z*sin(t*F.z+P.z)); }`;
+  const pgeo = new THREE.BufferGeometry();
+  pgeo.setAttribute('position', new THREE.BufferAttribute(base, 3));
+  pgeo.setAttribute('aAmp', new THREE.BufferAttribute(amp, 3));
+  pgeo.setAttribute('aFre', new THREE.BufferAttribute(fre, 3));
+  pgeo.setAttribute('aPha', new THREE.BufferAttribute(pha, 3));
+  pgeo.setAttribute('aPhase', new THREE.BufferAttribute(aPhase, 1));
+  pgeo.setAttribute('aScale', new THREE.BufferAttribute(aScale, 1));
+  pgeo.setAttribute('aColor', new THREE.BufferAttribute(aColor, 3));
+  const pmat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    uniforms: { uTime: { value: 0 }, uSize: { value: 3.2 }, uTwinkle: { value: 1 }, uWarp: { value: 0 }, uDrift: { value: 1 }, uPtN: { value: new THREE.Vector2(9, 9) }, uVel: { value: 0 }, uTint: { value: new THREE.Color(0x4fd2ff) }, uTintAmt: { value: 0 } },
+    vertexShader: `attribute vec3 aAmp,aFre,aPha,aColor; attribute float aPhase,aScale;
+      uniform float uTime,uSize,uTwinkle,uWarp,uDrift,uVel; uniform vec2 uPtN;
+      varying vec3 vC; varying float vA;
+      ${DRIFT_GLSL}
+      void main(){
+        vec3 p=drifted(position,aAmp,aFre,aPha,uTime,uDrift);
+        float tw=mix(0.85, 0.55+0.45*sin(uTime*1.6+aPhase), uTwinkle);
+        vec4 mv=modelViewMatrix*vec4(p,1.0); float depth=-mv.z;
+        vec4 clip=projectionMatrix*mv; vec2 ndc=clip.xy/clip.w;
+        float near=smoothstep(0.5,0.0,length(ndc-uPtN));
+        tw*=1.0+near*(0.9+uVel*1.6);                                      // cursor stirs nearby nodes
+        vA=tw*smoothstep(16.0,44.0,depth)*smoothstep(950.0,520.0,depth);  // near+far fade
+        vC=aColor;
+        gl_PointSize=min(aScale*uSize*tw*(1.0+uWarp*1.6)*(420.0/max(depth,1.0)), 24.0);
+        gl_Position=clip; }`,
+    fragmentShader: `varying vec3 vC; varying float vA; uniform vec3 uTint; uniform float uTintAmt;
+      void main(){ vec2 c=gl_PointCoord-0.5; float d=length(c); if(d>0.5) discard;
+        float a=smoothstep(0.5,0.0,d)*vA;
+        vec3 col=mix(vC,uTint,uTintAmt);                                   // per-chapter recolor
+        gl_FragColor=vec4(col*(0.7+vA),a); }`,
+  });
+  const nodes = new THREE.Points(pgeo, pmat);
+  nodes.renderOrder = -6; nodes.frustumCulled = false;
+  scene.add(nodes);
+  // connections: nearest neighbours under LINK_DIST, computed once from base positions;
+  // each line vertex carries ITS node's drift attrs so endpoints track exactly.
+  const pairs = [];
+  for (let i = 0; i < N; i++) {
+    let c = 0;
+    for (let j = i + 1; j < N && c < MAX_LINKS; j++) {
+      const dx = base[i * 3] - base[j * 3], dy = base[i * 3 + 1] - base[j * 3 + 1], dz = base[i * 3 + 2] - base[j * 3 + 2];
+      if (dx * dx + dy * dy + dz * dz < LINK_DIST * LINK_DIST) { pairs.push(i, j); c++; }
+    }
+  }
+  const L = pairs.length / 2;
+  const lpos = new Float32Array(L * 6), lamp = new Float32Array(L * 6), lfre = new Float32Array(L * 6), lpha = new Float32Array(L * 6);
+  const lT = new Float32Array(L * 2), lPh = new Float32Array(L * 2), lCol = new Float32Array(L * 6);
+  for (let k = 0; k < L; k++) {
+    const ph = Math.random();
+    for (let v = 0; v < 2; v++) {
+      const n = pairs[k * 2 + v], o = (k * 2 + v) * 3;
+      for (let m = 0; m < 3; m++) { lpos[o + m] = base[n * 3 + m]; lamp[o + m] = amp[n * 3 + m]; lfre[o + m] = fre[n * 3 + m]; lpha[o + m] = pha[n * 3 + m]; lCol[o + m] = aColor[n * 3 + m]; }
+      lT[k * 2 + v] = v; lPh[k * 2 + v] = ph;
+    }
+  }
+  const lgeo = new THREE.BufferGeometry();
+  lgeo.setAttribute('position', new THREE.BufferAttribute(lpos, 3));
+  lgeo.setAttribute('aAmp', new THREE.BufferAttribute(lamp, 3));
+  lgeo.setAttribute('aFre', new THREE.BufferAttribute(lfre, 3));
+  lgeo.setAttribute('aPha', new THREE.BufferAttribute(lpha, 3));
+  lgeo.setAttribute('aT', new THREE.BufferAttribute(lT, 1));
+  lgeo.setAttribute('aLPhase', new THREE.BufferAttribute(lPh, 1));
+  lgeo.setAttribute('aLColor', new THREE.BufferAttribute(lCol, 3));
+  const lmat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    uniforms: { uTime: { value: 0 }, uDrift: { value: 1 }, uWarp: { value: 0 }, uTint: { value: new THREE.Color(0x4fd2ff) }, uTintAmt: { value: 0 } },
+    vertexShader: `attribute vec3 aAmp,aFre,aPha,aLColor; attribute float aT,aLPhase;
+      uniform float uTime,uDrift; varying float vT,vP,vFade; varying vec3 vC;
+      ${DRIFT_GLSL}
+      void main(){
+        vec3 p=drifted(position,aAmp,aFre,aPha,uTime,uDrift);
+        vec4 mv=modelViewMatrix*vec4(p,1.0); float depth=-mv.z;
+        vFade=smoothstep(20.0,50.0,depth)*smoothstep(900.0,480.0,depth);
+        vT=aT; vP=aLPhase; vC=aLColor;
+        gl_Position=projectionMatrix*mv; }`,
+    fragmentShader: `varying float vT,vP,vFade; varying vec3 vC;
+      uniform float uTime,uWarp,uTintAmt; uniform vec3 uTint;
+      void main(){
+        float life=0.10+0.18*sin(uTime*0.35+vP*6.2831);                    // slow form/dissolve
+        float head=fract(uTime*0.22+vP);
+        float pulse=smoothstep(0.05,0.0,abs(vT-head));                     // bright spark travelling A->B
+        float a=clamp(life+pulse*0.9,0.0,1.0)*vFade*(1.0+uWarp*0.8);
+        vec3 col=mix(vC,uTint,uTintAmt)+pulse*vec3(0.5);
+        gl_FragColor=vec4(col,a); }`,
+  });
+  const lines = new THREE.LineSegments(lgeo, lmat);
+  lines.renderOrder = -6; lines.frustumCulled = false;
+  lines.visible = FX.linesOn;
+  scene.add(lines);
+  pmat.uniforms.uTwinkle.value = (FX.twinkleOn && !PREFERS_REDUCED) ? 1 : 0;
+  function update(t, driftOn, ptN, vel) {
+    pmat.uniforms.uTime.value = t; lmat.uniforms.uTime.value = t;
+    pmat.uniforms.uDrift.value = driftOn; lmat.uniforms.uDrift.value = driftOn;
+    pmat.uniforms.uPtN.value.copy(ptN); pmat.uniforms.uVel.value = vel;
+  }
+  const setTint = (hex, amt) => { pmat.uniforms.uTint.value.set(hex); pmat.uniforms.uTintAmt.value = amt; lmat.uniforms.uTint.value.set(hex); lmat.uniforms.uTintAmt.value = amt; };
+  const setWarp = (v) => { pmat.uniforms.uWarp.value = v; lmat.uniforms.uWarp.value = v; };
+  return { N, L, nodes, lines, pgeo, lgeo, pmat, lmat, update, setTint, setWarp };
+}
 
 // ---- Default path (used until the user edits / loads saved) -----------------
 const mkPanel = (x, y, z, w, h, rot = [0, 0, 0]) => ({ pos: [x, y, z], size: [w, h], rot, billboard: false });
@@ -721,6 +875,7 @@ function save() {
 function applyGlobals() {
   applyVoidDensity();
   livingVoid.smat.uniforms.uTwinkle.value = FX.twinkleOn ? 1 : 0;
+  if (network) { network.pmat.uniforms.uTwinkle.value = (FX.twinkleOn && !PREFERS_REDUCED) ? 1 : 0; network.lines.visible = FX.linesOn; }
   livingVoid.composite.visible = FX.nebVisible;
   livingVoid.nebMat.uniforms.uSpd.value = FX.nebSpd;
   livingVoid.nebMat.uniforms.uWarp.value = FX.nebWarp;
@@ -742,6 +897,8 @@ beats.forEach(ensureBeatFX);   // ensure every beat (incl. defaults) carries a f
   const la = beats[_ai] && beats[_ai].look;
   if (la) { waveRibbon.group.userData.anchor.set(la[0], la[1], la[2]); waveRibbon.group.position.copy(waveRibbon.group.userData.anchor); }
 }
+network = buildNetwork();      // the data network hubs around the loaded path (edit path → refresh to re-seed)
+applyVoidDensity();            // apply saved node/line density now that the network exists
 
 // ---- Derived per-section position + orientation -----------------------------
 const beatPos = [];
@@ -2058,6 +2215,8 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
     ['wavespd', () => FX.waveSpd, (v) => { FX.waveSpd = v; }, f2],
     ['wavecoil', () => FX.waveCoil, (v) => { FX.waveCoil = v; }, f0],
     ['stars', () => FX.starFrac, (v) => { FX.starFrac = v; applyVoidDensity(); }, f2],
+    ['nodes', () => FX.nodeFrac, (v) => { FX.nodeFrac = v; applyVoidDensity(); }, f2],
+    ['links', () => FX.lineFrac, (v) => { FX.lineFrac = v; applyVoidDensity(); }, f2],
     ['clouds', () => FX.nebFrac, (v) => { FX.nebFrac = v; applyVoidDensity(); }, f2],
     ['nebspd', () => FX.nebSpd, (v) => { FX.nebSpd = v; livingVoid.nebMat.uniforms.uSpd.value = v; }, f2],
     ['nebwarp', () => FX.nebWarp, (v) => { FX.nebWarp = v; livingVoid.nebMat.uniforms.uWarp.value = v; }, f2],
@@ -2094,8 +2253,9 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
   const _ocol = document.querySelector('#fx-opencolor');
   if (_ocol) { _ocol.value = FX.openColor; _ocol.addEventListener('input', () => { FX.openColor = _ocol.value; }); }
   const chk = (id, key, fn) => { const el = document.querySelector('#fx-' + id); if (!el) return; el.checked = !!FX[key]; el.addEventListener('change', () => { FX[key] = el.checked; fn(el.checked); }); };
-  chk('twinkle', 'twinkleOn', (v) => { livingVoid.smat.uniforms.uTwinkle.value = v ? 1 : 0; });
+  chk('twinkle', 'twinkleOn', (v) => { livingVoid.smat.uniforms.uTwinkle.value = v ? 1 : 0; if (network) network.pmat.uniforms.uTwinkle.value = (v && !PREFERS_REDUCED) ? 1 : 0; });
   chk('drift', 'driftOn', () => {});
+  chk('lines', 'linesOn', (v) => { if (network) network.lines.visible = v; });
   chk('waveon', 'waveOn', () => {});
   chk('wavegrid', 'waveGrid', () => {});
   chk('nebvig', 'nebVig', () => {});   // raymarch nebula has a baked vignette; toggle is a no-op now
@@ -2380,6 +2540,7 @@ function animate() {
   resolveFX();                               // per-beat FX keyframes → interpolated live values
   livingVoid.nebMat.uniforms.uDens.value = curFX.nebula;   // per-section nebula density (keyframed)
   livingVoid.update(t);                      // advance nebula + starfield time
+  if (network) network.update(t, (FX.driftOn && !PREFERS_REDUCED) ? 1 : 0, _cN, _cVel * FX.cursorDrive);   // data network: drift + cursor stir
   meteors.update(dt, !editMode && !freeRoam && index === 0);   // falling stars on the start frame only
   {                                          // Frame 2 — the grouped Hero cluster (assets parallax to cursor + scroll)
     const heroOn = !editMode && !freeRoam && /^hero$/i.test(beats[index]?.name || '');
@@ -2413,7 +2574,9 @@ function animate() {
       if (d < bd) { bd = d; bi = i; }
     }
     const s = clamp(1 - Math.sqrt(bd) / curFX.colorReach, 0, 1) * curFX.colorIntensity;   // 1 at a section, 0 far between
-    livingVoid.setTint(CHAPTER_COLORS[bi % CHAPTER_COLORS.length], s);
+    const tint = CHAPTER_COLORS[bi % CHAPTER_COLORS.length];
+    livingVoid.setTint(tint, s);
+    if (network) network.setTint(tint, s);   // the network recolors with the chapter too
   }
   {                                          // kinetic caption: reveal on arrival, hide while moving / in editor
     if (editMode || freeRoam) hideCaption();
@@ -2502,6 +2665,7 @@ function animate() {
   if (index !== _lastBeatIdx) { voidWarp = Math.max(voidWarp, 0.9); _lastBeatIdx = index; } // warp burst on chapter change
   voidWarp *= 0.94; if (voidWarp < 0.001) voidWarp = 0;
   livingVoid.setWarp(voidWarp);
+  if (network) network.setWarp(voidWarp);    // nodes swell + links flare on the burst
   if (bloom) bloom.strength = curFX.bloomStrength + voidWarp * 0.9;
   if (bokeh) bokeh.enabled = !(editMode || freeRoam);   // DOF only in play; bloom stays on in all modes
   _cVel += (_cVelRaw - _cVel) * 0.12; _cVelRaw *= 0.90;   // smoothed cursor velocity drives the FX

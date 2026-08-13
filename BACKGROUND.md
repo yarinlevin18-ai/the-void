@@ -38,11 +38,17 @@ applies: the background supports the content; nodes/lines stay the focal read.
   amplitude 4–18, freq 0.2–0.8, phase). Reads as a churning nebula, not a
   rotating block. (Production: prefer GPU/curl-noise so the CPU loop scales.)
 
-### 4. Energy lines
-- Connections between nearby nodes (threshold ~70u, max ~3 per node). Custom
+### 4. Energy lines — ✅ IN THE BUILD (`buildNetwork()` in `src/main.js`)
+- Connections between nearby nodes (threshold 62u, max 3 per node). Custom
   shader: slow **form/dissolve** alpha (`0.10+0.18*sin(uTime*0.35+phase)`) + a
   bright **pulse travelling A→B** (`fract(uTime*0.22+phase)`). Endpoints follow
-  the moving nodes. Use `meshline` for thickness in production.
+  the moving nodes exactly — each line vertex carries its node's drift attrs, so
+  ALL motion is GPU-side (zero per-frame CPU). Nodes cluster as hubs around each
+  beat's panel + along the flight corridor (built after the path loads; re-seed
+  by refreshing after a path edit). 1px additive lines kept per the approved
+  demo look; `meshline` remains an option if a thicker read is ever wanted.
+- Tunables: FX panel → Density "Nodes"/"Links" sliders + "Energy lines" toggle;
+  chapter tint + warp burst + cursor stir are wired like the stars.
 
 ### 5. Bloom
 - `postprocessing` UnrealBloom. **threshold ≈ 0.22** so only bright nodes glow —
