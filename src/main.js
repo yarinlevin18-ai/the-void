@@ -40,7 +40,7 @@ const FX = {
   lightning: true, glowSpots: true,                                            // in-nebula lightning + flickering glow spots
   lightInt: 1, lightReach: 280, lightRate: 3, glowBright: 1, glowFlick: 1, cursorDrive: 1,   // lightning + glow + cursor-reactivity controls
   waterStr: 0.18, waterRad: 0.018, waterAtt: 0.992, waterDisp: 0.22, waterSheen: 1.0,         // water swipe (APPROVED tuning — see water.md)
-  openFit: 0.3, openSize: 1.1, openGlow: 0.55, openForm: 2.6, openShatterR: 5, openPush: 1.7, openSpring: 0.028, openColor: '#9fd8ff',   // Frame 1 opening particles (glow 0.55 — 0.7 fused the letterforms)
+  openFit: 0.3, openSize: 1.05, openGlow: 0.36, openForm: 2.6, openShatterR: 5, openPush: 1.7, openSpring: 0.028, openColor: '#9fd8ff',   // Frame 1 opening particles (glow 0.36 — additive overlap + bloom saturate fast; 0.55 still fused the letterforms)
 };
 const fxEl = document.querySelector('#fxpanel');
 // FX keyframes: these params live PER BEAT (beat.fx) and are interpolated across
@@ -506,9 +506,9 @@ const openingFX = (() => {
       const x = c.getContext('2d'); x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle';
       x.font = '600 190px "ogg", Georgia, serif'; x.fillText('Yarin Levin', W / 2, H / 2 + 6);
       const d = x.getImageData(0, 0, W, H).data, raw = [];
-      for (let y = 0; y < H; y += 4) for (let xx = 0; xx < W; xx += 4) if (d[(y * W + xx) * 4 + 3] > 130) raw.push([(xx - W / 2) * GLYPH, -(y - H / 2) * GLYPH, (Math.random() - 0.5) * 6]);
+      for (let y = 0; y < H; y += 3) for (let xx = 0; xx < W; xx += 3) if (d[(y * W + xx) * 4 + 3] > 130) raw.push([(xx - W / 2) * GLYPH, -(y - H / 2) * GLYPH, (Math.random() - 0.5) * 6]);
       for (let i = raw.length - 1; i > 0; i--) { const j = Math.random() * i | 0;[raw[i], raw[j]] = [raw[j], raw[i]]; }
-      N = Math.min(raw.length, IS_TOUCH ? 3100 : 5200); raw.length = N;   // glyph shuffle above keeps coverage even at the lower cap
+      N = Math.min(raw.length, IS_TOUCH ? 4200 : 7200); raw.length = N;   // step-3 sampling + higher cap: thin strokes (the e's crossbar) survive the shuffle cull
       posA = new Float32Array(N * 3); startA = new Float32Array(N * 3); targ = new Float32Array(N * 3); vel = new Float32Array(N * 3);
       for (let i = 0; i < N; i++) {
         targ[i * 3] = raw[i][0]; targ[i * 3 + 1] = raw[i][1]; targ[i * 3 + 2] = raw[i][2];
@@ -873,7 +873,7 @@ const makeHeroBeat = () => ({
 // Baked from the user's exported path (Copy config) — kept exactly as-is.
 // Real content per CONTENT.md (Phase B). Cameras kept exactly as authored.
 const DEFAULT_BEATS = [
-  { name: 'Opening', cam: [-56, 2, 120], look: [-11, 59, 42], up: [0, 1, 0], fov: 25, dur: 1.4, desc: 'Landing pages & SaaS interfaces — fly through the work.', img: '', link: '', panel: null },
+  { name: 'Opening', cam: [-56, 2, 120], look: [-11, 59, 42], up: [0, 1, 0], fov: 25, dur: 1.4, desc: 'Landing pages & SaaS interfaces — fly through the work.', img: '', link: '', fx: { bloomStrength: 0.65 }, panel: null },
   { name: 'Hero', cam: [1, 53, 33], look: [192, -55, -56], up: [0, 1, 0], fov: 41, dur: 1.6, desc: '', img: '', link: '', panel: null },
   { name: 'My Projects', cam: [9, 10, -69], look: [15, 4, -119], up: [-0.66418640324206, 0.7376001166578326, -0.1216654825935754], fov: 83, dur: 1.6, desc: 'Four featured builds ahead — plus Worldiez, Mentorship, AeroCy, SecScan, BodyLoop, and a daily practice of motion labs.', cap: { desc: 'A glimpse of the full body of work — keep flying.' }, img: '', link: '', panel: { pos: [15, 4, -119], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
   { name: 'SHADIEZ', cam: [0, 2, -190], look: [-22, 0, -235], up: [0, 1, 0], fov: 87, dur: 1.6, desc: 'Client e-commerce landing for a premium beach shade — 3D product hero, scroll-driven storytelling, live lead capture.', img: '/previews/shadiez.jpg', link: 'https://shadiez.vercel.app', fx: { bloomStrength: 0.5 }, panel: { pos: [-22, 0, -235], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
