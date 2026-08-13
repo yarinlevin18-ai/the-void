@@ -430,7 +430,7 @@ const heroCluster = (() => {
     cards.push({ id: spec.id, el, obj, dim: el ? el.querySelector('.dim') : null, baseScale: WORLD_W / spec.fw, enter: spec.enter || 0, liss: spec.liss, tilt: spec.tilt, focus: spec.focus0 || 0, _f: -1, _o: -1 });
   }
   // fw = native CSS resolution (rendered big, scaled DOWN in 3D → crisp, not upscaled-blurry); iframe at 1:1 native.
-  addScreen({ id: 'card_shadiez',  kind: 'img',    src: 'assets/hero/shadiez-landing.png', fw: 920, cap: 'Shadiez · Landing Page', enter: 0, tilt: 1, focus0: 1, liss: { ax: 1.2, ay: 0.8, sp: 0.4, ph: 0 } });
+  addScreen({ id: 'card_shadiez',  kind: 'img',    src: 'assets/hero/shadiez-landing.jpg', fw: 920, cap: 'Shadiez · Landing Page', enter: 0, tilt: 1, focus0: 1, liss: { ax: 1.2, ay: 0.8, sp: 0.4, ph: 0 } });
   // 3D-transformed LIVE iframes blank/jank on iOS Safari — desktop only.
   // TODO: capture assets/hero/smartcut-crm.png and re-add as kind:'img' for touch.
   if (!IS_TOUCH) addScreen({ id: 'card_smartcut', kind: 'iframe', src: 'assets/hero/smartcut-crm.html', fw: 800, fh: 513, iw: 800, ih: 513, cap: 'SmartCut · Booking CRM', enter: 0.12, tilt: -1, focus0: 0, liss: { ax: 1.5, ay: 1.0, sp: 0.36, ph: 1.7 } });
