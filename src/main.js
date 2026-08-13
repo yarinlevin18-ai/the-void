@@ -65,15 +65,24 @@ const DEV_TOOLS = import.meta.env.DEV || new URLSearchParams(location.search).ha
 const UP_NORMAL = [0, 1, 0];
 const UP_VERTICAL = [0, 0, -1]; // "look straight up" orientation
 
+// Touch = coarse pointer AND real touch points (excludes touch-capable laptops
+// driven by a mouse). LOW_END adds a memory/size gate for the deepest cuts —
+// deviceMemory is Chrome-only, so on iOS it falls through to screen size and
+// iPhones land in the IS_TOUCH tier only.
+const IS_TOUCH = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches) && navigator.maxTouchPoints > 0;
+const LOW_END = IS_TOUCH && ((navigator.deviceMemory || 8) <= 4 || Math.min(screen.width, screen.height) <= 480);
+const DPR_CAP = IS_TOUCH ? 1.25 : 1.5;   // phones pay per-pixel: fill rate is the budget
+if (IS_TOUCH) { const _h = document.querySelector('#overlay .hint'); if (_h) _h.textContent = 'swipe to fly'; }
+
 // ---- Renderer / scene / camera --------------------------------------------
 const canvas = document.querySelector('#scene');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: false }); // composer renders the scene to its own targets — MSAA on the canvas is wasted
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // cap retina: fewer fragments, big fill-rate win
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, DPR_CAP)); // cap retina: fewer fragments, big fill-rate win
 // Shared CSS3D layer — live HTML assets (SmartCut, TEEPO) rendered as real iframes
 // positioned in 3D and synced to the camera. Sits above the canvas, below the UI.
 let css3d = null;
-try {
+if (!LOW_END) try {   // low-end phones skip the whole DOM-composited layer (guards exist everywhere css3d is used)
   const cssR = new CSS3DRenderer();
   cssR.setSize(window.innerWidth, window.innerHeight);
   const el = cssR.domElement;
@@ -97,11 +106,15 @@ let water = null;                                                     // water s
 const _focusV = new THREE.Vector3();
 
 // ---- Offscreen renderer that draws each shot's thumbnail in the editor list -
+// Editor-only, so visitors (and every phone) skip the second WebGL context.
 const THUMB_W = 240, THUMB_H = 150;
-const thumbRenderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-thumbRenderer.setPixelRatio(1);
-thumbRenderer.setSize(THUMB_W, THUMB_H);
-const thumbCam = new THREE.PerspectiveCamera(68, THUMB_W / THUMB_H, 0.1, 5000);
+let thumbRenderer = null, thumbCam = null;
+if (DEV_TOOLS) {
+  thumbRenderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  thumbRenderer.setPixelRatio(1);
+  thumbRenderer.setSize(THUMB_W, THUMB_H);
+  thumbCam = new THREE.PerspectiveCamera(68, THUMB_W / THUMB_H, 0.1, 5000);
+}
 
 const scene = new THREE.Scene();
 // dark cinematic world: deep teal-navy background + matching fog for depth
@@ -121,14 +134,14 @@ const livingVoid = (() => {
   //    through domain-warped 3D noise -> real depth + parallax, the camera flies
   //    THROUGH it. Rendered to a half-res target, composited under the stars.
   const _reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  let _res = 0.5;                              // half-res raymarch (the big perf lever)
+  let _res = IS_TOUCH ? 0.4 : 0.5;             // half-res raymarch (the big perf lever; leaner still on phones)
   const nebRT = new THREE.WebGLRenderTarget(2, 2, { magFilter: THREE.LinearFilter, minFilter: THREE.LinearFilter, depthBuffer: false });
   const sizeRT = () => nebRT.setSize(Math.max(2, (window.innerWidth * _res) | 0), Math.max(2, (window.innerHeight * _res) | 0));
   sizeRT();
   const nebMat = new THREE.ShaderMaterial({
     depthTest: false, depthWrite: false,
     uniforms: {
-      uTime: { value: 0 }, uA: { value: window.innerWidth / window.innerHeight }, uSteps: { value: _reduced ? 18 : 40 },
+      uTime: { value: 0 }, uA: { value: window.innerWidth / window.innerHeight }, uSteps: { value: _reduced ? 18 : (LOW_END ? 22 : IS_TOUCH ? 26 : 40) },
       uDens: { value: FX.nebula }, uSpd: { value: FX.nebSpd }, uWarp: { value: FX.nebWarp }, uHue: { value: FX.nebHue }, uEmber: { value: FX.nebEmber }, uGlow: { value: FX.nebGlow }, uNebFrac: { value: FX.nebFrac },
       uCamPos: { value: new THREE.Vector3() }, uInvProj: { value: new THREE.Matrix4() }, uCamWorld: { value: new THREE.Matrix4() },
       uFlash: { value: new THREE.Vector3(0, 0, -300) }, uFlashAmt: { value: 0 }, uFlashCol: { value: new THREE.Color(0x9fd8ff) }, uFlashReach: { value: 0.00002 }, uCrackle: { value: 18 },
@@ -242,7 +255,7 @@ const livingVoid = (() => {
   scene.add(stars);
 
   // 3) Glow spots — small bright energy nodes that FLICKER inside the nebula volume.
-  const SPOT_N = 70;
+  const SPOT_N = IS_TOUCH ? 36 : 70;
   const sp = new Float32Array(SPOT_N * 3), spS = new Float32Array(SPOT_N), spZ = new Float32Array(SPOT_N), spC = new Float32Array(SPOT_N * 3);
   const _cc = new THREE.Color();
   for (let i = 0; i < SPOT_N; i++) {
@@ -418,7 +431,9 @@ const heroCluster = (() => {
   }
   // fw = native CSS resolution (rendered big, scaled DOWN in 3D → crisp, not upscaled-blurry); iframe at 1:1 native.
   addScreen({ id: 'card_shadiez',  kind: 'img',    src: 'assets/hero/shadiez-landing.png', fw: 920, cap: 'Shadiez · Landing Page', enter: 0, tilt: 1, focus0: 1, liss: { ax: 1.2, ay: 0.8, sp: 0.4, ph: 0 } });
-  addScreen({ id: 'card_smartcut', kind: 'iframe', src: 'assets/hero/smartcut-crm.html', fw: 800, fh: 513, iw: 800, ih: 513, cap: 'SmartCut · Booking CRM', enter: 0.12, tilt: -1, focus0: 0, liss: { ax: 1.5, ay: 1.0, sp: 0.36, ph: 1.7 } });
+  // 3D-transformed LIVE iframes blank/jank on iOS Safari — desktop only.
+  // TODO: capture assets/hero/smartcut-crm.png and re-add as kind:'img' for touch.
+  if (!IS_TOUCH) addScreen({ id: 'card_smartcut', kind: 'iframe', src: 'assets/hero/smartcut-crm.html', fw: 800, fh: 513, iw: 800, ih: 513, cap: 'SmartCut · Booking CRM', enter: 0.12, tilt: -1, focus0: 0, liss: { ax: 1.5, ay: 1.0, sp: 0.36, ph: 1.7 } });
   // --- anchor the cluster in the Hero beat's camera frame ---
   const C = new THREE.Vector3(), ff = new THREE.Vector3(), rt = new THREE.Vector3(), uu = new THREE.Vector3(), zc = new THREE.Vector3();
   const baseQ = new THREE.Quaternion(), basis = new THREE.Matrix4();
@@ -458,7 +473,8 @@ const heroCluster = (() => {
       const sv = RM ? RMVEC : styleVec(active ? (cfg.ein || 'fade') : (cfg.eout || 'fade'));
       const dx = RM ? 0 : Math.sin(t * cd.liss.sp + cd.liss.ph) * cd.liss.ax, dy = RM ? 0 : Math.cos(t * cd.liss.sp * 0.8 + cd.liss.ph) * cd.liss.ay;
       const zf = (cfg.z ?? -56) + (RM ? 0 : (-10 + fo * 18));   // focused screen pulls forward, unfocused pushes back
-      _lp.set((cfg.x ?? 0) + dx + (1 - e) * sv[0], (cfg.y ?? 0) + dy + (1 - e) * sv[1], zf + (1 - e) * sv[2]).applyMatrix4(group.matrixWorld);
+      const xSq = Math.min(1, camera.aspect / 1.5);              // narrow (portrait) FOV: pull the raked screens toward center so they stay on-canvas
+      _lp.set((cfg.x ?? 0) * xSq + dx + (1 - e) * sv[0], (cfg.y ?? 0) + dy + (1 - e) * sv[1], zf + (1 - e) * sv[2]).applyMatrix4(group.matrixWorld);
       cd.obj.position.copy(_lp);
       const ry = RM ? 0 : THREE.MathUtils.degToRad((15 - fo * 9) * cd.tilt), rx = RM ? 0 : THREE.MathUtils.degToRad(5 - fo * 3);   // raked → face-on on focus
       _eul.set(rx, ry, 0, 'XYZ'); _tq.setFromEuler(_eul); cd.obj.quaternion.copy(group.quaternion).multiply(_tq);
@@ -492,7 +508,7 @@ const openingFX = (() => {
       const d = x.getImageData(0, 0, W, H).data, raw = [];
       for (let y = 0; y < H; y += 4) for (let xx = 0; xx < W; xx += 4) if (d[(y * W + xx) * 4 + 3] > 130) raw.push([(xx - W / 2) * GLYPH, -(y - H / 2) * GLYPH, (Math.random() - 0.5) * 6]);
       for (let i = raw.length - 1; i > 0; i--) { const j = Math.random() * i | 0;[raw[i], raw[j]] = [raw[j], raw[i]]; }
-      N = Math.min(raw.length, 5200); raw.length = N;
+      N = Math.min(raw.length, IS_TOUCH ? 3100 : 5200); raw.length = N;   // glyph shuffle above keeps coverage even at the lower cap
       posA = new Float32Array(N * 3); startA = new Float32Array(N * 3); targ = new Float32Array(N * 3); vel = new Float32Array(N * 3);
       for (let i = 0; i < N; i++) {
         targ[i * 3] = raw[i][0]; targ[i * 3 + 1] = raw[i][1]; targ[i * 3 + 2] = raw[i][2];
@@ -590,12 +606,15 @@ text3d.loadFont().then((r) => { const el = document.querySelector('#text-status'
 // Live density control for every void layer — uses draw ranges (instant, no
 // rebuild) so you can dial the amount of stars / nodes / energy lines / nebula.
 // Runs at startup too, so editing the FX defaults also tunes the published build.
+// Mobile vertex/fill budget: halved UNDER the user's saved fracs, inside this
+// function so it survives every dev-slider call and save() never persists it.
+const DENSITY_MUL = IS_TOUCH ? 0.5 : 1;
 function applyVoidDensity() {
-  livingVoid.sgeo.setDrawRange(0, Math.max(0, Math.floor(livingVoid.STAR_N * FX.starFrac)));
+  livingVoid.sgeo.setDrawRange(0, Math.max(0, Math.floor(livingVoid.STAR_N * FX.starFrac * DENSITY_MUL)));
   livingVoid.nebMat.uniforms.uNebFrac.value = FX.nebFrac;   // Clouds = nebula density (smooth fade)
   if (network) {
-    network.pgeo.setDrawRange(0, Math.max(0, Math.floor(network.N * FX.nodeFrac)));
-    network.lgeo.setDrawRange(0, 2 * Math.max(0, Math.floor(network.L * FX.lineFrac)));
+    network.pgeo.setDrawRange(0, Math.max(0, Math.floor(network.N * FX.nodeFrac * DENSITY_MUL)));
+    network.lgeo.setDrawRange(0, 2 * Math.max(0, Math.floor(network.L * FX.lineFrac * DENSITY_MUL)));
   }
 }
 applyVoidDensity();
@@ -782,6 +801,7 @@ function buildNetwork() {
 //  faint filaments. CPU cost: re-derive the K nodes' drift + project ~900
 //  points once per frame (same math the demo ran for every node every frame).
 const cursorLinks = (() => {
+  if (IS_TOUCH) return { update: () => {} };   // no cursor exists on touch — skip the geometry + per-frame projection entirely
   const K = 8, NDC_R = 0.30;
   const pos = new Float32Array(K * 6), col = new Float32Array(K * 8);
   const geo = new THREE.BufferGeometry();
@@ -982,8 +1002,15 @@ function applyGlobals() {
   const hud = document.querySelector('#hud'); if (hud) hud.style.display = FX.uiHud ? '' : 'none';
   if (wpEl) wpEl.style.display = FX.uiWaypoints ? '' : 'none';
   const hint = document.querySelector('#overlay .hint'); if (hint) hint.style.display = FX.uiHint ? '' : 'none';
-  document.documentElement.style.fontSize = (16 * (FX.uiScale || 1)) + 'px';
+  applyRootFont();
 }
+// Width-derived UI shrink for phones — a runtime-only multiplier layered UNDER
+// the saved uiScale (save() never sees it). Both writers (applyGlobals + the
+// U-panel slider) must route through applyRootFont or one silently drops it.
+let uiMobileMul = 1;
+function computeUiMul() { uiMobileMul = (IS_TOUCH && window.innerWidth < 640) ? 0.85 : 1; }
+function applyRootFont() { document.documentElement.style.fontSize = (16 * (FX.uiScale || 1) * uiMobileMul) + 'px'; }
+computeUiMul();
 load();
 beats.forEach(ensureBeatFX);   // ensure every beat (incl. defaults) carries a full FX keyframe set
 { // anchor the wave ribbon around the "My Projects" section (now that beats exist)
@@ -1450,9 +1477,14 @@ renderer.domElement.addEventListener('click', (e) => {
 let freeRoam = false;
 const freeBtn = document.querySelector('#freeroam');
 function lastIdx() { return Math.max(0, beats.length - 1); }
-function step(dir) {
+// Every input path (wheel / keys / swipe / waypoint tap) funnels through goTo:
+// one cooldown means hybrid devices can't double-step (e.g. a wheel event
+// trailing a touch swipe).
+const NAV_COOLDOWN = 300;
+function goTo(i) {
   if (editMode || freeRoam) return;
-  const n = clamp(index + dir, 0, lastIdx());
+  if (performance.now() - lastNav < NAV_COOLDOWN) return;
+  const n = clamp(i, 0, lastIdx());
   if (n === index) return;
   index = n; lastNav = performance.now();
   // start a timed flight into the new section (per-shot duration, scaled by speed)
@@ -1461,6 +1493,7 @@ function step(dir) {
   tween = { from: progress, to: target, t: 0, dur: Math.max(0.15, dur) };
   freeBtn.hidden = index !== lastIdx();
 }
+function step(dir) { goTo(index + dir); }
 // One section per scroll GESTURE: a trackpad swipe fires dozens of wheel events,
 // so we step once on the first event, then stay locked until the scroll has
 // fully stopped (no wheel events for `idle` ms). You must scroll again to advance.
@@ -1475,6 +1508,34 @@ window.addEventListener('wheel', (e) => {
   navLock = true;
   step(e.deltaY > 0 ? 1 : -1);
 }, { passive: false });
+// Touch: one section per swipe GESTURE — the touch mirror of the wheel's
+// navLock. Distance fires mid-gesture (feels immediate); a velocity check on
+// touchend catches short fast flicks. Taps produce almost no touchmove, so the
+// browser's synthesized click still reaches the panel-link handler — touchend
+// must therefore NEVER be preventDefault'd. Multi-touch (pinch) is ignored,
+// and free-roam keeps OrbitControls' own touch handling.
+const SWIPE_DIST = 70;    // px — a deliberate drag
+const FLICK_DIST = 30;    // px — minimum travel for a velocity-fired flick
+const FLICK_VEL = 0.45;   // px/ms
+let _tX = 0, _tY = 0, _tT = 0, _tAxis = null, _tFired = false;
+window.addEventListener('touchstart', (e) => {
+  if (e.touches.length !== 1) { _tAxis = 'multi'; return; }
+  _tX = e.touches[0].clientX; _tY = e.touches[0].clientY;
+  _tT = performance.now(); _tAxis = null; _tFired = false;
+}, { passive: true });
+window.addEventListener('touchmove', (e) => {
+  if (editMode || freeRoam || _tAxis === 'multi') return;
+  if (isTextEntry(e.target)) return;
+  e.preventDefault();                                        // the reliable iOS pull-to-refresh / overscroll kill
+  const dx = e.touches[0].clientX - _tX, dy = e.touches[0].clientY - _tY;
+  if (!_tAxis && Math.hypot(dx, dy) > 12) _tAxis = Math.abs(dy) >= Math.abs(dx) ? 'y' : 'x';   // axis lock
+  if (_tAxis === 'y' && !_tFired && Math.abs(dy) > SWIPE_DIST) { _tFired = true; step(dy < 0 ? 1 : -1); }   // swipe up = advance
+}, { passive: false });
+window.addEventListener('touchend', (e) => {
+  if (editMode || freeRoam || _tFired || _tAxis !== 'y') return;
+  const dy = e.changedTouches[0].clientY - _tY, dt = performance.now() - _tT;
+  if (Math.abs(dy) > FLICK_DIST && Math.abs(dy) / Math.max(1, dt) > FLICK_VEL) step(dy < 0 ? 1 : -1);
+}, { passive: true });
 window.addEventListener('keydown', (e) => {
   if (isTextEntry(e.target)) return;
   if (editMode || e.repeat) return;   // ignore key auto-repeat → one section per press
@@ -1513,9 +1574,7 @@ function buildWaypoints() {
     dot.addEventListener('click', () => {
       if (editMode) return;
       if (freeRoam) setFreeRoam(false);
-      index = clamp(i, 0, lastIdx());
-      tween = { from: progress, to: index / Math.max(1, lastIdx()), t: 0, dur: Math.max(0.2, (beats[index]?.dur ?? DEF_DUR) / Math.max(0.05, speedMul)) };
-      freeBtn.hidden = index !== lastIdx();
+      goTo(i);
     });
     wpEl.appendChild(dot);
     return dot;
@@ -1869,7 +1928,7 @@ edLink.addEventListener('change', () => commit(''));
 // ---- Live per-camera thumbnails (what each shot actually sees) ---------------
 const thumbCanvases = [];
 function _renderThumbInto(i, cv) {
-  const b = beats[i]; if (!b) return;
+  const b = beats[i]; if (!b || !thumbRenderer) return;   // no thumb context outside DEV_TOOLS
   thumbCam.up.set(...b.up);
   thumbCam.position.set(...b.cam);
   _dummy.up.set(...b.up); _dummy.position.set(...b.cam); _dummy.lookAt(_tv.set(...b.look));
@@ -2192,25 +2251,45 @@ window.addEventListener('keydown', (e) => {
 });
 
 // ---- Resize -----------------------------------------------------------------
-window.addEventListener('resize', () => {
+// Debounced: mobile URL-bar show/hide fires resize storms; height-only changes
+// take the cheap path (no render-target reallocation — a ~60px-stale nebula RT
+// during a bar transition is invisible on a soft raymarched cloud).
+function applyResize(full) {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // cap retina: fewer fragments, big fill-rate win
   if (composer) composer.setSize(window.innerWidth, window.innerHeight);
   if (css3d) css3d.renderer.setSize(window.innerWidth, window.innerHeight);
+  computeUiMul(); applyRootFont();
+  if (!full) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, DPR_CAP)); // cap retina: fewer fragments, big fill-rate win
   if (bloom) bloom.setSize((window.innerWidth / 2) | 0, (window.innerHeight / 2) | 0);
   livingVoid.nebMat.uniforms.uA.value = window.innerWidth / window.innerHeight;
   livingVoid.sizeRT();                            // keep the half-res raymarch target in sync
   if (water) water.sizeSim();
+}
+let _rzTimer = 0, _rzW = window.innerWidth;
+window.addEventListener('resize', () => {
+  clearTimeout(_rzTimer);
+  _rzTimer = setTimeout(() => {
+    const heightOnly = IS_TOUCH && window.innerWidth === _rzW;   // iOS URL-bar collapse/expand
+    _rzW = window.innerWidth;
+    applyResize(!heightOnly);
+  }, 200);
+});
+window.addEventListener('orientationchange', () => {   // rotation always takes the full path, after the viewport settles
+  clearTimeout(_rzTimer);
+  _rzTimer = setTimeout(() => { _rzW = window.innerWidth; applyResize(true); }, 300);
 });
 
 // ---- Depth-of-field + gentle motion blur (kept subtle to avoid sickness) ----
 try {
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  bokeh = new BokehPass(scene, camera, { focus: 200, aperture: FX.dofAperture, maxblur: FX.dofBlur });
-  composer.addPass(bokeh);
+  if (!IS_TOUCH) {   // full-res DOF pass is the biggest mobile fill-rate cost; bloom (half-res) IS the look, so it stays
+    bokeh = new BokehPass(scene, camera, { focus: 200, aperture: FX.dofAperture, maxblur: FX.dofBlur });
+    composer.addPass(bokeh);
+  }
   bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), FX.bloomStrength, 0.7, 0.22); // threshold .22 → only bright nodes glow, not the nebula
   composer.addPass(bloom);
   composer.setSize(window.innerWidth, window.innerHeight);
@@ -2220,7 +2299,7 @@ try {
 // ---- Water swipe — GPU wave-equation sim refracting the scene, per-section ----
 //  (ported 1:1 from demo-water-trail.html). Half-float ping-pong sim; the final
 //  composer pass refracts the rendered scene by the wave gradient. Calm = passthrough.
-if (composer && !PREFERS_REDUCED) try {
+if (composer && !PREFERS_REDUCED && !IS_TOUCH) try {   // cursor-driven — pointless and pricey on touch
   const SIM = 0.5;
   const wq = new THREE.PlaneGeometry(2, 2), wOrtho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
   let simA, simB;
@@ -2544,7 +2623,7 @@ const uxEl = document.querySelector('#uxpanel');
   const scale = document.querySelector('#ux-scale'), scaleOut = document.querySelector('#ux-scale-v');
   if (scale) {
     scale.value = FX.uiScale; if (scaleOut) scaleOut.textContent = (+FX.uiScale).toFixed(2) + '×';
-    scale.addEventListener('input', () => { const v = parseFloat(scale.value); FX.uiScale = v; document.documentElement.style.fontSize = (16 * v) + 'px'; if (scaleOut) scaleOut.textContent = v.toFixed(2) + '×'; });
+    scale.addEventListener('input', () => { const v = parseFloat(scale.value); FX.uiScale = v; applyRootFont(); if (scaleOut) scaleOut.textContent = v.toFixed(2) + '×'; });
   }
   window.addEventListener('keydown', (e) => {
     if (e.key.toLowerCase() === 'u' && !isTextEntry(e.target) && !editMode) togglePanel(uxEl);
@@ -2614,7 +2693,7 @@ const textEl = document.querySelector('#textpanel');
 // ---- Hotkeys legend (toggle with ?) ----------------------------------------
 (() => {
   const hk = document.querySelector('#hotkeys');
-  if (!hk) return;
+  if (!hk || IS_TOUCH) return;   // keyboard-only affordance — meaningless on touch (even with a BT keyboard the legend lies)
   window.addEventListener('keydown', (e) => {
     if (isTextEntry(e.target)) return;
     if (e.key === '?') hk.hidden = !hk.hidden;
