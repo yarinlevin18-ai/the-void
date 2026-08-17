@@ -902,6 +902,17 @@ const EASINGS = {
 };
 let transitionEase = easeInOut;
 let txEaseName = 'easeInOut';
+// Every beat's fov was composed on a ~16:10 desktop. On narrow (portrait)
+// screens the horizontal field collapses and the composed shot crops — so
+// widen the VERTICAL fov until the horizontal framing matches the reference
+// aspect again (capped before it turns fisheye).
+const REF_ASPECT = 1.6;
+function fitFov(v) {
+  const a = camera.aspect;
+  if (a >= REF_ASPECT) return v;
+  const t = Math.tan(THREE.MathUtils.degToRad(v) / 2) * (REF_ASPECT / Math.max(0.3, a));
+  return Math.min(115, THREE.MathUtils.radToDeg(2 * Math.atan(t)));
+}
 // global (non-keyframed) state that Save must persist alongside the beats
 const GLOBAL_KEYS = ['starFrac', 'nodeFrac', 'lineFrac', 'nebFrac', 'driftOn', 'fovPunch', 'warpStrength', 'warpLength', 'twinkleOn', 'linesOn', 'nebVisible', 'uiHud', 'uiWaypoints', 'uiCaption', 'uiHint', 'uiScale', 'waveAmp', 'waveSpd', 'waveCoil', 'waveOn', 'waveGrid', 'nebSpd', 'nebWarp', 'nebHue', 'nebEmber', 'nebVig', 'nebGlow', 'lightning', 'glowSpots', 'lightInt', 'lightReach', 'lightRate', 'glowBright', 'glowFlick', 'cursorDrive', 'waterStr', 'waterRad', 'waterAtt', 'waterDisp', 'waterSheen', 'openFit', 'openSize', 'openGlow', 'openForm', 'openShatterR', 'openPush', 'openSpring', 'openColor'];
 let activePunch = 0;   // 0..1 across a transition, peaks at the midpoint (for FOV punch)
@@ -2735,7 +2746,7 @@ function animate() {
     camera.quaternion.copy(beatQuats[i0]).slerp(beatQuats[i1], f);
     // per-shot field-of-view (zoom), interpolated across the segment, + transition punch
     const fa = beats[i0]?.fov ?? DEF_FOV, fb = beats[i1]?.fov ?? DEF_FOV;
-    const nf = fa + (fb - fa) * f + FX.fovPunch * activePunch;
+    const nf = fitFov(fa + (fb - fa) * f + FX.fovPunch * activePunch);   // portrait screens widen to keep the composed framing
     if (Math.abs(camera.fov - nf) > 0.01) { camera.fov = nf; camera.updateProjectionMatrix(); }
   }
 
