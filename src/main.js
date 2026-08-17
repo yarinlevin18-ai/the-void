@@ -27,18 +27,18 @@ const isTextEntry = (el) => el instanceof HTMLTextAreaElement || (el instanceof 
 // and the render loop reads them every frame, so every effect is adjustable.
 const FX = {
   dofBlur: 0.003, dofAperture: 0.0004,        // depth of field — lighter blur (cheaper fill-rate, gentler)
-  starFrac: 1, nodeFrac: 1, lineFrac: 1, nebFrac: 1,   // density of each void layer (0..1) — also affects the published build
+  starFrac: 0.85, nodeFrac: 1, lineFrac: 1, nebFrac: 1,   // density of each void layer (0..1) — also affects the published build
   panelDimFloor: 0.1, panelLightRange: 300,   // section panels: idle opacity + light-up falloff
-  colorIntensity: 1.0, colorReach: 200,       // per-chapter color world
+  colorIntensity: 0.85, colorReach: 200,      // per-chapter color world (restraint pass: slightly under full saturation)
   warpStrength: 0.16, warpLength: 0.1,        // warp streaks
-  bloomStrength: 1.0, nebula: 1.0, driftOn: true, // living-void background
+  bloomStrength: 0.85, nebula: 0.9, driftOn: true, // living-void background
   fovPunch: 0,                                 // transient FOV widening mid-transition (whoosh)
   twinkleOn: true, linesOn: true, nebVisible: true,                           // living-void toggles
   uiHud: true, uiWaypoints: true, uiCaption: true, uiHint: true, uiScale: 1,  // UX panel state
   waveAmp: 26, waveSpd: 1, waveCoil: 34, waveOn: true, waveGrid: false,        // neon wave ribbon
-  nebSpd: 0.6, nebWarp: 1.4, nebHue: 0.5, nebEmber: 0.25, nebVig: true, nebGlow: 0.6,   // nebula climate + inner glow
-  lightning: true, glowSpots: true,                                            // in-nebula lightning + flickering glow spots
-  lightInt: 1, lightReach: 280, lightRate: 3, glowBright: 1, glowFlick: 1, cursorDrive: 1,   // lightning + glow + cursor-reactivity controls
+  nebSpd: 0.6, nebWarp: 1.4, nebHue: 0.35, nebEmber: 0.06, nebVig: true, nebGlow: 0.35,   // nebula climate + inner glow (restraint: teal family, ember nearly out)
+  lightning: false, glowSpots: false,                                          // OFF by default (restraint pass) — the network is the one busy layer
+  lightInt: 1, lightReach: 280, lightRate: 3, glowBright: 1, glowFlick: 1, cursorDrive: 0.6,   // lightning + glow + cursor-reactivity controls
   waterStr: 0.18, waterRad: 0.018, waterAtt: 0.992, waterDisp: 0.22, waterSheen: 1.0,         // water swipe (APPROVED tuning — see water.md)
   openFit: 0.3, openSize: 1.05, openGlow: 0.36, openForm: 2.6, openShatterR: 5, openPush: 1.7, openSpring: 0.028, openColor: '#9fd8ff',   // Frame 1 opening particles (glow 0.36 — additive overlap + bloom saturate fast; 0.55 still fused the letterforms)
 };
@@ -164,7 +164,7 @@ const livingVoid = (() => {
         float tStart=60.0,tEnd=1700.0; int STEPS=int(uSteps); float stepLen=(tEnd-tStart)/uSteps;
         float t=tStart+hash(vec3(gl_FragCoord.xy,fract(uTime)))*stepLen;
         vec3 teal=vec3(0.05,0.17,0.24),viol=vec3(0.12,0.06,0.22),ember=vec3(0.22,0.09,0.03);
-        vec3 climate=mix(teal,viol,clamp(uHue+0.25*sin(uTime*0.05),0.0,1.0));
+        vec3 climate=mix(teal,viol,clamp(uHue+0.06*sin(uTime*0.05),0.0,1.0));   // near-static hue: the old ±0.25 swing churned teal->violet constantly
         vec3 acc=vec3(0.0); float alpha=0.0;
         for(int i=0;i<64;i++){ if(i>=STEPS||alpha>0.97) break;
           vec3 p=ro+rd*t; float d=density(p);
@@ -244,7 +244,7 @@ const livingVoid = (() => {
                    +max(1.0-abs(c.y)*22.0,0.0)*(1.0-smoothstep(0.0,0.5,abs(c.x)));
         spike*=smoothstep(0.55,1.0,vMag)*0.6;
         float i=(core+halo+spike)*vT*vFade;
-        vec3 warm=vec3(1.0,0.78,0.55), cool=vec3(0.62,0.80,1.0);
+        vec3 warm=vec3(0.97,0.92,0.84), cool=vec3(0.62,0.80,1.0);   // "warm" = off-white, not orange — one color story
         vec3 col=mix(warm,cool,smoothstep(0.0,1.0,vTmp));
         col=mix(col,vec3(1.0),core*0.6);
         col=mix(col,uTint,uTintAmt);                        // per-chapter recolor
@@ -677,7 +677,7 @@ function buildNetwork() {
     THREE.MathUtils.lerp(bbox.min.z, bbox.max.z, Math.random()));
   const base = new Float32Array(N * 3), amp = new Float32Array(N * 3), fre = new Float32Array(N * 3), pha = new Float32Array(N * 3);
   const aPhase = new Float32Array(N), aScale = new Float32Array(N), aColor = new Float32Array(N * 3);
-  const cCyan = new THREE.Color(0x6fe0ff), cWhite = new THREE.Color(0xeaf4ff), cEmber = new THREE.Color(0xff7a3d), _tc = new THREE.Color();
+  const cCyan = new THREE.Color(0x6fe0ff), cWhite = new THREE.Color(0xeaf4ff), cEmber = new THREE.Color(0xffb27d), _tc = new THREE.Color();
   for (let i = 0; i < N; i++) {
     const r = Math.random();
     for (let tries = 0; tries < 8; tries++) {  // rejection-sample away from the camera line + panels
@@ -687,7 +687,7 @@ function buildNetwork() {
     base[i * 3] = _p.x; base[i * 3 + 1] = _p.y; base[i * 3 + 2] = _p.z;
     for (let k = 0; k < 3; k++) { amp[i * 3 + k] = 3 + Math.random() * 10; fre[i * 3 + k] = 0.15 + Math.random() * 0.55; pha[i * 3 + k] = Math.random() * 6.28; }
     aPhase[i] = Math.random() * 6.28; aScale[i] = 0.6 + Math.random() * 1.8;
-    const cr = Math.random(); _tc.copy(cr < 0.12 ? cEmber : (cr < 0.5 ? cWhite : cCyan));   // ~12% ember accents per BACKGROUND.md
+    const cr = Math.random(); _tc.copy(cr < 0.05 ? cEmber : (cr < 0.5 ? cWhite : cCyan));   // rare soft-ember accents (restraint pass: was 12% hot orange)
     aColor[i * 3] = _tc.r; aColor[i * 3 + 1] = _tc.g; aColor[i * 3 + 2] = _tc.b;
   }
   const DRIFT_GLSL = `vec3 drifted(vec3 b, vec3 A, vec3 F, vec3 P, float t, float on){
@@ -984,6 +984,18 @@ function load() {
           if (tw && !tw.link) tw.link = 'https://kiaras-club.vercel.app';
           migrated = true;
         }
+        if (!(d.version >= 9)) {
+          // 2026-08 restraint pass: one color story, fewer simultaneous layers.
+          // Deliberate art direction — override the saved globals for the quieted
+          // knobs; per-beat keyframes only move if still at their old defaults.
+          Object.assign(FX, { nebHue: 0.35, nebEmber: 0.06, nebGlow: 0.35, lightning: false, glowSpots: false, cursorDrive: 0.6, starFrac: Math.min(FX.starFrac, 0.85) });
+          for (const b of beats) if (b.fx) {
+            if (b.fx.bloomStrength === 1) b.fx.bloomStrength = 0.85;
+            if (b.fx.colorIntensity === 1) b.fx.colorIntensity = 0.85;
+            if (b.fx.nebula === 1) b.fx.nebula = 0.9;
+          }
+          migrated = true;
+        }
         if (migrated) save();
         return;
       }
@@ -994,7 +1006,7 @@ function load() {
 }
 function save() {
   const g = {}; for (const k of GLOBAL_KEYS) g[k] = FX[k]; g.ease = txEaseName;
-  localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 8 }));
+  localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 9 }));
 }
 // push the global (saved) FX/UX/transition state into the live scene + DOM
 function applyGlobals() {
@@ -2886,7 +2898,7 @@ function animate() {
   voidWarp *= 0.94; if (voidWarp < 0.001) voidWarp = 0;
   livingVoid.setWarp(voidWarp);
   if (network) network.setWarp(voidWarp);    // nodes swell + links flare on the burst
-  if (bloom) bloom.strength = curFX.bloomStrength + voidWarp * 0.9;
+  if (bloom) bloom.strength = curFX.bloomStrength + voidWarp * 0.5;   // gentler transition flare (restraint pass)
   if (bokeh) bokeh.enabled = !(editMode || freeRoam);   // DOF only in play; bloom stays on in all modes
   _cVel += (_cVelRaw - _cVel) * 0.12; _cVelRaw *= 0.90;   // smoothed cursor velocity drives the FX
   camera.updateMatrixWorld();
