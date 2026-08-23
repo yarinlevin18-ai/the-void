@@ -1160,7 +1160,9 @@ function drawPanelCanvas(b) {
     drawImageCover(ctx, im, x0, y0, w0, h0);
     // adaptive: pale screenshots (cream dashboards, skies) get dimmed harder so
     // no preview can hand bloom a giant über-threshold surface
-    const dim = clamp(0.30 + (meanLum(im) - 0.30) * 0.85, 0.30, 0.66);
+    // lifted floor/cap (was .30-.66): previews were dimmed into black slabs —
+    // the per-beat bloomStrength .5 keyframes are what actually protect bloom
+    const dim = clamp(0.15 + (meanLum(im) - 0.30) * 0.85, 0.15, 0.58);
     ctx.fillStyle = `rgba(6,14,22,${dim.toFixed(2)})`; ctx.fillRect(x0, y0, w0, h0);
   };
   if (img && img2) {                       // twin-project beat: two full-bleed halves, hairline divider
