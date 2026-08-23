@@ -71,7 +71,7 @@ const UP_VERTICAL = [0, 0, -1]; // "look straight up" orientation
 // iPhones land in the IS_TOUCH tier only.
 const IS_TOUCH = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches) && navigator.maxTouchPoints > 0;
 const LOW_END = IS_TOUCH && ((navigator.deviceMemory || 8) <= 4 || Math.min(screen.width, screen.height) <= 480);
-const DPR_CAP = IS_TOUCH ? 1.25 : 1.5;   // phones pay per-pixel: fill rate is the budget
+let DPR_CAP = IS_TOUCH ? 1.25 : 1.5;   // phones pay per-pixel: fill rate is the budget (adaptive governor may lower it)
 if (IS_TOUCH) { const _h = document.querySelector('#overlay .hint'); if (_h) _h.textContent = 'swipe to fly'; }
 
 // ---- Renderer / scene / camera --------------------------------------------
@@ -141,7 +141,7 @@ const livingVoid = (() => {
   const nebMat = new THREE.ShaderMaterial({
     depthTest: false, depthWrite: false,
     uniforms: {
-      uTime: { value: 0 }, uA: { value: window.innerWidth / window.innerHeight }, uSteps: { value: _reduced ? 18 : (LOW_END ? 22 : IS_TOUCH ? 26 : 40) },
+      uTime: { value: 0 }, uA: { value: window.innerWidth / window.innerHeight }, uSteps: { value: _reduced ? 18 : (LOW_END ? 16 : IS_TOUCH ? 20 : 40) },
       uDens: { value: FX.nebula }, uSpd: { value: FX.nebSpd }, uWarp: { value: FX.nebWarp }, uHue: { value: FX.nebHue }, uEmber: { value: FX.nebEmber }, uGlow: { value: FX.nebGlow }, uNebFrac: { value: FX.nebFrac },
       uCamPos: { value: new THREE.Vector3() }, uInvProj: { value: new THREE.Matrix4() }, uCamWorld: { value: new THREE.Matrix4() },
       uFlash: { value: new THREE.Vector3(0, 0, -300) }, uFlashAmt: { value: 0 }, uFlashCol: { value: new THREE.Color(0x9fd8ff) }, uFlashReach: { value: 0.00002 }, uCrackle: { value: 18 },
@@ -297,7 +297,8 @@ const livingVoid = (() => {
   }
   const setTint = (hex, amt) => { smat.uniforms.uTint.value.set(hex); smat.uniforms.uTintAmt.value = amt; };
   const setWarp = (v) => { smat.uniforms.uWarp.value = v; };           // stars swell on a chapter warp burst
-  return { composite, nebMat, nebRT, fsScene, fsCam, sizeRT, smat, sgeo, STAR_N, spots, update, setTint, setWarp };
+  const setRes = (r) => { _res = r; sizeRT(); };   // adaptive governor can shrink the raymarch target further
+  return { composite, nebMat, nebRT, fsScene, fsCam, sizeRT, setRes, smat, sgeo, STAR_N, spots, update, setTint, setWarp };
 })();
 
 // ---- Neon wave ribbon (ported 1:1 from demo-wave-ribbon.APPROVED.html) -------
@@ -2297,12 +2298,18 @@ window.addEventListener('keydown', (e) => {
 function applyResize(full) {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
+  if (full) {
+    // pixel ratio BEFORE setSize — the ratio only reaches the drawing buffer on
+    // the next setSize, and the composer keeps its own copy that must match
+    const pr = Math.min(window.devicePixelRatio, DPR_CAP);
+    renderer.setPixelRatio(pr);
+    if (composer) composer.setPixelRatio(pr);
+  }
   renderer.setSize(window.innerWidth, window.innerHeight);
   if (composer) composer.setSize(window.innerWidth, window.innerHeight);
   if (css3d) css3d.renderer.setSize(window.innerWidth, window.innerHeight);
   computeUiMul(); applyRootFont();
   if (!full) return;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, DPR_CAP)); // cap retina: fewer fragments, big fill-rate win
   if (bloom) bloom.setSize((window.innerWidth / 2) | 0, (window.innerHeight / 2) | 0);
   livingVoid.nebMat.uniforms.uA.value = window.innerWidth / window.innerHeight;
   livingVoid.sizeRT();                            // keep the half-res raymarch target in sync
@@ -2749,11 +2756,35 @@ const clock = new THREE.Clock();
 const cp = new THREE.Vector3();
 let elapsed = 0;
 let thumbTimer = 0;
+let _nebFrame = 0;
+let nebEvery = IS_TOUCH ? 2 : 1;   // re-march the nebula every Nth frame
+// Adaptive perf governor: emulators can't predict a real phone's GPU, so the
+// device votes with its own frame times. One-way degrade (no oscillation):
+// tier 1 shrinks the nebula march, tier 2 drops DPR to 1 and marches at 1/3 rate.
+let _fpsEma = 60, _perfTier = 0, _perfNextAt = 8;
+function perfGovern(dt) {
+  if (!IS_TOUCH || _perfTier >= 2 || editMode) return;
+  _fpsEma += (1 / Math.max(dt, 0.001) - _fpsEma) * 0.05;
+  if (elapsed < _perfNextAt || _fpsEma >= 45) return;
+  _perfTier++;
+  _perfNextAt = elapsed + 5;              // give the new tier time to settle before judging again
+  _fpsEma = 60;
+  if (_perfTier === 1) {
+    livingVoid.setRes(0.33);
+    livingVoid.nebMat.uniforms.uSteps.value = 14;
+  } else {
+    DPR_CAP = 1;
+    nebEvery = 3;
+    applyResize(true);
+  }
+  console.info('[void] perf governor -> tier', _perfTier);
+}
 
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.05); // seconds since last frame (clamped for tab-switches)
   elapsed += dt;
   const t = elapsed;
+  perfGovern(dt);
 
   if (editMode || freeRoam) {
     if (!scrubbing) { applyFly(dt); controls.update(); } // scrubbing drives the camera directly
@@ -2932,7 +2963,10 @@ function animate() {
   }
   { const su = livingVoid.spots.material.uniforms;        // glow spots react to the cursor + controls
     su.uPtN.value.copy(_cN); su.uVel.value = _cVel; su.uDrive.value = FX.cursorDrive; su.uBright.value = FX.glowBright; su.uFlick.value = FX.glowFlick; }
-  {                                          // raymarch the volumetric nebula into its half-res target (camera-driven fly-through)
+  // raymarch the volumetric nebula into its half-res target (camera-driven fly-through).
+  // Phones re-march every 2nd frame (a slow drifting cloud can't show a 16ms hold);
+  // when the nebula layer is toggled off, skip the march entirely.
+  if (FX.nebVisible && _nebFrame++ % nebEvery === 0) {
     const nm = livingVoid.nebMat.uniforms;
     camera.updateMatrixWorld();
     nm.uCamPos.value.copy(camera.position);
