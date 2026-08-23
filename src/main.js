@@ -434,6 +434,7 @@ const heroCluster = (() => {
   // 3D-transformed LIVE iframes blank/jank on iOS Safari — desktop only.
   // TODO: capture assets/hero/smartcut-crm.png and re-add as kind:'img' for touch.
   if (!IS_TOUCH) addScreen({ id: 'card_smartcut', kind: 'iframe', src: 'assets/hero/smartcut-crm.html', fw: 800, fh: 513, iw: 800, ih: 513, cap: 'SmartCut · Booking CRM', enter: 0.12, tilt: -1, focus0: 0, liss: { ax: 1.5, ay: 1.0, sp: 0.36, ph: 1.7 } });
+  else addScreen({ id: 'card_smartcut', kind: 'img', src: 'assets/hero/smartcut-crm.png', fw: 800, cap: 'SmartCut · Booking CRM', enter: 0.12, tilt: -1, focus0: 0, liss: { ax: 1.5, ay: 1.0, sp: 0.36, ph: 1.7 } });   // touch: static capture — 3D-transformed iframes blank on iOS
   // --- anchor the cluster in the Hero beat's camera frame ---
   const C = new THREE.Vector3(), ff = new THREE.Vector3(), rt = new THREE.Vector3(), uu = new THREE.Vector3(), zc = new THREE.Vector3();
   const baseQ = new THREE.Quaternion(), basis = new THREE.Matrix4();
