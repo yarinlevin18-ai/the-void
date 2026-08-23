@@ -1229,6 +1229,10 @@ function rebuildPanels() {
     const mesh = makePanelMesh(b, i);
     panelGroup.add(mesh); panelMeshes.push(mesh);
   });
+  // pre-upload every panel texture (incl. mipmap generation) NOW — three.js
+  // otherwise defers it to the first frame the panel enters the frustum, which
+  // is exactly when a flight toward it starts (a visible hitch on phones)
+  for (const m of panelMeshes) if (m && m.material.map) renderer.initTexture(m.material.map);
 }
 // cheap in-place update for live slider/typing edits (avoids full rebuild churn)
 function updatePanel(i) {
@@ -3014,6 +3018,10 @@ function animate() {
   }
   requestAnimationFrame(animate);
 }
+// Pre-compile every scene material while the loader still covers the screen —
+// mobile GPUs stall 50-200ms per new shader program, and lazily-compiled ones
+// (panels, warp states) otherwise hit exactly when the first flight starts.
+try { renderer.compile(scene, camera); } catch (e) { console.warn('[precompile]', e); }
 animate();
 initMagneticCursor();
 
