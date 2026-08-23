@@ -134,14 +134,14 @@ const livingVoid = (() => {
   //    through domain-warped 3D noise -> real depth + parallax, the camera flies
   //    THROUGH it. Rendered to a half-res target, composited under the stars.
   const _reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  let _res = IS_TOUCH ? 0.4 : 0.5;             // half-res raymarch (the big perf lever; leaner still on phones)
+  let _res = IS_TOUCH ? 0.33 : 0.5;            // half-res raymarch (the big perf lever; leaner still on phones)
   const nebRT = new THREE.WebGLRenderTarget(2, 2, { magFilter: THREE.LinearFilter, minFilter: THREE.LinearFilter, depthBuffer: false });
   const sizeRT = () => nebRT.setSize(Math.max(2, (window.innerWidth * _res) | 0), Math.max(2, (window.innerHeight * _res) | 0));
   sizeRT();
   const nebMat = new THREE.ShaderMaterial({
     depthTest: false, depthWrite: false,
     uniforms: {
-      uTime: { value: 0 }, uA: { value: window.innerWidth / window.innerHeight }, uSteps: { value: _reduced ? 18 : (LOW_END ? 16 : IS_TOUCH ? 20 : 40) },
+      uTime: { value: 0 }, uA: { value: window.innerWidth / window.innerHeight }, uSteps: { value: _reduced ? 18 : (LOW_END ? 12 : IS_TOUCH ? 16 : 40) },
       uDens: { value: FX.nebula }, uSpd: { value: FX.nebSpd }, uWarp: { value: FX.nebWarp }, uHue: { value: FX.nebHue }, uEmber: { value: FX.nebEmber }, uGlow: { value: FX.nebGlow }, uNebFrac: { value: FX.nebFrac },
       uCamPos: { value: new THREE.Vector3() }, uInvProj: { value: new THREE.Matrix4() }, uCamWorld: { value: new THREE.Matrix4() },
       uFlash: { value: new THREE.Vector3(0, 0, -300) }, uFlashAmt: { value: 0 }, uFlashCol: { value: new THREE.Color(0x9fd8ff) }, uFlashReach: { value: 0.00002 }, uCrackle: { value: 18 },
@@ -1745,26 +1745,30 @@ function showAsset(a) {
   const el = assetEl(a); if (!el || el._as === 'in') return; el._as = 'in';
   if (PREFERS_REDUCED) { el.style.transition = 'none'; el.style.opacity = '1'; el.style.transform = 'none'; el.style.filter = 'none'; return; }
   const i = assetCfg[a.id].in;
-  el.style.transition = 'none'; el.style.opacity = '0'; el.style.transform = `translateY(${i.y}px)`; el.style.filter = `blur(${i.blur}px)`;
+  const bl = IS_TOUCH ? 0 : i.blur;   // tweened blur() re-rasterizes text layers every frame — opacity+rise carry the reveal on phones
+  el.style.transition = 'none'; el.style.opacity = '0'; el.style.transform = `translateY(${i.y}px)`; el.style.filter = bl ? `blur(${bl}px)` : 'none';
   void el.offsetWidth;                                     // commit the start state, then transition in
   const tr = `${i.dur}ms ${A_EASE[i.ease] || 'ease'} ${i.delay}ms`;
-  el.style.transition = `opacity ${tr}, transform ${tr}, filter ${tr}`;
-  el.style.opacity = '1'; el.style.transform = 'translateY(0)'; el.style.filter = 'blur(0px)';
+  el.style.transition = `opacity ${tr}, transform ${tr}${bl ? `, filter ${tr}` : ''}`;
+  el.style.opacity = '1'; el.style.transform = 'translateY(0)'; if (bl) el.style.filter = 'blur(0px)';
 }
 function hideAsset(a) {
   const el = assetEl(a); if (!el || el._as === 'out') return; el._as = 'out';
   if (PREFERS_REDUCED) { el.style.transition = 'none'; el.style.opacity = '0'; el.style.transform = 'none'; el.style.filter = 'none'; return; }
   const o = assetCfg[a.id].out;
+  const bl = IS_TOUCH ? 0 : o.blur;
   const tr = `${o.dur}ms ${A_EASE[o.ease] || 'ease'} ${o.delay}ms`;
-  el.style.transition = `opacity ${tr}, transform ${tr}, filter ${tr}`;
-  el.style.opacity = '0'; el.style.transform = `translateY(${o.y}px)`; el.style.filter = `blur(${o.blur}px)`;
+  el.style.transition = `opacity ${tr}, transform ${tr}${bl ? `, filter ${tr}` : ''}`;
+  el.style.opacity = '0'; el.style.transform = `translateY(${o.y}px)`; el.style.filter = bl ? `blur(${bl}px)` : 'none';
 }
 function replayAsset(a) { const el = assetEl(a); if (el) el._as = null; showAsset(a); }   // force the in-animation again
 function initAssets() {
   for (const a of ASSET_DEFS) { const el = assetEl(a); if (!el) continue; applyAssetText(a); applyAssetStyle(a); el._as = 'out'; el.style.transition = 'none'; el.style.opacity = '0'; el.style.transform = `translateY(${assetCfg[a.id].out.y}px)`; }
 }
 function updateAssetDOF(flying) {            // depth-of-field blur layered on the group containers
-  if (PREFERS_REDUCED) { if (overlay) overlay.style.filter = ''; if (capEl) capEl.style.filter = ''; return; }
+  // animating CSS blur() re-rasterizes big text layers every frame — a top
+  // jank source on phone GPUs mid-flight, and invisible at phone text sizes
+  if (PREFERS_REDUCED || IS_TOUCH) { if (overlay) overlay.style.filter = ''; if (capEl) capEl.style.filter = ''; return; }
   _domDefocus += ((flying ? 1 : 0) - _domDefocus) * 0.07;
   const db = _domDefocus * assetDof;
   const f = db > 0.03 ? `blur(${db.toFixed(2)}px)` : '';
@@ -2310,7 +2314,7 @@ function applyResize(full) {
   if (css3d) css3d.renderer.setSize(window.innerWidth, window.innerHeight);
   computeUiMul(); applyRootFont();
   if (!full) return;
-  if (bloom) bloom.setSize((window.innerWidth / 2) | 0, (window.innerHeight / 2) | 0);
+  if (bloom) bloom.setSize((window.innerWidth / bloomDiv) | 0, (window.innerHeight / bloomDiv) | 0);
   livingVoid.nebMat.uniforms.uA.value = window.innerWidth / window.innerHeight;
   livingVoid.sizeRT();                            // keep the half-res raymarch target in sync
   if (water) water.sizeSim();
@@ -2762,6 +2766,7 @@ let nebEvery = IS_TOUCH ? 2 : 1;   // re-march the nebula every Nth frame
 // device votes with its own frame times. One-way degrade (no oscillation):
 // tier 1 shrinks the nebula march, tier 2 drops DPR to 1 and marches at 1/3 rate.
 let _fpsEma = 60, _perfTier = 0, _perfNextAt = 8;
+let bloomDiv = 2;   // bloom chain resolution divisor (tier 2 shrinks it)
 function perfGovern(dt) {
   if (!IS_TOUCH || _perfTier >= 2 || editMode) return;
   _fpsEma += (1 / Math.max(dt, 0.001) - _fpsEma) * 0.05;
@@ -2770,11 +2775,12 @@ function perfGovern(dt) {
   _perfNextAt = elapsed + 5;              // give the new tier time to settle before judging again
   _fpsEma = 60;
   if (_perfTier === 1) {
-    livingVoid.setRes(0.33);
-    livingVoid.nebMat.uniforms.uSteps.value = 14;
+    livingVoid.setRes(0.26);
+    livingVoid.nebMat.uniforms.uSteps.value = 10;
   } else {
     DPR_CAP = 1;
     nebEvery = 3;
+    bloomDiv = 3;
     applyResize(true);
   }
   console.info('[void] perf governor -> tier', _perfTier);
@@ -2964,9 +2970,11 @@ function animate() {
   { const su = livingVoid.spots.material.uniforms;        // glow spots react to the cursor + controls
     su.uPtN.value.copy(_cN); su.uVel.value = _cVel; su.uDrive.value = FX.cursorDrive; su.uBright.value = FX.glowBright; su.uFlick.value = FX.glowFlick; }
   // raymarch the volumetric nebula into its half-res target (camera-driven fly-through).
-  // Phones re-march every 2nd frame (a slow drifting cloud can't show a 16ms hold);
-  // when the nebula layer is toggled off, skip the march entirely.
-  if (FX.nebVisible && _nebFrame++ % nebEvery === 0) {
+  // Phones skip frames only while PARKED (a slow drift can't show a 16ms hold) —
+  // in flight the parallax moves fast and a held frame reads as judder, so the
+  // march runs every frame then (affordable: touch res/steps are cut instead).
+  const _nebDue = _nebFrame++ % nebEvery === 0;
+  if (FX.nebVisible && (_nebDue || tween || freeRoam || editMode)) {
     const nm = livingVoid.nebMat.uniforms;
     camera.updateMatrixWorld();
     nm.uCamPos.value.copy(camera.position);
