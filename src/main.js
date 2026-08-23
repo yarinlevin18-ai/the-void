@@ -874,11 +874,11 @@ const makeHeroBeat = () => ({
 // Real content per CONTENT.md (Phase B). Cameras kept exactly as authored.
 const DEFAULT_BEATS = [
   { name: 'Opening', cam: [-56, 2, 120], look: [-11, 59, 42], up: [0, 1, 0], fov: 25, dur: 1.4, desc: 'Landing pages & SaaS interfaces — fly through the work.', img: '', link: '', fx: { bloomStrength: 0.65 }, panel: null },
-  { name: 'Hero', cam: [1, 53, 33], look: [192, -55, -56], up: [0, 1, 0], fov: 41, dur: 1.6, desc: '', img: '', link: '', panel: null },
-  { name: 'My Projects', cam: [9, 10, -69], look: [15, 4, -119], up: [-0.66418640324206, 0.7376001166578326, -0.1216654825935754], fov: 83, dur: 1.6, desc: 'Four featured builds ahead — plus Worldiez, Mentorship, AeroCy, SecScan, BodyLoop, and a daily practice of motion labs.', cap: { desc: 'A glimpse of the full body of work — keep flying.' }, img: '', link: '', panel: { pos: [15, 4, -119], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
-  { name: 'SHADIEZ', cam: [0, 2, -190], look: [-22, 0, -235], up: [0, 1, 0], fov: 87, dur: 1.6, desc: 'Client e-commerce landing for a premium beach shade — 3D product hero, scroll-driven storytelling, live lead capture.', img: '/previews/shadiez.jpg', link: 'https://shadiez.vercel.app', fx: { bloomStrength: 0.5 }, panel: { pos: [-22, 0, -235], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
-  { name: 'TEEPO', cam: [0, 2, -310], look: [22, 0, -355], up: [0, 1, 0], fov: 80, dur: 1.6, desc: 'Full SaaS study platform for Israeli students — Hebrew RTL, Moodle scraping via a Chrome extension, Google Drive as the datastore, a Claude-powered assistant.', img: '/previews/teepo.jpg', link: 'https://bgu-study-organizer.vercel.app', fx: { bloomStrength: 0.5 }, panel: { pos: [22, 0, -355], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
-  { name: 'LifeRPG & Kiara’s Club', cam: [0, 35, -410], look: [0, 60, -475], up: [0, 1, 0], fov: 68, dur: 1.6, desc: 'A desktop life-RPG where real habits grow a 3D world — and a dachshund-first store brand, built from palette to cart.', img: '/previews/liferpg.jpg', img2: '/previews/kiaras-club.jpg', link: 'https://kiaras-club.vercel.app', fx: { bloomStrength: 0.5 }, panel: { pos: [0, 60, -475], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
+  { name: 'Hero', cam: [1, 53, 33], look: [192, -55, -56], up: [0, 1, 0], fov: 41, dur: 2.1, desc: '', img: '', link: '', panel: null },
+  { name: 'My Projects', cam: [9, 10, -69], look: [15, 4, -119], up: [-0.66418640324206, 0.7376001166578326, -0.1216654825935754], fov: 83, dur: 1.8, desc: 'Four featured builds ahead — plus Worldiez, Mentorship, AeroCy, SecScan, BodyLoop, and a daily practice of motion labs.', cap: { desc: 'A glimpse of the full body of work — keep flying.' }, img: '', link: '', panel: { pos: [15, 4, -119], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
+  { name: 'SHADIEZ', cam: [0, 2, -190], look: [-22, 0, -235], up: [0, 1, 0], fov: 87, dur: 1.35, desc: 'Client e-commerce landing for a premium beach shade — 3D product hero, scroll-driven storytelling, live lead capture.', img: '/previews/shadiez.jpg', link: 'https://shadiez.vercel.app', fx: { bloomStrength: 0.5 }, panel: { pos: [-22, 0, -235], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
+  { name: 'TEEPO', cam: [0, 2, -310], look: [22, 0, -355], up: [0, 1, 0], fov: 80, dur: 1.35, desc: 'Full SaaS study platform for Israeli students — Hebrew RTL, Moodle scraping via a Chrome extension, Google Drive as the datastore, a Claude-powered assistant.', img: '/previews/teepo.jpg', link: 'https://bgu-study-organizer.vercel.app', fx: { bloomStrength: 0.5 }, panel: { pos: [22, 0, -355], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
+  { name: 'LifeRPG & Kiara’s Club', cam: [0, 35, -410], look: [0, 60, -475], up: [0, 1, 0], fov: 68, dur: 1.35, desc: 'A desktop life-RPG where real habits grow a 3D world — and a dachshund-first store brand, built from palette to cart.', img: '/previews/liferpg.jpg', img2: '/previews/kiaras-club.jpg', link: 'https://kiaras-club.vercel.app', fx: { bloomStrength: 0.5 }, panel: { pos: [0, 60, -475], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
   { name: 'Let’s build something', cam: [0, 49, -560], look: [1, 290, -560], up: [0, 0, -1], fov: 52, dur: 3, desc: 'Have a landing page or product interface in mind? I reply fast.', cap: { desc: 'yarinlevin18@gmail.com — or hit the button.' }, img: '', link: 'mailto:yarinlevin18@gmail.com', panel: { pos: [1, 290, -560], size: [70, 44], billboard: false, rot: [89, 0, 180] } },
 ];
 
@@ -887,6 +887,7 @@ let beats = [];
 let speedMul = 1;    // global flight-speed multiplier (scales per-shot durations)
 let smooth = 0.5;    // 0 = straight segments, 1 = fully curved (spline) path
 let tween = null;    // active section→section transition { from, to, t, dur }
+let firstFrameDone = false; // set after the first composed render; the intro loader waits on it
 let index = 0;       // play-mode target section
 let progress = 0;    // smoothed 0..1 along the path
 let editMode = false;
@@ -996,6 +997,18 @@ function load() {
           }
           migrated = true;
         }
+        if (!(d.version >= 10)) {
+          // 2026-08 flow pass: give the journey rhythm — a long breath leaving
+          // the wordmark, settle into the hub, snappy hops between projects.
+          // Only touch beats still at the old uniform default.
+          const pace = { hero: 2.1, 'my projects': 1.8, shadiez: 1.35, teepo: 1.35, liferpg: 1.35 };
+          for (const b of beats) {
+            if (b.dur !== 1.6) continue;
+            const key = Object.keys(pace).find((k) => (b.name || '').toLowerCase().includes(k));
+            if (key) b.dur = pace[key];
+          }
+          migrated = true;
+        }
         if (migrated) save();
         return;
       }
@@ -1006,7 +1019,7 @@ function load() {
 }
 function save() {
   const g = {}; for (const k of GLOBAL_KEYS) g[k] = FX[k]; g.ease = txEaseName;
-  localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 9 }));
+  localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 10 }));
 }
 // push the global (saved) FX/UX/transition state into the live scene + DOM
 function applyGlobals() {
@@ -1593,7 +1606,8 @@ function buildWaypoints() {
   wpDots = beats.map((b, i) => {
     const dot = document.createElement('button');
     dot.type = 'button'; dot.className = 'wp-dot';
-    dot.innerHTML = `<span class="wp-label">${b.name}</span>`;
+    dot.setAttribute('aria-label', `Fly to ${b.name} (${i + 1} of ${beats.length})`);
+    dot.innerHTML = `<span class="wp-label" aria-hidden="true">${b.name}</span>`;
     dot.addEventListener('click', () => {
       if (editMode) return;
       if (freeRoam) setFreeRoam(false);
@@ -1610,6 +1624,8 @@ function updateWaypoints() {
   for (let i = 0; i < wpDots.length; i++) {
     wpDots[i].classList.toggle('active', i === cur);
     wpDots[i].classList.toggle('done', i < cur);
+    if (i === cur) wpDots[i].setAttribute('aria-current', 'step');
+    else wpDots[i].removeAttribute('aria-current');
   }
   if (wpFill) wpFill.style.transform = `scaleY(${clamp(progress, 0, 1)})`;
 }
@@ -2940,6 +2956,7 @@ function animate() {
     } else { water.setRect(2, 2, 2, 2); water.step(_wUV.x, _wUV.y, 0); }
   }
   if (composer) composer.render(); else renderer.render(scene, camera);
+  firstFrameDone = true;                     // loader gates its 100% on this — no black-frame pop on slow devices
   if (css3d) css3d.renderer.render(css3d.scene, camera);   // live HTML assets layer (SmartCut iframe), synced to the camera
   if (PROF) {
     const now = performance.now();
@@ -2966,7 +2983,10 @@ initMagneticCursor();
   const ease = (x) => 1 - Math.pow(1 - x, 3);
   function step(ts) {
     if (t0 === null) t0 = ts;
-    const p = clamp((ts - t0) / dur, 0, 1), e = ease(p);
+    // hold at 99 until the scene has actually rendered a frame — the reveal
+    // must never cross-fade into a black canvas on a slow device
+    const p = Math.min(clamp((ts - t0) / dur, 0, 1), firstFrameDone ? 1 : 0.99);
+    const e = ease(p);
     if (pct) pct.textContent = Math.round(e * 100);
     if (fill) fill.style.transform = `scaleX(${e})`;
     if (p < 1) requestAnimationFrame(step);

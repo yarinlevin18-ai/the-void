@@ -354,6 +354,11 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
 }
 .wp-dot:hover .wp-label, .wp-dot.active .wp-label { opacity: 1; }
 .wp-dot.done { border-color: rgba(79, 210, 255, 0.55); background: rgba(79, 210, 255, 0.35); }
+/* keyboard navigation: a visible ring only for focus-visible (mouse clicks stay clean) */
+.wp-dot:focus-visible, #freeroam:focus-visible, #visitlive:focus-visible {
+  outline: 2px solid #4fd2ff; outline-offset: 4px; border-radius: 50%;
+}
+#freeroam:focus-visible, #visitlive:focus-visible { border-radius: 6px; }
 .wp-dot.active { width: 15px; height: 15px; border-color: #4fd2ff; background: #4fd2ff; box-shadow: 0 0 14px rgba(79, 210, 255, 0.95); }
 
 /* ---- FX control panel (B) ---- */
