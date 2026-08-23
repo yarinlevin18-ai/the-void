@@ -2734,6 +2734,7 @@ const textEl = document.querySelector('#textpanel');
 (() => {
   const hk = document.querySelector('#hotkeys');
   if (!hk || IS_TOUCH) return;   // keyboard-only affordance — meaningless on touch (even with a BT keyboard the legend lies)
+  if (!DEV_TOOLS) hk.querySelector('#hk-dev')?.remove();   // visitors only see keys that actually work for them
   window.addEventListener('keydown', (e) => {
     if (isTextEntry(e.target)) return;
     if (e.key === '?') hk.hidden = !hk.hidden;

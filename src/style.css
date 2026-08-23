@@ -524,7 +524,9 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
   /* bottom chrome: hud left, visitlive right, freeroam lifted clear of both */
   #hud { left: 1rem; bottom: 0.9rem; gap: 0.6rem; font-size: 0.62rem; }
   #visitlive { right: 1rem; bottom: 0.8rem; padding: 0.55rem 1rem; font-size: 0.7rem; }
-  #freeroam { bottom: 4.4rem; padding: 0.6rem 1.1rem; font-size: 0.72rem; }
+  /* finale shows freeroam + a tall caption at once — the bottom is full, so
+     the button takes the empty top-right sky instead */
+  #freeroam { left: auto; right: 1rem; top: 1rem; bottom: auto; transform: none; padding: 0.6rem 1.1rem; font-size: 0.72rem; }
   #whisper { font-size: 0.68rem; letter-spacing: 0.16em; padding: 0 1.2rem; }
 }
 
