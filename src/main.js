@@ -877,11 +877,11 @@ const makeHeroBeat = () => ({
 const DEFAULT_BEATS = [
   { name: 'Opening', cam: [-56, 2, 120], look: [-11, 59, 42], up: [0, 1, 0], fov: 25, dur: 1.4, desc: 'Landing pages & SaaS interfaces — fly through the work.', img: '', link: '', fx: { bloomStrength: 0.65 }, panel: null },
   { name: 'Hero', cam: [1, 53, 33], look: [192, -55, -56], up: [0, 1, 0], fov: 41, dur: 2.1, desc: '', img: '', link: '', panel: null },
-  { name: 'My Projects', cam: [9, 10, -69], look: [15, 4, -119], up: [-0.66418640324206, 0.7376001166578326, -0.1216654825935754], fov: 83, dur: 1.8, desc: 'Four featured builds ahead — plus Worldiez, Mentorship, AeroCy, SecScan, BodyLoop, and a daily practice of motion labs.', cap: { desc: 'A glimpse of the full body of work — keep flying.' }, img: '', link: '', panel: { pos: [15, 4, -119], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
+  { name: 'My Projects', cam: [9, 10, -69], look: [15, 4, -119], up: [-0.66418640324206, 0.7376001166578326, -0.1216654825935754], fov: 83, dur: 1.8, desc: 'Four featured builds ahead — plus Worldiez, Mentorship, AeroCy, SecScan, BodyLoop, and a daily practice of motion labs.', cap: { desc: 'A glimpse of the full body of work — keep flying.' }, img: '', link: '', panel: null },
   { name: 'SHADIEZ', cam: [0, 2, -190], look: [-22, 0, -235], up: [0, 1, 0], fov: 87, dur: 1.35, desc: 'Client e-commerce landing for a premium beach shade — 3D product hero, scroll-driven storytelling, live lead capture.', img: '/previews/shadiez.jpg', link: 'https://shadiez.vercel.app', fx: { bloomStrength: 0.5 }, panel: { pos: [-22, 0, -235], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
   { name: 'TEEPO', cam: [0, 2, -310], look: [22, 0, -355], up: [0, 1, 0], fov: 80, dur: 1.35, desc: 'Full SaaS study platform for Israeli students — Hebrew RTL, Moodle scraping via a Chrome extension, Google Drive as the datastore, a Claude-powered assistant.', img: '/previews/teepo.jpg', link: 'https://bgu-study-organizer.vercel.app', fx: { bloomStrength: 0.5 }, panel: { pos: [22, 0, -355], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
   { name: 'LifeRPG & Kiara’s Club', cam: [0, 35, -410], look: [0, 60, -475], up: [0, 1, 0], fov: 68, dur: 1.35, desc: 'A desktop life-RPG where real habits grow a 3D world — and a dachshund-first store brand, built from palette to cart.', img: '/previews/liferpg.jpg', img2: '/previews/kiaras-club.jpg', link: 'https://kiaras-club.vercel.app', fx: { bloomStrength: 0.5 }, panel: { pos: [0, 60, -475], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
-  { name: 'Let’s build something', cam: [0, 49, -560], look: [1, 290, -560], up: [0, 0, -1], fov: 52, dur: 3, desc: 'Have a landing page or product interface in mind? I reply fast.', cap: { desc: 'yarinlevin18@gmail.com — or hit the button.' }, img: '', link: 'mailto:yarinlevin18@gmail.com', panel: { pos: [1, 290, -560], size: [70, 44], billboard: false, rot: [89, 0, 180] } },
+  { name: 'Let’s build something', cam: [0, 49, -560], look: [1, 290, -560], up: [0, 0, -1], fov: 52, dur: 3, desc: 'Have a landing page or product interface in mind? I reply fast.', cap: { desc: 'yarinlevin18@gmail.com — or hit the button.' }, img: '', link: 'mailto:yarinlevin18@gmail.com', panel: null },
 ];
 
 // ---- State -----------------------------------------------------------------
@@ -999,6 +999,13 @@ function load() {
           }
           migrated = true;
         }
+        if (!(d.version >= 11)) {
+          // 2026-08 panel art direction: panels are pure image artifacts — the
+          // caption owns all words, the pill button owns the CTA. A panel with
+          // no imagery has nothing left to show, so it goes.
+          for (const b of beats) if (b.panel && !b.img && !b.img2) b.panel = null;
+          migrated = true;
+        }
         if (!(d.version >= 10)) {
           // 2026-08 flow pass: give the journey rhythm — a long breath leaving
           // the wordmark, settle into the hub, snappy hops between projects.
@@ -1021,7 +1028,7 @@ function load() {
 }
 function save() {
   const g = {}; for (const k of GLOBAL_KEYS) g[k] = FX[k]; g.ease = txEaseName;
-  localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 10 }));
+  localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 11 }));
 }
 // push the global (saved) FX/UX/transition state into the live scene + DOM
 function applyGlobals() {
@@ -1118,18 +1125,6 @@ function getImage(url) {
   im.src = url;
   return null;
 }
-function drawWrapped(ctx, text, x, y, maxW, lineH) {
-  for (const para of String(text).split('\n')) {
-    let line = '';
-    for (const word of para.split(/\s+/)) {
-      const test = line ? line + ' ' + word : word;
-      if (ctx.measureText(test).width > maxW && line) { ctx.fillText(line, x, y); y += lineH; line = word; }
-      else line = test;
-    }
-    if (line) { ctx.fillText(line, x, y); y += lineH; }
-  }
-  return y;
-}
 function drawImageCover(ctx, img, x, y, w, h) {
   const ir = img.width / img.height, br = w / h;
   let sw, sh, sx, sy;
@@ -1138,14 +1133,14 @@ function drawImageCover(ctx, img, x, y, w, h) {
   ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
 }
 function drawPanelCanvas(b) {
-  const W = 512, H = clamp(Math.round(W * (b.panel.size[1] / b.panel.size[0])), 96, 1024);
+  // Panels are pure artifacts: the screenshot IS the card, full-bleed, no text —
+  // the kinetic caption owns every word and the pill button owns the CTA.
+  // 1024px wide: at 70 world-units these quads fill half the screen, and 512
+  // upscaled read soft next to the crisp DOM type.
+  const W = 1024, H = clamp(Math.round(W * (b.panel.size[1] / b.panel.size[0])), 96, 1024);
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d');
-  // light frosted-glass card: pale fill, hairline slate border, ink text
   ctx.fillStyle = 'rgba(8,16,26,0.93)'; ctx.fillRect(0, 0, W, H);   // near-opaque: the next beat's panel must not ghost through
-  ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(79,210,255,0.5)'; ctx.strokeRect(1.5, 1.5, W - 3, H - 3);
-  ctx.textBaseline = 'top'; ctx.textAlign = 'left';
-  const pad = 26; let y = pad;
   const img = getImage(b.img), img2 = getImage(b.img2);
   // Screens in a dark void run dim: a dark multiply keeps bright site pixels
   // (~1.0 luminance) under control so UnrealBloom halos the preview instead of
@@ -1167,40 +1162,17 @@ function drawPanelCanvas(b) {
     // no preview can hand bloom a giant über-threshold surface
     const dim = clamp(0.30 + (meanLum(im) - 0.30) * 0.85, 0.30, 0.66);
     ctx.fillStyle = `rgba(6,14,22,${dim.toFixed(2)})`; ctx.fillRect(x0, y0, w0, h0);
-    ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(79,210,255,0.3)'; ctx.strokeRect(x0, y0, w0, h0);
   };
-  if (img && img2) {                       // twin-project beat: two previews side by side
-    const iw = (W - pad * 2 - 14) / 2, ih = Math.min(H * 0.52, iw * 0.68);
-    drawDimmed(img, pad, y, iw, ih);
-    drawDimmed(img2, pad + iw + 14, y, iw, ih);
-    y += ih + 18;
+  if (img && img2) {                       // twin-project beat: two full-bleed halves, hairline divider
+    const iw = W / 2;
+    drawDimmed(img, 0, 0, iw, H);
+    drawDimmed(img2, iw, 0, iw, H);
+    ctx.fillStyle = 'rgba(79,210,255,0.35)'; ctx.fillRect(iw - 1, 0, 2, H);
   } else if (img) {
-    const iw = W - pad * 2, ih = Math.min(H * 0.5, iw * (img.height / img.width));
-    drawDimmed(img, pad, y, iw, ih);
-    y += ih + 18;
+    drawDimmed(img, 0, 0, W, H);           // the screenshot IS the panel
   }
-  // mid-luminance header: bright enough to read, dim enough that UnrealBloom
-  // (threshold .22) halos it gently instead of smearing it to a white blob —
-  // the big glowing title is the kinetic caption's job, not the card's.
-  ctx.shadowColor = 'rgba(79,210,255,0.35)'; ctx.shadowBlur = 10;
-  ctx.fillStyle = '#9cc0d8'; ctx.font = `700 ${Math.round(W * 0.062)}px Inter, system-ui, sans-serif`;
-  y = drawWrapped(ctx, b.name || '', pad, y, W - pad * 2, Math.round(W * 0.075));
-  ctx.shadowBlur = 0;
-  if (b.desc && !img) {                    // cards with a preview let the image speak — the kinetic caption carries the story
-    y += 8; ctx.fillStyle = '#9fc2e0'; ctx.font = `400 ${Math.round(W * 0.044)}px Inter, system-ui, sans-serif`;
-    y = drawWrapped(ctx, b.desc, pad, y, W - pad * 2, Math.round(W * 0.06));
-  }
-  if (b.link) {
-    const mail = /^mailto:/i.test(b.link), label = mail ? 'GET IN TOUCH' : 'VISIT LIVE';
-    const ph = Math.round(W * 0.085), pw = Math.round(W * (mail ? 0.42 : 0.34)), px = pad, py = H - pad - ph;
-    ctx.fillStyle = '#1f9fd6';
-    if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(px, py, pw, ph, ph / 2); ctx.fill(); }
-    else ctx.fillRect(px, py, pw, ph);
-    ctx.fillStyle = '#ffffff'; ctx.font = `700 ${Math.round(W * 0.04)}px Inter, system-ui, sans-serif`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(label, px + pw / 2, py + ph / 2 + 1);
-    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-  }
+  // hairline frame over everything — the only chrome the card keeps
+  ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(79,210,255,0.5)'; ctx.strokeRect(2, 2, W - 4, H - 4);
   return cv;
 }
 function makePanelMesh(b, i) {
