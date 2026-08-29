@@ -37,6 +37,7 @@ const FX = {
   uiHud: true, uiWaypoints: true, uiCaption: true, uiHint: true, uiScale: 1,  // UX panel state
   waveAmp: 26, waveSpd: 1, waveCoil: 34, waveOn: true, waveGrid: false,        // neon wave ribbon
   nebSpd: 0.6, nebWarp: 1.4, nebHue: 0.35, nebEmber: 0.06, nebVig: true, nebGlow: 0.35,   // nebula climate + inner glow (restraint: teal family, ember nearly out)
+  vignette: 0.45, grain: 0.02,                                                 // final frame grade (three-lab post constants: offset .3 / darkness .6)
   lightning: false, glowSpots: false,                                          // OFF by default (restraint pass) — the network is the one busy layer
   lightInt: 1, lightReach: 280, lightRate: 3, glowBright: 1, glowFlick: 1, cursorDrive: 0.6,   // lightning + glow + cursor-reactivity controls
   waterStr: 0.18, waterRad: 0.018, waterAtt: 0.992, waterDisp: 0.22, waterSheen: 1.0,         // water swipe (APPROVED tuning — see water.md)
@@ -223,7 +224,8 @@ const livingVoid = (() => {
         float tw=0.7+0.3*sin(uTime*rate+seed)*(1.0-mag*0.7);
         vT=mix(0.85, tw, uTwinkle);
         vMag=mag; vTmp=tmp;
-        float z=mod(position.z+uTime*uSpeed, uDepth)-uDepth;
+        float par=0.55+mag*1.6;                             // motion-lab depth model: near layers travel further
+        float z=mod(position.z+uTime*uSpeed*par, uDepth)-uDepth;
         vec4 mv=modelViewMatrix*vec4(position.x,position.y,z,1.0);
         float depth=-mv.z;
         vFade=smoothstep(uDepth*1.05+360.0,uDepth*0.45,depth);
@@ -917,7 +919,7 @@ function fitFov(v) {
   return Math.min(115, THREE.MathUtils.radToDeg(2 * Math.atan(t)));
 }
 // global (non-keyframed) state that Save must persist alongside the beats
-const GLOBAL_KEYS = ['starFrac', 'nodeFrac', 'lineFrac', 'nebFrac', 'driftOn', 'fovPunch', 'warpStrength', 'warpLength', 'twinkleOn', 'linesOn', 'nebVisible', 'uiHud', 'uiWaypoints', 'uiCaption', 'uiHint', 'uiScale', 'waveAmp', 'waveSpd', 'waveCoil', 'waveOn', 'waveGrid', 'nebSpd', 'nebWarp', 'nebHue', 'nebEmber', 'nebVig', 'nebGlow', 'lightning', 'glowSpots', 'lightInt', 'lightReach', 'lightRate', 'glowBright', 'glowFlick', 'cursorDrive', 'waterStr', 'waterRad', 'waterAtt', 'waterDisp', 'waterSheen', 'openFit', 'openSize', 'openGlow', 'openForm', 'openShatterR', 'openPush', 'openSpring', 'openColor'];
+const GLOBAL_KEYS = ['starFrac', 'nodeFrac', 'lineFrac', 'nebFrac', 'driftOn', 'fovPunch', 'warpStrength', 'warpLength', 'twinkleOn', 'linesOn', 'nebVisible', 'uiHud', 'uiWaypoints', 'uiCaption', 'uiHint', 'uiScale', 'waveAmp', 'waveSpd', 'waveCoil', 'waveOn', 'waveGrid', 'nebSpd', 'nebWarp', 'nebHue', 'nebEmber', 'nebVig', 'nebGlow', 'vignette', 'grain', 'lightning', 'glowSpots', 'lightInt', 'lightReach', 'lightRate', 'glowBright', 'glowFlick', 'cursorDrive', 'waterStr', 'waterRad', 'waterAtt', 'waterDisp', 'waterSheen', 'openFit', 'openSize', 'openGlow', 'openForm', 'openShatterR', 'openPush', 'openSpring', 'openColor'];
 let activePunch = 0;   // 0..1 across a transition, peaks at the midpoint (for FOV punch)
 const DEF_FOV = 68, DEF_DUR = 1.6;
 // a sensible starter panel for a section: sits at its aim point, fixed orientation
@@ -1694,11 +1696,24 @@ const HERO_DEFAULTS = {       // local layout in the Hero cluster (x right, y up
   card_smartcut: { x: 17, y: -10, z: -52, scale: 0.8, blur: 0, ein: 'rise', eout: 'fade' },
 };
 const ASSET_KEY = 'voidAssets';
-const _aDefault = () => ({ text: null, size: 1, font: '', depth: 0, mesh3d: false, in: { dur: 900, delay: 120, y: 26, blur: 7, ease: 'out' }, out: { dur: 500, delay: 0, y: -12, blur: 6, ease: 'inout' } });
+// Enter/exit asymmetry, per the transition-lab rule: an exit runs at 0.7x the
+// enter's duration on the departure curve. Rise distance follows the motion
+// roadmap's state recipe (headline 16-24px, subhead 8-12px).
+const _aDefault = () => ({ text: null, size: 1, font: '', depth: 0, mesh3d: false, in: { dur: 900, delay: 120, y: 22, blur: 7, ease: 'out' }, out: { dur: 630, delay: 0, y: -12, blur: 6, ease: 'gravity' } });
 let assetCfg = {}; ASSET_DEFS.forEach((a) => { assetCfg[a.id] = a.group === 'hero' ? { ...HERO_DEFAULTS[a.id] } : _aDefault(); });
+// Caption choreography (transition-lab): the heading leads its slot by ~60ms,
+// the sub follows one stagger step later — and on the way out the order
+// REVERSES at half the gap, so the last thing in is the first thing gone.
+Object.assign(assetCfg.capTitle.in, { delay: 60, y: 22 });
+Object.assign(assetCfg.capDesc.in, { delay: 200, y: 10 });
+Object.assign(assetCfg.capTitle.out, { delay: 70 });
+Object.assign(assetCfg.capDesc.out, { delay: 0, y: -8 });
 let assetDof = 6;            // DOF → text blur amount (px) at full defocus
 let _domDefocus = 0;
-const A_EASE = { out: 'cubic-bezier(0.22,1,0.36,1)', inout: 'cubic-bezier(0.65,0,0.35,1)', back: 'cubic-bezier(0.34,1.56,0.64,1)', linear: 'linear' };
+// The house easing set, lifted from transition-lab / motion-lab: 'out' for
+// arrivals, 'inout' for swaps, and 'gravity' for departures. Text should arrive
+// with momentum and LEAVE with gravity — an ease-out exit reads as hesitation.
+const A_EASE = { out: 'cubic-bezier(0.22,1,0.36,1)', inout: 'cubic-bezier(0.65,0,0.35,1)', gravity: 'cubic-bezier(0.5,0,0.75,0)', back: 'cubic-bezier(0.34,1.56,0.64,1)', linear: 'linear' };
 function assetDef(id) { return ASSET_DEFS.find((a) => a.id === id); }
 function assetEl(a) { return document.querySelector(typeof a === 'string' ? assetDef(a).sel : a.sel); }
 try {
@@ -2410,6 +2425,28 @@ if (composer && !PREFERS_REDUCED && !IS_TOUCH) try {   // cursor-driven — poin
   };
 } catch (e) { water = null; console.warn('Water disabled:', e); }
 
+// ---- Final grade — vignette + fine grain ------------------------------------
+//  three-lab's post-processing constants (vignette offset 0.3 / darkness 0.6),
+//  applied as the LAST pass on every device so the frame gets one compositional
+//  focus: the eye lands centre, the corners fall away. The hair of grain is the
+//  cheap fix for the banding bloom leaves across big dark gradients.
+let gradePass = null;
+if (composer) try {
+  gradePass = new ShaderPass({
+    uniforms: { tDiffuse: { value: null }, uTime: { value: 0 }, uOff: { value: 0.3 }, uDark: { value: FX.vignette }, uGrain: { value: FX.grain } },
+    vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+    fragmentShader: `varying vec2 vUv; uniform sampler2D tDiffuse; uniform float uTime,uOff,uDark,uGrain;
+      float h21(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
+      void main(){
+        vec3 c=texture2D(tDiffuse,vUv).rgb;
+        float d=distance(vUv,vec2(0.5));
+        c*=smoothstep(0.8,uOff*0.799,d*(uDark+uOff));
+        c+=(h21(vUv+fract(uTime))-0.5)*uGrain;
+        gl_FragColor=vec4(c,1.0); }`,
+  });
+  composer.addPass(gradePass);
+} catch (e) { gradePass = null; console.warn('Grade disabled:', e); }
+
 // ---- Dev profiling handle + ?prof FPS/drawcall probe ------------------------
 const PROF = new URLSearchParams(location.search).has('prof');
 let _pf = { n: 0, t: 0, last: 0 };
@@ -2468,6 +2505,8 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
     ['nebhue', () => FX.nebHue, (v) => { FX.nebHue = v; livingVoid.nebMat.uniforms.uHue.value = v; }, f2],
     ['nebember', () => FX.nebEmber, (v) => { FX.nebEmber = v; livingVoid.nebMat.uniforms.uEmber.value = v; }, f2],
     ['nebglow', () => FX.nebGlow, (v) => { FX.nebGlow = v; livingVoid.nebMat.uniforms.uGlow.value = v; }, f2],
+    ['vignette', () => FX.vignette, (v) => { FX.vignette = v; }, f2],
+    ['grain', () => FX.grain, (v) => { FX.grain = v; }, f3],
     ['waterstr', () => FX.waterStr, (v) => { FX.waterStr = v; }, f2],
     ['waterrad', () => FX.waterRad, (v) => { FX.waterRad = v; }, f3],
     ['wateratt', () => FX.waterAtt, (v) => { FX.waterAtt = v; }, f3],
@@ -2812,6 +2851,7 @@ function animate() {
   resolveFX();                               // per-beat FX keyframes → interpolated live values
   livingVoid.nebMat.uniforms.uDens.value = curFX.nebula;   // per-section nebula density (keyframed)
   livingVoid.update(t);                      // advance nebula + starfield time
+  if (gradePass) { gradePass.uniforms.uTime.value = t; gradePass.uniforms.uDark.value = FX.vignette; gradePass.uniforms.uGrain.value = FX.grain; }
   if (network) network.update(t, (FX.driftOn && !PREFERS_REDUCED) ? 1 : 0, _cN, _cVel * FX.cursorDrive);   // data network: drift + cursor stir
   cursorLinks.update(t, !editMode && !freeRoam && FX.cursorDrive > 0, _cN, _cVel * FX.cursorDrive, (FX.driftOn && !PREFERS_REDUCED) ? 1 : 0);   // Layer 3: the network reaches toward the cursor
   meteors.update(dt, !editMode && !freeRoam && index === 0);   // falling stars on the start frame only
