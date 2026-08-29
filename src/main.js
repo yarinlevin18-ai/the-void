@@ -38,6 +38,7 @@ const FX = {
   waveAmp: 26, waveSpd: 1, waveCoil: 34, waveOn: true, waveGrid: false,        // neon wave ribbon
   nebSpd: 0.6, nebWarp: 1.4, nebHue: 0.35, nebEmber: 0.06, nebVig: true, nebGlow: 0.35,   // nebula climate + inner glow (restraint: teal family, ember nearly out)
   vignette: 0.45, grain: 0.02,                                                 // final frame grade (three-lab post constants: offset .3 / darkness .6)
+  pulse: 1, flare: 1, breath: 1.1, breathRoll: 0.4,                            // signs of life: link traffic, node flares, idle camera sway
   lightning: false, glowSpots: false,                                          // OFF by default (restraint pass) — the network is the one busy layer
   lightInt: 1, lightReach: 280, lightRate: 3, glowBright: 1, glowFlick: 1, cursorDrive: 0.6,   // lightning + glow + cursor-reactivity controls
   waterStr: 0.18, waterRad: 0.018, waterAtt: 0.992, waterDisp: 0.22, waterSheen: 1.0,         // water swipe (APPROVED tuning — see water.md)
@@ -508,7 +509,16 @@ const openingFX = (() => {
     try {
       const c = document.createElement('canvas'), W = 1100, H = 320; c.width = W; c.height = H;
       const x = c.getContext('2d'); x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle';
-      x.font = '600 190px "ogg", Georgia, serif'; x.fillText('Yarin Levin', W / 2, H / 2 + 6);
+      // One voice: the same mono the DOM and the loader use, uppercased and
+      // tracked to match the loader wordmark, then auto-fitted — mono runs much
+      // wider than the old serif and would have run off the 1100px raster.
+      const NAME = 'YARIN LEVIN', TRACK = 12;
+      if ('letterSpacing' in x) x.letterSpacing = TRACK + 'px';
+      const face = (px) => '500 ' + px + 'px "source-code-pro", ui-monospace, monospace';
+      x.font = face(190);
+      const fit = Math.min(190, Math.floor(190 * (W * 0.9) / Math.max(1, x.measureText(NAME).width)));
+      x.font = face(fit);
+      x.fillText(NAME, W / 2 - TRACK / 2, H / 2 + 6);   // shift back by half the trailing track to stay optically centred
       const d = x.getImageData(0, 0, W, H).data, raw = [];
       for (let y = 0; y < H; y += 3) for (let xx = 0; xx < W; xx += 3) if (d[(y * W + xx) * 4 + 3] > 130) raw.push([(xx - W / 2) * GLYPH, -(y - H / 2) * GLYPH, (Math.random() - 0.5) * 6]);
       for (let i = raw.length - 1; i > 0; i--) { const j = Math.random() * i | 0;[raw[i], raw[j]] = [raw[j], raw[i]]; }
@@ -526,7 +536,7 @@ const openingFX = (() => {
       group.scale.setScalar(FX.openFit); built = true;
     } catch (e) { console.warn('[opening] build failed', e); }
   }
-  if (document.fonts && document.fonts.load) document.fonts.load('600 190px "ogg"').catch(() => {}).finally(buildText); else buildText();
+  if (document.fonts && document.fonts.load) document.fonts.load('500 190px "source-code-pro"').catch(() => {}).finally(buildText); else buildText();
   // anchor the name in the Opening beat's camera frame (at the look point, facing the camera)
   const C = new THREE.Vector3(), ff = new THREE.Vector3(), rt = new THREE.Vector3(), uu = new THREE.Vector3(), zc = new THREE.Vector3(), basis = new THREE.Matrix4();
   function place() {
@@ -588,7 +598,7 @@ const openingFX = (() => {
   return { update };
 })();
 
-// ---- Placeable extruded 3D text (Ogg) ---------------------------------------
+// ---- Placeable extruded 3D text (the site's one typeface) -------------------
 // Lights are added only for the standard-material text — the particle shaders
 // ignore them. Emissive + bloom make the letters glow; the directional light
 // catches the bevels/extrusion so they read as solid 3D.
@@ -605,7 +615,7 @@ try {
 const text3d = createText3D();
 scene.add(text3d.group);
 text3d.restore();                 // re-place saved texts (meshes build once the font loads)
-text3d.loadFont().then((r) => { const el = document.querySelector('#text-status'); if (el) el.textContent = r.ogg ? 'Ogg loaded ✓' : 'Fallback serif (drop Ogg in public/fonts/)'; });
+text3d.loadFont().then((r) => { const el = document.querySelector('#text-status'); if (el) el.textContent = r.ogg ? 'Source Code Pro loaded ✓' : 'Font missing — check public/fonts/'; });
 
 // Live density control for every void layer — uses draw ranges (instant, no
 // rebuild) so you can dial the amount of stars / nodes / energy lines / nebula.
@@ -706,19 +716,21 @@ function buildNetwork() {
   pgeo.setAttribute('aColor', new THREE.BufferAttribute(aColor, 3));
   const pmat = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-    uniforms: { uTime: { value: 0 }, uSize: { value: 3.2 }, uTwinkle: { value: 1 }, uWarp: { value: 0 }, uDrift: { value: 1 }, uPtN: { value: new THREE.Vector2(9, 9) }, uVel: { value: 0 }, uTint: { value: new THREE.Color(0x4fd2ff) }, uTintAmt: { value: 0 } },
+    uniforms: { uTime: { value: 0 }, uSize: { value: 3.2 }, uTwinkle: { value: 1 }, uWarp: { value: 0 }, uDrift: { value: 1 }, uFlare: { value: 1 }, uPtN: { value: new THREE.Vector2(9, 9) }, uVel: { value: 0 }, uTint: { value: new THREE.Color(0x4fd2ff) }, uTintAmt: { value: 0 } },
     vertexShader: `attribute vec3 aAmp,aFre,aPha,aColor; attribute float aPhase,aScale;
-      uniform float uTime,uSize,uTwinkle,uWarp,uDrift,uVel; uniform vec2 uPtN;
+      uniform float uTime,uSize,uTwinkle,uWarp,uDrift,uVel,uFlare; uniform vec2 uPtN;
       varying vec3 vC; varying float vA;
       ${DRIFT_GLSL}
       void main(){
         vec3 p=drifted(position,aAmp,aFre,aPha,uTime,uDrift);
         float tw=mix(0.85, 0.55+0.45*sin(uTime*1.6+aPhase), uTwinkle);
+        float fl=pow(max(0.0,sin(uTime*0.55+aPhase*3.1)),36.0)*uFlare;     // rare brief flare — one node catching light every few seconds
+        tw+=fl*0.9;
         vec4 mv=modelViewMatrix*vec4(p,1.0); float depth=-mv.z;
         vec4 clip=projectionMatrix*mv; vec2 ndc=clip.xy/clip.w;
         float near=smoothstep(0.5,0.0,length(ndc-uPtN));
         tw*=1.0+near*(0.5+uVel*0.9);                                      // cursor stirs nearby nodes
-        tw=min(tw,1.45);                                                  // cap: additive clusters must never stack to white
+        tw=min(tw,1.45+uFlare*0.35);                                      // cap: additive clusters must never stack to white (flares get a little headroom)
         vA=tw*smoothstep(16.0,44.0,depth)*smoothstep(950.0,520.0,depth);  // near+far fade
         vC=aColor;
         gl_PointSize=min(aScale*uSize*tw*(1.0+uWarp*1.6)*(420.0/max(depth,1.0)), 24.0);
@@ -763,7 +775,7 @@ function buildNetwork() {
   lgeo.setAttribute('aLColor', new THREE.BufferAttribute(lCol, 3));
   const lmat = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-    uniforms: { uTime: { value: 0 }, uDrift: { value: 1 }, uWarp: { value: 0 }, uTint: { value: new THREE.Color(0x4fd2ff) }, uTintAmt: { value: 0 } },
+    uniforms: { uTime: { value: 0 }, uDrift: { value: 1 }, uWarp: { value: 0 }, uPulse: { value: 1 }, uTint: { value: new THREE.Color(0x4fd2ff) }, uTintAmt: { value: 0 } },
     vertexShader: `attribute vec3 aAmp,aFre,aPha,aLColor; attribute float aT,aLPhase;
       uniform float uTime,uDrift; varying float vT,vP,vFade; varying vec3 vC;
       ${DRIFT_GLSL}
@@ -774,13 +786,23 @@ function buildNetwork() {
         vT=aT; vP=aLPhase; vC=aLColor;
         gl_Position=projectionMatrix*mv; }`,
     fragmentShader: `varying float vT,vP,vFade; varying vec3 vC;
-      uniform float uTime,uWarp,uTintAmt; uniform vec3 uTint;
+      uniform float uTime,uWarp,uTintAmt,uPulse; uniform vec3 uTint;
       void main(){
         float life=0.08+0.15*sin(uTime*0.35+vP*6.2831);                    // slow form/dissolve (restraint: lines support, never shout)
-        float head=fract(uTime*0.22+vP);
-        float pulse=smoothstep(0.05,0.0,abs(vT-head));                     // bright spark travelling A->B
-        float a=clamp(life+pulse*0.9,0.0,1.0)*vFade*(1.0+uWarp*0.8);
-        vec3 col=mix(vC,uTint,uTintAmt)+pulse*vec3(0.5);
+        // Traffic, not a metronome. Every link used to run a packet at the same
+        // rate forever, which averages out to a uniform shimmer your eye stops
+        // reading. Now each link runs its own cycle and only a minority of those
+        // cycles actually fire — fewer packets, brighter, and half of them run
+        // the other way, so you can follow one across the field. Alive AND calmer.
+        float cyc=uTime*0.19+vP*9.0;
+        float slot=floor(cyc);
+        float roll=fract(sin(slot*12.9898+vP*78.233)*43758.5453);
+        float fire=step(0.58,roll);                                        // ~42% of cycles carry a packet
+        float dir=step(0.5,fract(roll*7.0));                               // half of them travel B->A
+        float head=fract(cyc); head=mix(head,1.0-head,dir);
+        float pulse=fire*smoothstep(0.035,0.0,abs(vT-head))*uPulse;        // bright spark travelling the link
+        float a=clamp(life+pulse*1.15,0.0,1.0)*vFade*(1.0+uWarp*0.8);
+        vec3 col=mix(vC,uTint,uTintAmt)+pulse*vec3(0.55,0.75,0.9);
         gl_FragColor=vec4(col,a); }`,
   });
   const lines = new THREE.LineSegments(lgeo, lmat);
@@ -792,6 +814,8 @@ function buildNetwork() {
     pmat.uniforms.uTime.value = t; lmat.uniforms.uTime.value = t;
     pmat.uniforms.uDrift.value = driftOn; lmat.uniforms.uDrift.value = driftOn;
     pmat.uniforms.uPtN.value.copy(ptN); pmat.uniforms.uVel.value = vel;
+    pmat.uniforms.uFlare.value = PREFERS_REDUCED ? 0 : FX.flare;   // signs of life are the first thing reduced-motion turns off
+    lmat.uniforms.uPulse.value = PREFERS_REDUCED ? 0 : FX.pulse;
   }
   const setTint = (hex, amt) => { pmat.uniforms.uTint.value.set(hex); pmat.uniforms.uTintAmt.value = amt; lmat.uniforms.uTint.value.set(hex); lmat.uniforms.uTintAmt.value = amt; };
   const setWarp = (v) => { pmat.uniforms.uWarp.value = v; lmat.uniforms.uWarp.value = v; };
@@ -891,6 +915,7 @@ let beats = [];
 let speedMul = 1;    // global flight-speed multiplier (scales per-shot durations)
 let smooth = 0.5;    // 0 = straight segments, 1 = fully curved (spline) path
 let tween = null;    // active section→section transition { from, to, t, dur }
+let _breath = 0;     // 0..1 idle-sway weight — fades out during a flight, back in on arrival
 let firstFrameDone = false; // set after the first composed render; the intro loader waits on it
 let index = 0;       // play-mode target section
 let progress = 0;    // smoothed 0..1 along the path
@@ -919,7 +944,7 @@ function fitFov(v) {
   return Math.min(115, THREE.MathUtils.radToDeg(2 * Math.atan(t)));
 }
 // global (non-keyframed) state that Save must persist alongside the beats
-const GLOBAL_KEYS = ['starFrac', 'nodeFrac', 'lineFrac', 'nebFrac', 'driftOn', 'fovPunch', 'warpStrength', 'warpLength', 'twinkleOn', 'linesOn', 'nebVisible', 'uiHud', 'uiWaypoints', 'uiCaption', 'uiHint', 'uiScale', 'waveAmp', 'waveSpd', 'waveCoil', 'waveOn', 'waveGrid', 'nebSpd', 'nebWarp', 'nebHue', 'nebEmber', 'nebVig', 'nebGlow', 'vignette', 'grain', 'lightning', 'glowSpots', 'lightInt', 'lightReach', 'lightRate', 'glowBright', 'glowFlick', 'cursorDrive', 'waterStr', 'waterRad', 'waterAtt', 'waterDisp', 'waterSheen', 'openFit', 'openSize', 'openGlow', 'openForm', 'openShatterR', 'openPush', 'openSpring', 'openColor'];
+const GLOBAL_KEYS = ['starFrac', 'nodeFrac', 'lineFrac', 'nebFrac', 'driftOn', 'fovPunch', 'warpStrength', 'warpLength', 'twinkleOn', 'linesOn', 'nebVisible', 'uiHud', 'uiWaypoints', 'uiCaption', 'uiHint', 'uiScale', 'waveAmp', 'waveSpd', 'waveCoil', 'waveOn', 'waveGrid', 'nebSpd', 'nebWarp', 'nebHue', 'nebEmber', 'nebVig', 'nebGlow', 'vignette', 'grain', 'pulse', 'flare', 'breath', 'breathRoll', 'lightning', 'glowSpots', 'lightInt', 'lightReach', 'lightRate', 'glowBright', 'glowFlick', 'cursorDrive', 'waterStr', 'waterRad', 'waterAtt', 'waterDisp', 'waterSheen', 'openFit', 'openSize', 'openGlow', 'openForm', 'openShatterR', 'openPush', 'openSpring', 'openColor'];
 let activePunch = 0;   // 0..1 across a transition, peaks at the midpoint (for FOV punch)
 const DEF_FOV = 68, DEF_DUR = 1.6;
 // a sensible starter panel for a section: sits at its aim point, fixed orientation
@@ -1286,7 +1311,7 @@ function makeLabel(text, selected) {
   const x = c.getContext('2d');
   x.fillStyle = 'rgba(4,6,10,0.55)'; x.beginPath(); x.arc(32, 32, 30, 0, Math.PI * 2); x.fill();
   x.fillStyle = selected ? '#ffffff' : '#4fd2ff';
-  x.font = 'bold 40px Inter, system-ui, sans-serif';
+  x.font = 'bold 34px "source-code-pro", ui-monospace, monospace';
   x.textAlign = 'center'; x.textBaseline = 'middle';
   x.fillText(text, 32, 35);
   const tex = new THREE.CanvasTexture(c);
@@ -1782,7 +1807,7 @@ function updateAssetDOF(flying) {            // depth-of-field blur layered on t
 try { initAssets(); } catch (e) { console.error('[initAssets]', e); }
 
 // ---- 3D mesh headline — a section's caption title rendered as a real extruded
-//  Ogg mesh (via text3d), framed left-of-center in the beat view, with grouped
+//  extruded mesh (via text3d), framed left-of-center in the beat view, with grouped
 //  scale/fade/rise in & out. The DOM title is hidden while this is on. Best for
 //  short titles ("My Projects", project names) — long statements stay DOM text.
 const headline3D = (() => {
@@ -2507,6 +2532,10 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
     ['nebglow', () => FX.nebGlow, (v) => { FX.nebGlow = v; livingVoid.nebMat.uniforms.uGlow.value = v; }, f2],
     ['vignette', () => FX.vignette, (v) => { FX.vignette = v; }, f2],
     ['grain', () => FX.grain, (v) => { FX.grain = v; }, f3],
+    ['pulse', () => FX.pulse, (v) => { FX.pulse = v; }, f2],
+    ['flare', () => FX.flare, (v) => { FX.flare = v; }, f2],
+    ['breath', () => FX.breath, (v) => { FX.breath = v; }, f2],
+    ['breathroll', () => FX.breathRoll, (v) => { FX.breathRoll = v; }, f2],
     ['waterstr', () => FX.waterStr, (v) => { FX.waterStr = v; }, f2],
     ['waterrad', () => FX.waterRad, (v) => { FX.waterRad = v; }, f3],
     ['wateratt', () => FX.waterAtt, (v) => { FX.waterAtt = v; }, f3],
@@ -2709,7 +2738,7 @@ const uxEl = document.querySelector('#uxpanel');
   });
 })();
 
-// ---- 3D Text panel (toggle with Y) — place & style extruded Ogg text ---------
+// ---- 3D Text panel (toggle with Y) — place & style extruded 3D text ---------
 const textEl = document.querySelector('#textpanel');
 (() => {
   if (!textEl || !DEV_TOOLS) return;        // preview-only build (placed text still renders for visitors)
@@ -2839,6 +2868,19 @@ function animate() {
     const mx = mouse.x * 3, my = mouse.y * 3;
     camera.position.set(cp.x + mx, cp.y - my, cp.z);
     camera.quaternion.copy(beatQuats[i0]).slerp(beatQuats[i1], f);
+    // ---- Idle breath — the void is never perfectly still --------------------
+    //  A sub-degree sway that exists only while parked. During a flight it would
+    //  fight the composed easing, so it fades out with the tween and eases back
+    //  in on arrival. The amplitude is deliberately below the threshold you can
+    //  name: you read presence, not movement.
+    _breath += ((tween || PREFERS_REDUCED) ? -_breath : (1 - _breath)) * Math.min(1, dt * 2.2);
+    if (_breath > 0.002) {
+      const b = FX.breath * _breath;
+      camera.position.x += Math.sin(t * 0.23) * b;
+      camera.position.y += Math.sin(t * 0.31 + 1.3) * b * 0.7;
+      camera.position.z += Math.sin(t * 0.17 + 2.1) * b * 0.5;
+      camera.rotateZ(Math.sin(t * 0.19 + 0.7) * FX.breathRoll * _breath * 0.01745);
+    }
     // per-shot field-of-view (zoom), interpolated across the segment, + transition punch
     const fa = beats[i0]?.fov ?? DEF_FOV, fb = beats[i1]?.fov ?? DEF_FOV;
     const nf = fitFov(fa + (fb - fa) * f + FX.fovPunch * activePunch);   // portrait screens widen to keep the composed framing
@@ -3050,28 +3092,114 @@ try { renderer.compile(scene, camera); } catch (e) { console.warn('[precompile]'
 animate();
 initMagneticCursor();
 
-// ---- Intro loader: mono % count → reveal the Ogg wordmark -------------------
+// ---- Intro loader: the void wires itself up, then warps into the flight -----
+//  Built from the scene's own vocabulary — nodes, links, one mono voice — so it
+//  reads as the first beat instead of a spinner bolted onto the front. The
+//  constellation assembles as progress climbs, the wordmark decodes slot by
+//  slot just ahead of the meter, and on exit the whole lattice stretches past
+//  the viewer (lab departure curve: leave with gravity) into the opening shot.
 (() => {
   const ld = document.querySelector('#loader');
   if (!ld) return;
-  const pct = document.querySelector('#ld-pct'), fill = document.querySelector('#ld-fill');
-  const overlay = document.querySelector('#overlay');
-  const dur = 1900; let t0 = null;
+  const pctEl = document.querySelector('#ld-pct'), labEl = document.querySelector('#ld-label');
+  const markEl = document.querySelector('#ld-mark'), ticksEl = document.querySelector('#ld-ticks');
+  const cv = document.querySelector('#ld-canvas'), overlay = document.querySelector('#overlay');
+  const RM = PREFERS_REDUCED;
+
+  // the wordmark: one <i> per slot, scrambling until progress reaches it
+  const WORD = 'YARIN LEVIN', SCRAM = '#*+=-<>/|01[]{}';
+  const cells = [...WORD].map((ch) => {
+    const el = document.createElement('i');
+    if (ch !== ' ' && !RM) el.className = 'pend';
+    el.textContent = ch === ' ' ? ' ' : (RM ? ch : SCRAM[(Math.random() * SCRAM.length) | 0]);
+    if (markEl) markEl.appendChild(el);
+    return { ch, el, fixed: ch === ' ' };
+  });
+  const ticks = [];
+  if (ticksEl) for (let i = 0; i < 34; i++) { const b = document.createElement('b'); ticksEl.appendChild(b); ticks.push(b); }
+  // the status line names what is actually being built, not a fake percentage story
+  const STEPS = [[0, 'initialising'], [0.16, 'seeding the starfield'], [0.38, 'wiring the network'],
+    [0.6, 'warming the nebula'], [0.8, 'composing the shots'], [0.95, 'entering the void']];
+
+  // ---- the constellation ----------------------------------------------------
+  const ctx = cv && cv.getContext ? cv.getContext('2d') : null;
+  const NODES = IS_TOUCH ? 40 : 66, LINK = 0.185;      // normalised link radius
+  const nodes = [];
+  for (let i = 0; i < NODES; i++) nodes.push({
+    x: Math.random(), y: Math.random(), a: Math.random() * 6.283,
+    s: 0.14 + Math.random() * 0.5, r: 0.6 + Math.random() * 1.7,
+  });
+  let W = 0, H = 0;
+  function fit() {
+    if (!cv || !ctx) return;
+    const d = Math.min(2, window.devicePixelRatio || 1);
+    W = cv.clientWidth; H = cv.clientHeight;
+    cv.width = Math.max(1, Math.round(W * d)); cv.height = Math.max(1, Math.round(H * d));
+    ctx.setTransform(d, 0, 0, d, 0, 0);
+  }
+  fit(); window.addEventListener('resize', fit);
+
+  const _x = [], _y = [], _a = [];
+  function draw(p, warp, t) {
+    if (!ctx || !W) return;
+    ctx.clearRect(0, 0, W, H);
+    const reach = p * 1.15 * NODES;
+    const shown = Math.max(0, Math.min(NODES, Math.ceil(reach)));
+    const cx = W / 2, cy = H / 2, sw = 1 + warp * 2.4;     // exit: push the lattice past the viewer
+    _x.length = _y.length = _a.length = 0;
+    for (let i = 0; i < shown; i++) {
+      const n = nodes[i];
+      const dx = RM ? 0 : Math.sin(t * n.s + n.a) * 0.013, dy = RM ? 0 : Math.cos(t * n.s * 0.83 + n.a) * 0.013;
+      _x.push(cx + ((n.x - 0.5) + dx) * W * sw);
+      _y.push(cy + ((n.y - 0.5) + dy) * H * sw);
+      _a.push(clamp((reach - i) * 1.6, 0, 1));             // each node fades in as it is reached
+    }
+    ctx.lineWidth = 1;                                      // links first; nodes sit on top
+    for (let i = 0; i < shown; i++) for (let j = i + 1; j < shown; j++) {
+      const dx = (_x[i] - _x[j]) / W, dy = (_y[i] - _y[j]) / H;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d > LINK) continue;
+      const a = (1 - d / LINK) * 0.32 * _a[i] * _a[j] * (1 + warp * 1.8);
+      ctx.strokeStyle = 'rgba(79,210,255,' + a.toFixed(3) + ')';
+      ctx.beginPath(); ctx.moveTo(_x[i], _y[i]); ctx.lineTo(_x[j], _y[j]); ctx.stroke();
+    }
+    for (let i = 0; i < shown; i++) {
+      const tw = RM ? 0.8 : 0.55 + 0.45 * Math.sin(t * 1.7 + nodes[i].a);
+      ctx.fillStyle = 'rgba(190,232,255,' + (_a[i] * tw * 0.9).toFixed(3) + ')';
+      ctx.beginPath(); ctx.arc(_x[i], _y[i], nodes[i].r * (1 + warp), 0, 6.2832); ctx.fill();
+    }
+  }
+
+  const dur = 2000; let t0 = null, scramT = 0;
   const ease = (x) => 1 - Math.pow(1 - x, 3);
   function step(ts) {
     if (t0 === null) t0 = ts;
     // hold at 99 until the scene has actually rendered a frame — the reveal
     // must never cross-fade into a black canvas on a slow device
-    const p = Math.min(clamp((ts - t0) / dur, 0, 1), firstFrameDone ? 1 : 0.99);
-    const e = ease(p);
-    if (pct) pct.textContent = Math.round(e * 100);
-    if (fill) fill.style.transform = `scaleX(${e})`;
-    if (p < 1) requestAnimationFrame(step);
-    else {
-      ld.classList.add('done');
-      if (overlay) overlay.classList.add('revealed');
-      setTimeout(() => { ld.style.display = 'none'; }, 900);
+    const raw = clamp((ts - t0) / dur, 0, 1);
+    const p = ease(Math.min(raw, firstFrameDone ? 1 : 0.99));
+    if (pctEl) pctEl.textContent = Math.round(p * 100);
+    for (let i = 0; i < ticks.length; i++) ticks[i].classList.toggle('on', i / ticks.length < p);
+    if (labEl) { let s = STEPS[0][1]; for (const [at, txt] of STEPS) if (p >= at) s = txt; if (labEl.textContent !== s) labEl.textContent = s; }
+    const reach = p * 1.12 * cells.length;                  // decode runs slightly ahead of the meter
+    const cyc = ts - scramT > 55; if (cyc) scramT = ts;
+    if (!RM) for (let i = 0; i < cells.length; i++) {
+      const c = cells[i]; if (c.fixed) continue;
+      if (reach > i + 1) { if (c.el.textContent !== c.ch) { c.el.textContent = c.ch; c.el.classList.remove('pend'); } }
+      else if (cyc) c.el.textContent = SCRAM[(Math.random() * SCRAM.length) | 0];
     }
+    draw(p, 0, ts / 1000);
+    if (raw < 1 || !firstFrameDone) { requestAnimationFrame(step); return; }
+    // ---- exit: the lattice warps past the viewer, the panel falls away -------
+    ld.classList.add('done');
+    if (overlay) overlay.classList.add('revealed');
+    const doneAt = ts;
+    (function out(ts2) {
+      const k = clamp((ts2 - doneAt) / 800, 0, 1);
+      draw(1, RM ? 0 : k * k, ts2 / 1000);
+      if (k < 1) requestAnimationFrame(out);
+      else { ld.style.display = 'none'; window.removeEventListener('resize', fit); }
+    })(ts);
   }
   requestAnimationFrame(step);
 })();

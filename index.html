@@ -25,11 +25,17 @@
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <!-- Intro loader: mono % counter, then the Ogg wordmark resolves -->
+    <!-- Intro loader: a constellation wires itself up while the wordmark decodes -->
     <div id="loader">
-      <div class="ld-num"><span id="ld-pct">0</span><span class="ld-unit">%</span></div>
-      <div class="ld-bar"><div class="ld-fill" id="ld-fill"></div></div>
-      <div class="ld-label">Entering the void</div>
+      <canvas id="ld-canvas" aria-hidden="true"></canvas>
+      <div class="ld-core">
+        <div class="ld-mark" id="ld-mark" aria-label="Yarin Levin"></div>
+        <div class="ld-meter">
+          <div class="ld-ticks" id="ld-ticks" aria-hidden="true"></div>
+          <div class="ld-num"><span id="ld-pct">0</span><span class="ld-unit">%</span></div>
+        </div>
+        <div class="ld-label" id="ld-label">initialising</div>
+      </div>
     </div>
 
     <canvas id="scene" role="img" aria-label="A dark 3D void of drifting data points and glowing connections — scroll or swipe to fly between portfolio sections"></canvas>
@@ -121,6 +127,12 @@
       <div class="fx-group">Grade <span style="color:#5b768f">final pass</span></div>
       <div class="fx-row"><label>Vignette</label><input id="fx-vignette" type="range" min="0" max="1.2" step="0.02" /><span id="fx-vignette-v"></span></div>
       <div class="fx-row"><label>Grain</label><input id="fx-grain" type="range" min="0" max="0.08" step="0.002" /><span id="fx-grain-v"></span></div>
+
+      <div class="fx-group">Signs of life <span style="color:#5b768f">traffic &middot; flares &middot; breath</span></div>
+      <div class="fx-row"><label>Link traffic</label><input id="fx-pulse" type="range" min="0" max="2" step="0.05" /><span id="fx-pulse-v"></span></div>
+      <div class="fx-row"><label>Node flares</label><input id="fx-flare" type="range" min="0" max="2" step="0.05" /><span id="fx-flare-v"></span></div>
+      <div class="fx-row"><label>Idle breath</label><input id="fx-breath" type="range" min="0" max="4" step="0.05" /><span id="fx-breath-v"></span></div>
+      <div class="fx-row"><label>Breath roll</label><input id="fx-breathroll" type="range" min="0" max="2" step="0.05" /><span id="fx-breathroll-v"></span></div>
 
       <div class="fx-group">Water swipe <span style="color:#5b768f">per-section</span></div>
       <div class="fx-row"><label>Strength</label><input id="fx-waterstr" type="range" min="0.02" max="0.5" step="0.01" /><span id="fx-waterstr-v"></span></div>
@@ -218,9 +230,9 @@
 
       <div class="fx-group">Type</div>
       <div class="fx-row"><label>Size</label><input id="as-size" type="range" min="0.4" max="2.6" step="0.05" /><span id="as-size-v"></span></div>
-      <div class="fx-row"><label>Font</label><select id="as-font"><option value="">default</option><option value='"ogg",serif'>Ogg (serif)</option><option value='"acumin-pro",sans-serif'>Acumin (sans)</option><option value='"source-code-pro",monospace'>Source Code (mono)</option></select></div>
+      <div class="fx-row"><label>Font</label><select id="as-font"><option value="">default</option><option value='var(--f)'>Source Code (mono)</option></select></div>
       <div class="fx-row"><label>3D depth</label><input id="as-depth" type="range" min="0" max="16" step="1" /><span id="as-depth-v"></span></div>
-      <label class="fx-chk" id="as-mesh3d-row" style="display:none"><input id="as-mesh3d" type="checkbox" /> 3D mesh headline (real extruded Ogg)</label>
+      <label class="fx-chk" id="as-mesh3d-row" style="display:none"><input id="as-mesh3d" type="checkbox" /> 3D mesh headline (real extruded type)</label>
 
       <div class="fx-group">Animate in</div>
       <div class="fx-row"><label>Duration</label><input id="as-in-dur" type="range" min="0" max="2500" step="50" /><span id="as-in-dur-v"></span></div>

@@ -1,7 +1,7 @@
 // ============================================================================
 //  TEXT 3D — placeable, truly-extruded text in the void.
-//  Loads a font Ogg-first (real Adobe Ogg if a file is dropped into
-//  public/fonts/, otherwise a bundled serif stand-in), builds beveled
+//  Loads the site's single typeface (self-hosted Source Code Pro, the same face
+//  the DOM and the loader use), builds beveled
 //  TextGeometry meshes with an emissive material that blooms, and persists
 //  every placed text to localStorage. All 3D options are per-item data.
 // ============================================================================
@@ -9,15 +9,11 @@ import * as THREE from 'three';
 import { FontLoader } from 'three/addons/loaders/FontLoader.js';
 import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 
-// Ogg is tried first; drop any of these into public/fonts/ to upgrade instantly.
+// The site runs ONE typeface, so extruded 3D text must be that same face —
+// self-hosted Source Code Pro (OFL), instanced at weight 500 to match the DOM.
 const OGG_CANDIDATES = [
-  { url: '/fonts/ogg.typeface.json', type: 'json' },
-  { url: '/fonts/Ogg-Roman.otf', type: 'ttf' },
-  { url: '/fonts/Ogg-Roman.ttf', type: 'ttf' },
-  { url: '/fonts/Ogg.otf', type: 'ttf' },
-  { url: '/fonts/Ogg.ttf', type: 'ttf' },
+  { url: '/fonts/SourceCodePro-Medium.ttf', type: 'ttf' },
 ];
-const FALLBACK = { url: '/fonts/fallback-serif.typeface.json', type: 'json' };
 const STORE_KEY = 'voidTexts';
 
 // Glow that reads as a soft cool halo instead of a white blow-out: tint the
@@ -63,7 +59,7 @@ function makeGlassMat(color, glow, transparent, width) {
 
 let _uid = 1;
 export const defaultText = () => ({
-  id: _uid++, text: 'OGG',
+  id: _uid++, text: 'VOID',
   size: 26, depth: 7, bevel: 1.2,           // 3D options
   x: 0, y: 12, z: -40, rx: 0, ry: 0, rz: 0,  // placement
   color: '#eaf4ff', glow: 1.5,               // look
@@ -96,8 +92,8 @@ export function createText3D() {
     for (const c of OGG_CANDIDATES) {
       try { font = await tryLoad(c); usingOgg = true; rebuildAll(); return { ogg: true, url: c.url }; } catch (e) { /* try next */ }
     }
-    try { font = await tryLoad(FALLBACK); usingOgg = false; rebuildAll(); return { ogg: false, url: FALLBACK.url }; }
-    catch (e) { console.warn('[text3d] no font could be loaded', e); return { ogg: false, url: null }; }
+    console.warn('[text3d] the mono face could not be loaded — 3D text stays empty rather than falling back to a second typeface');
+    return { ogg: false, url: null };
   }
 
   function buildMesh(d) {
