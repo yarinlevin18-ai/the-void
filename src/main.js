@@ -13,6 +13,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { createText3D, defaultText } from './text3d.js';
 import { initMagneticCursor } from './cursor.js';
+import { initDossier, initWorkHub } from './dossier.js';
+let workHub = null; // assigned at bootstrap; setCaption may run first
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
@@ -1669,6 +1671,7 @@ function setCaption(i) {
   if (!capEl || !captionsOn || i === _capShown) return;
   _capShown = i;
   const c = resolveCaption(i);
+  if (workHub) { if (/projects/i.test((beats[i] && beats[i].name) || '')) workHub.show(); else workHub.hide(); }
   capLabel.textContent = c.label;
   requestAnimationFrame(() => {                 // set text → replay each asset's in-animation
     capTitle.textContent = c.title;
@@ -1682,6 +1685,7 @@ function setCaption(i) {
 function hideCaption() {
   if (!capEl || _capShown === -1) return;
   _capShown = -1;
+  if (workHub) workHub.hide();
   capEl.classList.remove('show');
   hideAsset(assetDef('capTitle'));
   hideAsset(assetDef('capDesc'));
@@ -3091,6 +3095,8 @@ function animate() {
 try { renderer.compile(scene, camera); } catch (e) { console.warn('[precompile]', e); }
 animate();
 initMagneticCursor();
+const dossier = initDossier();
+workHub = initWorkHub(() => dossier.show('work'));
 
 // ---- Intro loader: the void wires itself up, then warps into the flight -----
 //  Built from the scene's own vocabulary — nodes, links, one mono voice — so it
