@@ -26,7 +26,7 @@ function renderAbout(p) {
       <div><span>Seeking</span>${esc(p.status.seeking)}</div>
       <div><span>Availability</span>${esc(p.status.availability)}</div>
       <div><span>Location</span>${esc(p.status.location)}</div>
-      <div><span>Contact</span><a href="mailto:${p.links.email}">${p.links.email}</a> · ${esc(p.links.phone)}</div>
+      <div><span>Contact</span><a href="mailto:${p.links.email}">${p.links.email}</a> · ${esc(p.links.phone)} — ${esc(p.status.responseTime)}</div>
     </div>`;
 }
 
