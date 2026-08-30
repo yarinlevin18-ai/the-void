@@ -906,13 +906,13 @@ const DEFAULT_BEATS = [
   { name: 'Opening', cam: [-56, 2, 120], look: [-11, 59, 42], up: [0, 1, 0], fov: 25, dur: 1.4, desc: 'Landing pages & SaaS interfaces — fly through the work.', img: '', link: '', fx: { bloomStrength: 0.65 }, panel: null },
   { name: 'Hero', cam: [1, 53, 33], look: [192, -55, -56], up: [0, 1, 0], fov: 41, dur: 2.1, desc: '', img: '', link: '', panel: null },
   // ---- The person (v13 restructure: the flight is about Yarin; projects are one chapter) ----
-  { name: 'Who', cam: [3, 8, -8], look: [-30, 20, -70], up: [0, 1, 0], fov: 55, dur: 1.6, desc: 'In five months of building: a dozen shipped products — paid client work, a full SaaS study platform, and the void you’re flying through.', cap: { title: 'Yarin Levin — Frontend Developer.' }, img: '', link: '', panel: null },
+  { name: 'Who', cam: [3, 8, -8], look: [-30, 20, -70], up: [0, 1, 0], fov: 55, dur: 1.6, desc: 'In five months of directing AI: a dozen shipped products — paid client work, a full SaaS study platform, and the void you’re flying through.', cap: { title: 'Yarin Levin — AI-Native Builder.' }, img: '', link: '', panel: null },
   { name: 'The Road Here', cam: [-10, 14, -60], look: [35, -10, -130], up: [0, 1, 0], fov: 62, dur: 1.5, desc: 'Four years of IDF command — deputy company commander through Operation Guardian of Walls — then 35+ talks across the US and Panama, rooms of 10 to 700. Own the outcome. Stay calm when it’s loud.', cap: { title: 'Before code: command and a crowd.' }, img: '', link: '', panel: null },
   { name: 'What I Work With', cam: [9, 10, -69], look: [15, 4, -119], up: [-0.66418640324206, 0.7376001166578326, -0.1216654825935754], fov: 83, dur: 1.8, desc: 'React 19 / Next.js 16 · TypeScript · Tailwind v4 — and the motion layer: Three.js, GLSL, Framer Motion. Every easing curve on this site was tuned in a daily lab first.', img: '', link: '', panel: null },
   { name: 'My Projects', cam: [0, 2, -190], look: [-22, 0, -235], up: [0, 1, 0], fov: 70, dur: 1.5, desc: 'Seventeen builds — SHADIEZ, TEEPO, Sabai, Kiara’s Club, Worldiez, Mentorship, AeroCy, SecScan, BodyLoop, and a daily practice of motion labs.', cap: { desc: 'A glimpse of the full body of work — keep flying.' }, img: '', link: '', panel: null },
   { name: 'The Work', cam: [0, 2, -310], look: [22, 0, -355], up: [0, 1, 0], fov: 80, dur: 1.35, desc: 'SHADIEZ — paid client e-commerce with a 3D hero. TEEPO — a full Hebrew-RTL study platform with real auth. Twelve more in the dossier — press C.', img: '/previews/shadiez.jpg', img2: '/previews/teepo.jpg', link: 'https://shadiez.vercel.app', fx: { bloomStrength: 0.5 }, panel: { pos: [22, 0, -355], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
   // ⏳ Ambitions copy pending Yarin's own words (PORTFOLIO_PLAN §4b) — status line stands in.
-  { name: 'Where This Goes', cam: [0, 35, -410], look: [0, 60, -475], up: [0, 1, 0], fov: 68, dur: 1.5, desc: 'A part-time student frontend position where the bar is high and the feedback is honest — available now, and I reply fast.', img: '', link: '', panel: null },
+  { name: 'Where This Goes', cam: [0, 35, -410], look: [0, 60, -475], up: [0, 1, 0], fov: 68, dur: 1.5, desc: 'A part-time student position building with AI, where the bar is high and the feedback is honest — available now, and I reply fast.', img: '', link: '', panel: null },
   { name: 'Let’s build something', cam: [0, 49, -560], look: [1, 290, -560], up: [0, 0, -1], fov: 52, dur: 3, desc: 'Have a landing page or product interface in mind? I reply fast.', cap: { desc: 'yarinlevin18@gmail.com — or hit the button.' }, img: '', link: 'mailto:yarinlevin18@gmail.com', panel: null },
 ];
 
@@ -1062,11 +1062,10 @@ function load() {
           }
           migrated = true;
         }
-        if (!(d.version >= 13)) {
-          // v13 restructure — the flight is about the person, not just the
-          // projects (Who / Road / Skills chapters, work compressed to two
-          // beats). Too structural to patch a saved path: adopt the freshly
-          // authored DEFAULT_BEATS wholesale; global FX/UX prefs survive.
+        if (!(d.version >= 14)) {
+          // v14: title changed Frontend Developer → AI-Native Builder — Yarin's
+          // call: the honest positioning is directing AI, and it's the stronger
+          // one. Same wholesale re-adopt as v13 (copy lives in DEFAULT_BEATS).
           beats = structuredClone(DEFAULT_BEATS);
           beats.forEach(backfillBeat);
           migrated = true;
@@ -1081,7 +1080,7 @@ function load() {
 }
 function save() {
   const g = {}; for (const k of GLOBAL_KEYS) g[k] = FX[k]; g.ease = txEaseName;
-  localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 13 }));
+  localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 14 }));
 }
 // push the global (saved) FX/UX/transition state into the live scene + DOM
 function applyGlobals() {

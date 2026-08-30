@@ -6,37 +6,40 @@
 
 export const PROFILE = {
   name: 'Yarin Levin',
-  title: 'Frontend Developer',
+  title: 'AI-Native Builder',
 
   // Three lengths — pick per surface, never rewrite in place.
   bio: {
-    line: 'Frontend developer. Student position, part-time — available now.',
+    line: 'AI-native builder. Student position, part-time — available now.',
     short:
-      'Self-taught frontend developer with a builder’s output rate: in five ' +
-      'months I shipped a dozen products — client e-commerce, a Hebrew-RTL study ' +
+      'AI-native builder with a rare output rate: in five months of directing ' +
+      'AI I shipped a dozen products — client e-commerce, a Hebrew-RTL study ' +
       'platform with real auth and a Chrome-extension scraper, this 3D portfolio, ' +
-      'and a daily practice of motion labs. Before code: four years of IDF command ' +
-      'and a year of public speaking across the US. B.A. student at Ben-Gurion ' +
-      'University, looking for a part-time student position.',
+      'and a daily practice of motion labs. I don’t type every line — I direct, ' +
+      'review, and ship. Before code: four years of IDF command and a year of ' +
+      'public speaking across the US. B.A. student at Ben-Gurion University, ' +
+      'looking for a part-time student position.',
     full:
       'I came to development the long way. Four years in the IDF’s Rescue & ' +
       'Training Division — deputy company commander, operations officer through ' +
       'Operation Guardian of Walls — then a year giving 35+ talks across the US ' +
       'and Panama to audiences of 10 to 700. Both jobs taught the same thing: ' +
       'own the outcome, communicate clearly, stay calm when it’s loud.\n\n' +
-      'In April 2026 I started building for the web, self-taught and ' +
-      'AI-assisted, and haven’t stopped: paid client work (SHADIEZ), a full ' +
+      'In April 2026 I started building for the web — self-taught, working ' +
+      'with AI from day one. I direct Claude the way I once directed a ' +
+      'company: clear intent, high standards, full ownership of the outcome. ' +
+      'And I haven’t stopped: paid client work (SHADIEZ), a full ' +
       'product with real users’ problems in mind (TEEPO — Hebrew-RTL study ' +
       'platform: Supabase auth, Moodle scraping via a Chrome extension, ' +
       'Google-Drive-as-datastore, Claude AI assistant), and a long tail of ' +
       'shipped experiments, including the 3D site you’re flying through. ' +
       'I study Politics & Government and Entrepreneurship at Ben-Gurion ' +
-      'University and I’m looking for a part-time student frontend position ' +
-      'where the bar is high and the feedback is honest.',
+      'University and I’m looking for a part-time student position building ' +
+      'with AI, where the bar is high and the feedback is honest.',
   },
 
   status: {
-    seeking: 'Student position · part-time · frontend',
+    seeking: 'Student position · part-time · AI-native building',
     availability: 'Available now',
     location: 'Israel · flexible, open to relocation',
     responseTime: 'I reply fast.',
@@ -58,7 +61,7 @@ export const PROFILE = {
         period: 'Apr 2026 – present',
         lines: [
           'Landing pages and web products for freelance clients; independent product ventures end-to-end.',
-          'Self-taught in modern development, including AI-assisted tooling (Claude Code).',
+          'Every product built by directing AI (Claude Code) end-to-end — self-taught, spec-driven, full ownership from idea to production.',
         ],
       },
       {
@@ -117,10 +120,11 @@ export const PROFILE = {
       },
     ],
     skills: {
+      'AI-native building': ['directing Claude Code end-to-end', 'agentic workflows & tool use', 'spec-driven development', 'rapid prototype → production'],
       Frontend: ['JavaScript / TypeScript', 'React 19 / Next.js 16', 'Tailwind CSS v4', 'HTML / CSS', 'Hebrew RTL interfaces'],
       'Motion & 3D': ['Three.js / react-three-fiber', 'Framer Motion', 'GLSL shaders', 'custom easing & choreography'],
       'Product & backend': ['Supabase (auth + Postgres)', 'Chrome extensions', 'REST APIs', 'Node.js', 'SQLite', 'Vercel'],
-      Working: ['AI-assisted development (Claude Code)', 'team leadership under pressure', 'public speaking', 'operational planning'],
+      Working: ['team leadership under pressure', 'public speaking', 'operational planning'],
     },
     languages: [
       { lang: 'Hebrew', level: 'native' },
