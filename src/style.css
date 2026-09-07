@@ -1,11 +1,21 @@
 /* ---- Reset & base ---- */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-/* Type system — ONE face, everywhere (Adobe Fonts, kit xan5bdy, index.html).
+/* Type system — ONE face, everywhere (self-hosted, see @font-face below).
    Source Code Pro carries the whole site; hierarchy comes from weight, size and
    letter-spacing instead of from a second or third family. The void is a data
    space — a mono voice is the honest one, and it means the 3D wordmark, the DOM
    captions and the HUD are literally the same typeface. */
+/* Self-hosted Source Code Pro (OFL) — variable weight 200–900, one file for the whole UI.
+   Replaces the Adobe Fonts kit (2026-09-07) so the site makes no external requests. */
+@font-face {
+  font-family: "source-code-pro";
+  src: url("/fonts/SourceCodePro-Variable.ttf") format("truetype-variations"),
+       url("/fonts/SourceCodePro-Variable.ttf") format("truetype");
+  font-weight: 200 900;
+  font-style: normal;
+  font-display: swap;
+}
 :root { --f: "source-code-pro", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
 html, body {

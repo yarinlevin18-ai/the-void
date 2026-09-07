@@ -32,11 +32,10 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   Final grade pass = vignette (0.45) + fine grain on every device.
 - **ONE typeface: Source Code Pro** everywhere (DOM, canvas loader, extruded 3D
   text). Hierarchy comes from weight/size/tracking. CSS uses `var(--f)`; 3D text
-  loads self-hosted `public/fonts/SourceCodePro-Medium.ttf` (OFL, weight 500 only).
-  **The DOM gets Source Code Pro (400/500/600/700) from the Adobe Fonts kit**
-  `use.typekit.net/xan5bdy.css` in `index.html` — do NOT remove it; offline it
-  falls back to Menlo. To go fully self-hosted, add the OFL variable TTF +
-  `@font-face` for `"source-code-pro"` first.
+  loads `public/fonts/SourceCodePro-Medium.ttf` (static, weight 500). The DOM
+  gets `public/fonts/SourceCodePro-Variable.ttf` (OFL, wght 200–900) via the
+  `@font-face` at the top of `src/style.css`, preloaded in `index.html`. The
+  Adobe Fonts kit was dropped 2026-09-07 — **no external requests at all**.
 - **Panels are pure image artifacts** — full-bleed screenshot(s), hairline frame,
   no text or CTA baked in. Captions (DOM) own the words; one focal point and one
   CTA per screen. Beats with no imagery have no panel.
@@ -109,7 +108,7 @@ npm run dev      # http://localhost:5173  (DEV_TOOLS on → E/B/T/U/Y/A work)
 npm run build    # dist/
 ```
 `.claude/launch.json` has a `void-dev` config for the browser preview.
-Offline: the Adobe kit fails silently and DOM type falls back to Menlo. HMR can be flaky —
+Fully offline-capable: fonts are self-hosted, no external requests. HMR can be flaky —
 hard-refresh if a change doesn't show.
 
 ## Open work (authoritative checklist in PORTFOLIO_PLAN.md + BUILD_PLAN.md)
@@ -118,8 +117,7 @@ hard-refresh if a change doesn't show.
    photo for the Who beat.
 2. **Phase 9 ship items:** 30–60s capture with the dossier in shot; live URL on
    CV PDF / LinkedIn / GitHub profile.
-3. **Housekeeping:** optionally self-host Source Code Pro (variable OFL TTF +
-   `@font-face`) so the site has no external requests; decide whether the preserved
+3. **Housekeeping:** decide whether the preserved
    branch `local-phase-b-d-2026-07` (sound module, brand recolor-on-approach)
    has anything worth porting — sound is otherwise **not** in v14.
 4. Optional trust signal: one real line from the SHADIEZ client, or skip.
