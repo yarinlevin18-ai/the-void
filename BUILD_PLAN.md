@@ -98,7 +98,7 @@
 2. Optional **portrait** for the Who beat (PORTFOLIO_PLAN Phase 5 idea: face
    resolving out of the node field). Skip if it reads as filler.
 3. **Phase G leftovers:** capture video, custom domain, URL on CV/LinkedIn/GitHub.
-4. **Housekeeping:** remove the unused Adobe typekit `<link>` from `index.html`;
+4. **Housekeeping:** optionally self-host Source Code Pro (drop the typekit dependency);
    contrast pass; decide on porting sound from `local-phase-b-d-2026-07`.
 5. Optional trust signal: one genuine SHADIEZ client line, or none.
 
