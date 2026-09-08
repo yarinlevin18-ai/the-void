@@ -16,7 +16,7 @@ test('method and proof are present, proof has exactly 3 numbers', () => {
 });
 
 test('featured projects: 4 landing then 3 saas, in spec order', () => {
-  assert.deepEqual(featured.map((p) => p.id), ['teepo', 'aerocy', 'shadiez', 'smartcut', 'llm-gateway', 'focus', 'thailand']);
+  assert.deepEqual(featured.map((p) => p.id), ['teepo', 'aerocy', 'shadiez', 'smartcut', 'llm-gateway', 'focus', 'sabai']);
   assert.deepEqual(featured.map((p) => p.group), ['landing', 'landing', 'landing', 'landing', 'saas', 'saas', 'saas']);
 });
 
@@ -37,10 +37,23 @@ test('repo links only on public repos; private builds flagged', () => {
 test('contact block', () => {
   assert.ok(PROFILE.contact.line);
   assert.ok(PROFILE.contact.availability);
-  assert.match(PROFILE.links.x, /^https:\/\//);
+  if (PROFILE.links.x) assert.match(PROFILE.links.x, /^https:\/\//);
 });
 
 test('cv rows for the CV stop: 5 entries', () => {
   assert.equal(PROFILE.cvStop.length, 5);
   for (const r of PROFILE.cvStop) { assert.ok(r.years); assert.ok(r.role); assert.ok(r.line); }
+});
+
+test('ids are unique and the ids render.js hardcodes exist', () => {
+  const ids = featured.map((p) => p.id);
+  assert.equal(new Set(ids).size, ids.length);
+  for (const id of ['llm-gateway', 'teepo', 'shadiez']) assert.ok(ids.includes(id), id);
+});
+
+test('public entries have live url and repo; every img matches its id', () => {
+  for (const p of featured) {
+    if (!p.private) { assert.match(p.url, /^https:\/\//, `${p.id} url`); assert.match(p.repo, /^https:\/\/github\.com\//, `${p.id} repo`); }
+    assert.equal(p.img, `/previews/${p.id}.jpg`, `${p.id} img`);
+  }
 });

@@ -30,6 +30,7 @@ test('build renders method, 3 proof numbers with data-n, and the gateway card', 
 test('project: public repo gets a repo link, private build gets the label and no repo', () => {
   const teepo = PROFILE.work.featured.find((p) => p.id === 'teepo');
   const focus = PROFILE.work.featured.find((p) => p.id === 'focus');
+  const gateway = PROFILE.work.featured.find((p) => p.id === 'llm-gateway');
   const ht = renderProject(teepo, 'left');
   assert.ok(ht.includes('href="https://github.com/yarinlevin18-ai/TEEPO"'));
   assert.ok(ht.includes('data-side="left"'));
@@ -37,11 +38,15 @@ test('project: public repo gets a repo link, private build gets the label and no
   assert.ok(hf.includes('Private build'));
   assert.ok(!hf.includes('github.com'));
   assert.ok(!hf.includes('Visit live'));
+  const hg = renderProject(gateway, 'left');
+  assert.ok(hg.includes('Visit live'));
+  assert.ok(hg.includes('Private repo'));
 });
 
 test('contact renders mailto, availability and text links', () => {
   const h = renderContact(PROFILE);
   assert.ok(h.includes('href="mailto:' + PROFILE.links.email + '"'));
   assert.ok(h.includes(PROFILE.contact.availability));
-  assert.ok(h.includes('>GitHub<') && h.includes('>LinkedIn<') && h.includes('>X<'));
+  assert.ok(h.includes('>GitHub<') && h.includes('>LinkedIn<'));
+  assert.equal(h.includes('>X<'), !!PROFILE.links.x);
 });

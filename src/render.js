@@ -43,8 +43,9 @@ export function renderBuild(p) {
 export function renderProject(x, side) {
   const live = x.url ? `<a class="pill" href="${x.url}" target="_blank" rel="noopener">Visit live ↗</a>` : '<span class="pill ghost">Private build</span>';
   const repo = x.repo ? `<a class="pill ghost" href="${x.repo}" target="_blank" rel="noopener">GitHub ↗</a>` : '';
+  const privateRepo = (x.url && x.private && !x.repo) ? '<span class="pill ghost">Private repo</span>' : '';
   return `<article class="project" data-side="${side}" data-tint="${x.tint}">
-    ${eyebrow(`${x.group === 'saas' ? 'SaaS' : 'Landing page'} · ${x.tag}`)}
+    ${eyebrow(`${x.kind} · ${x.tag}`)}
     <h2 class="title">${esc(x.name)}</h2>
     <dl>
       <dt>Problem</dt><dd>${esc(x.problem)}</dd>
@@ -52,7 +53,7 @@ export function renderProject(x, side) {
       <dt>Outcome</dt><dd>${esc(x.outcome)}</dd>
     </dl>
     <div class="stack">${esc(x.stack)}</div>
-    <div class="links">${live}${repo}</div>
+    <div class="links">${live}${repo}${privateRepo}</div>
   </article>`;
 }
 

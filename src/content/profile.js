@@ -71,6 +71,7 @@ export const PROFILE = {
   ],
 
   // stop 03 "CV" — 5 rows, years left, role + one line right. Fits one screen.
+  // cv.* below is the canonical record; cvStop is the edited five-row cut for the CV stop.
   cvStop: [
     { years: '2026 –', role: 'Freelance web developer & solo founder', line: 'Landing pages and products for clients, every build directed end-to-end with Claude Code.' },
     { years: '2023 – 24', role: 'Public speaker · FIDF / Faces of October Seventh', line: '35+ lectures across the US and Panama, audiences of 10 to 700.' },
@@ -90,7 +91,7 @@ export const PROFILE = {
     phone: '054-8029820', // Yarin approved publishing (site + PDF), 2026-08-29
     linkedin: 'https://www.linkedin.com/in/yarin-levin-78a783247/',
     github: 'https://github.com/yarinlevin18-ai',
-    x: 'https://x.com/yarinlevin18',   // ⏳ confirm handle with Yarin; remove the key to hide the link
+    // x: 'https://x.com/yarinlevin18',   // ⏳ confirm handle with Yarin, then uncomment
     site: 'https://the-void-khaki-pi.vercel.app',
   },
 
@@ -173,8 +174,9 @@ export const PROFILE = {
     ],
   },
 
-  // The work — three tiers, 17 projects. Every entry answers:
-  // what it is · what I built · the hard part. GitHub links where public.
+  // The work — three tiers. featured = the 7 flight stops, each with a full
+  // problem/decision/outcome writeup; shipped and labs are the index (dossier
+  // "full index" + in-world work hub), each a shorter what/built summary.
   work: {
     featured: [
       {
@@ -182,7 +184,7 @@ export const PROFILE = {
         tint: '#3fc978', img: '/previews/teepo.jpg',
         problem: 'Israeli university students juggle Moodle, grades and deadlines across sites that were never designed to talk to each other.',
         decision: 'One Hebrew-RTL platform with real auth and a Chrome-extension scraper, using Google Drive as the datastore instead of building a backend nobody asked for.',
-        outcome: 'A live product students sign into every week, not a demo.',
+        outcome: 'Students sign in and use it through the semester: a product with users, not a demo.',
         stack: 'Next.js · Supabase · Chrome extension · Claude',
         url: 'https://bgu-study-organizer.vercel.app', repo: 'https://github.com/yarinlevin18-ai/TEEPO',
       },
@@ -209,7 +211,7 @@ export const PROFILE = {
         tint: '#eab04e', img: '/previews/smartcut.jpg',
         problem: 'A grooming studio was paying for Wix Bookings and still handling reschedules by phone.',
         decision: 'A self-hosted slot booking system with approval workflow and customer self-service, on Supabase, instead of another SaaS subscription.',
-        outcome: 'Bookings, gallery and admin in one site the owner runs alone.',
+        outcome: 'The studio dropped its Wix Bookings subscription and stopped rescheduling by phone.',
         stack: 'Next.js 14 · TypeScript · Supabase · Tailwind',
         url: 'https://smart-cut-gamma.vercel.app', repo: 'https://github.com/yarinlevin18-ai/smartcut',
       },
@@ -217,7 +219,7 @@ export const PROFILE = {
         id: 'llm-gateway', name: 'LLM Gateway', group: 'saas', kind: 'Control plane', tag: 'SaaS · main focus', year: 2026,
         tint: '#4fd2ff', img: '/previews/llm-gateway.jpg', private: true,
         problem: 'Every app I build calls a model provider, and none of them shared routing, budgets or logs.',
-        decision: 'A local control plane: one /v1/route endpoint, provider abstraction, budget check before every call, a log row after it, and an agent platform on top with policies, scrubbing and an approval queue.',
+        decision: 'A local control plane: one /v1/route endpoint, a budget check before every call and a log row after it, with an agent layer for policies, scrubbing and approvals. No hosted multi-tenant service, no billing, no dashboard for anyone but me: it runs on my machine, for my apps.',
         outcome: 'Every agent I run goes through it; spend and latency are visible per model, per day.',
         stack: 'Node · Fastify · SQLite · Anthropic SDK',
         url: 'https://shaar-ai-landing.vercel.app',
@@ -225,17 +227,17 @@ export const PROFILE = {
       {
         id: 'focus', name: 'Focus', group: 'saas', kind: 'WIP-capped board', tag: 'SaaS · private build', year: 2026,
         tint: '#4fd2ff', img: '/previews/focus.jpg', private: true,
-        problem: 'Starting projects is easy; the cost is the ones already open.',
+        problem: 'I kept starting new projects while the last three sat half-finished.',
         decision: 'A board with one capped lane. At most three active projects, enforced in the CLI, the API and the dashboard: to start something you must ship or shelve something.',
         outcome: 'The tool I plan my own work in.',
         stack: 'Node · SQLite · Astro dashboard',
         url: '',
       },
       {
-        id: 'thailand', name: 'Sabai', group: 'saas', kind: 'Trip companion', tag: 'Product', year: 2026,
-        tint: '#eab04e', img: '/previews/thailand.jpg', private: true,
-        problem: 'A real Thailand trip: bookings in five inboxes, no signal in half the places.',
-        decision: 'Offline-first: schedule, stays, flights, maps, budget and emergency info in one app, with OCR ingestion of the actual booking PDFs.',
+        id: 'sabai', name: 'Sabai', group: 'saas', kind: 'Trip companion', tag: 'Product', year: 2026,
+        tint: '#eab04e', img: '/previews/sabai.jpg', private: true,
+        problem: 'Planning a real Thailand trip meant bookings scattered across five inboxes and no signal in half the places I was going.',
+        decision: 'Offline-first: schedule, stays, flights, maps, budget and emergency info in one app, with OCR ingestion of the actual booking PDFs. No accounts and no sync server, because half the trip had no signal.',
         outcome: 'Used every day of the trip.',
         stack: 'Next.js 16 · React 19 · Tesseract.js',
         url: 'https://thailand-trip-app-phi.vercel.app',
@@ -243,13 +245,11 @@ export const PROFILE = {
     ],
     shipped: [
       { name: 'Worldiez', what: 'Automated YouTube Shorts pipeline — clip in, branded 9:16 short out, scheduled to YouTube.', built: 'FFmpeg prep, Remotion compositions, Postiz scheduling, agent-orchestrated.', year: 2026 },
-      { name: 'AeroCy', what: 'Bilingual business site, shipped for a real brand.', built: 'Next.js, i18n, motion polish.', repo: 'https://github.com/yarinlevin18-ai/aerocy', year: 2026 },
       { name: 'Mentorship', what: 'Shared app for a mentor and mentee — sessions, summaries, homework.', built: 'Next.js 16 Server Actions + Supabase Postgres, role-per-device.', year: 2026 },
       { name: 'dira-lease', what: 'Hebrew-RTL landing page that ranks apartment-sublease leads.', built: 'Next.js + Framer Motion, three-step funnel into Google Sheets.', year: 2026 },
       { name: 'SecScan', what: 'Passive domain-security “report card” SaaS for freelancers.', built: 'Next.js 16, one scanner module per milestone — learning security by building it.', year: 2026 },
       { name: 'LifeRPG', what: 'Local habit/goal RPG — real-life effort earns in-game progress.', built: 'Three.js third-person life-sim, spec-driven across 14 milestones.', year: 2026 },
       { name: 'BodyLoop', what: 'Adaptive fitness app — weekly webcam scans drive a 3D avatar and self-recalibrating projections.', built: 'Next.js + react-three-fiber, node:sqlite, local-first.', year: 2026 },
-      { name: 'שערAI (llm-gateway)', what: 'Local control plane between apps and LLM providers.', built: 'Provider abstraction, routing, cost tracking, live stats dashboard; Hebrew landing page.', year: 2026 },
       { name: 'Kiara’s Club', what: 'Dachshund-first pet storefront — brand, shop and cart.', built: 'Next.js 16, React 19, Tailwind v4, client-side cart.', url: 'https://kiaras-club.vercel.app', year: 2026 },
       { name: 'Drift Ghost', what: 'Unity mobile drifting game, PvP and PvE.', built: 'Meshy-generated assets, Unity, built with Claude Code.', year: 2026 },
       { name: 'Atlas Command Center', what: 'Personal cross-device command center with AI agents — schedule, email, tasks, academics.', built: 'Vite + React, Fastify, Supabase, EN + RTL Hebrew.', year: 2026 },
