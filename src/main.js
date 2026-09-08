@@ -518,7 +518,8 @@ const openingFX = (() => {
       if ('letterSpacing' in x) x.letterSpacing = TRACK + 'px';
       const face = (px) => '800 ' + px + 'px "Bricolage", "Helvetica Neue", Arial, sans-serif';
       x.font = face(190);
-      const fit = Math.min(190, Math.floor(190 * (W * 0.9) / Math.max(1, x.measureText(NAME).width)));
+      const w190 = x.measureText(NAME).width - TRACK * (NAME.length - 1);   // glyph advance only; tracking is a constant term
+      const fit = Math.min(190, Math.floor(190 * (W * 0.9 - TRACK * (NAME.length - 1)) / Math.max(1, w190)));
       x.font = face(fit);
       x.fillText(NAME, W / 2 - TRACK / 2, H / 2 + 6);   // shift back by half the trailing track to stay optically centred
       const d = x.getImageData(0, 0, W, H).data, raw = [];

@@ -1,16 +1,19 @@
 // ============================================================================
 //  TEXT 3D — placeable, truly-extruded text in the void.
-//  Loads the site's single typeface (self-hosted Source Code Pro, the same face
-//  the DOM and the loader use), builds beveled
-//  TextGeometry meshes with an emissive material that blooms, and persists
-//  every placed text to localStorage. All 3D options are per-item data.
+//  Uses Source Code Pro Medium (public/fonts/SourceCodePro-Medium.ttf) by
+//  design — TextGeometry needs a typeface.js/ttf glyph source, and Source Code
+//  Pro's even monospaced strokes extrude and bevel cleanly at any size. The
+//  DOM (loader, headings, body copy) instead uses Bricolage Grotesque /
+//  Schibsted Grotesk / Doto — see the @font-face rules in style.css. Builds
+//  beveled TextGeometry meshes with an emissive material that blooms, and
+//  persists every placed text to localStorage. All 3D options are per-item data.
 // ============================================================================
 import * as THREE from 'three';
 import { FontLoader } from 'three/addons/loaders/FontLoader.js';
 import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 
-// The site runs ONE typeface, so extruded 3D text must be that same face —
-// self-hosted Source Code Pro (OFL), instanced at weight 500 to match the DOM.
+// Extruded 3D text intentionally uses a different face than the DOM: self-hosted
+// Source Code Pro (OFL), instanced at weight 500, chosen for clean extrusion/bevel.
 const OGG_CANDIDATES = [
   { url: '/fonts/SourceCodePro-Medium.ttf', type: 'ttf' },
 ];

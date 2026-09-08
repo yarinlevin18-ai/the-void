@@ -477,9 +477,9 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
 #ld-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 #loader .ld-core { position: relative; display: flex; flex-direction: column; align-items: center; gap: 1.7rem; padding: 0 5vw; }
 #loader .ld-mark {
-  font-family: var(--f); font-weight: 500; white-space: nowrap;
+  font-family: var(--f-display); font-weight: 800; white-space: nowrap;
   font-size: clamp(1.05rem, 4.3vw, 2.9rem);
-  letter-spacing: 0.34em; text-indent: 0.34em;   /* indent cancels the trailing track so it stays optically centred */
+  letter-spacing: 0.04em; text-indent: 0.04em;   /* indent cancels the trailing track so it stays optically centred */
   color: #eaf4ff; text-shadow: 0 0 30px rgba(79, 210, 255, 0.45);
 }
 #loader .ld-mark i { font-style: normal; display: inline-block; transition: color .18s linear; }
