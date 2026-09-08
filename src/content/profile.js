@@ -1,6 +1,6 @@
 // profile.js — single source of truth for the person behind The Void.
-// Feeds: the Dossier overlay (all four tabs), the in-world beats, the
-// printable CV (Phase 4), and the JSON-LD structured data (Phase 7).
+// Feeds: the v15 flight stops (Intro, CV, How I Build, project stops, Contact),
+// the printable CV, and the JSON-LD structured data.
 // Nothing about Yarin should be hard-coded anywhere else.
 // Interview answers locked 2026-08-29 — see PORTFOLIO_PLAN.md §4b.
 
@@ -45,11 +45,52 @@ export const PROFILE = {
     responseTime: 'I reply fast.',
   },
 
+  // v15 flight — stop 02 "Intro". First person, facts only, no self-adjectives.
+  intro: {
+    lines: [
+      'I build web products by directing AI end-to-end, from spec to production.',
+      'Since April 2026 that has meant paid client landing pages, a Hebrew-RTL study platform with real users, and an LLM gateway I run my own agents through.',
+      'I build for clients who need a site that ships, and for teams that want someone who owns the outcome.',
+    ],
+    context: 'Israel · available now for a part-time student position',
+  },
+
+  // stop 04 "How I Build"
+  method: {
+    lines: [
+      'Spec first: every build starts as a written plan with the decisions locked before code.',
+      'Then Claude Code does the typing while I direct, review and test, in small chunks that ship in days, not weeks.',
+      'Each project leaves behind a lab: the easing curves, transitions and patterns get extracted so the next build starts further ahead.',
+    ],
+  },
+  // ⏳ Yarin confirms these three numbers before launch. Only true numbers ship.
+  proof: [
+    { n: 17, label: 'products built since April 2026' },
+    { n: 7, label: 'live on the web today' },
+    { n: 1, label: 'paid client site in production' },
+  ],
+
+  // stop 03 "CV" — 5 rows, years left, role + one line right. Fits one screen.
+  cvStop: [
+    { years: '2026 –', role: 'Freelance web developer & solo founder', line: 'Landing pages and products for clients, every build directed end-to-end with Claude Code.' },
+    { years: '2023 – 24', role: 'Public speaker · FIDF / Faces of October Seventh', line: '35+ lectures across the US and Panama, audiences of 10 to 700.' },
+    { years: '2023', role: 'Warehouse project manager · Paloma Dead Sea', line: 'Inventory, quality and process control; managed staff and external storage sites.' },
+    { years: '2018 – 22', role: 'IDF · Rescue & Training Division', line: 'Deputy company commander; led the battalion into emergency deployment during Guardian of Walls.' },
+    { years: '– 2028', role: 'B.A. Politics & Government + Entrepreneurship · BGU', line: 'Ben-Gurion University of the Negev, in progress.' },
+  ],
+
+  // stop 12 "Contact"
+  contact: {
+    line: 'Building something? Write to me.',
+    availability: 'Taking on one or two projects this quarter, alongside a part-time student position.',
+  },
+
   links: {
     email: 'yarinlevin18@gmail.com',
     phone: '054-8029820', // Yarin approved publishing (site + PDF), 2026-08-29
     linkedin: 'https://www.linkedin.com/in/yarin-levin-78a783247/',
     github: 'https://github.com/yarinlevin18-ai',
+    x: 'https://x.com/yarinlevin18',   // ⏳ confirm handle with Yarin; remove the key to hide the link
     site: 'https://the-void-khaki-pi.vercel.app',
   },
 
@@ -132,53 +173,72 @@ export const PROFILE = {
     ],
   },
 
-  // ⏳ Placeholder — Yarin's own words pending (PORTFOLIO_PLAN §4b).
-  ambitions: {
-    line: '',
-    full: '',
-  },
-
   // The work — three tiers, 17 projects. Every entry answers:
   // what it is · what I built · the hard part. GitHub links where public.
   work: {
     featured: [
       {
-        name: 'SHADIEZ',
-        tag: 'Client work · paid',
-        what: 'Storytelling e-commerce landing for a premium beach sun-shade brand.',
-        built: '3D GLB hero, scroll-driven motion, lead capture — Next.js 16, R3F/Three.js, Tailwind v4, Framer Motion, Lenis.',
-        hard: 'Making a 3D product hero feel premium on mid hardware — payload budget, lazy loads, easing discipline.',
-        url: 'https://shadiez.vercel.app',
-        repo: 'https://github.com/yarinlevin18-ai/shadiez',
-        year: 2026,
+        id: 'teepo', name: 'TEEPO', group: 'landing', kind: 'Study platform', tag: 'Product · live', year: 2026,
+        tint: '#3fc978', img: '/previews/teepo.jpg',
+        problem: 'Israeli university students juggle Moodle, grades and deadlines across sites that were never designed to talk to each other.',
+        decision: 'One Hebrew-RTL platform with real auth and a Chrome-extension scraper, using Google Drive as the datastore instead of building a backend nobody asked for.',
+        outcome: 'A live product students sign into every week, not a demo.',
+        stack: 'Next.js · Supabase · Chrome extension · Claude',
+        url: 'https://bgu-study-organizer.vercel.app', repo: 'https://github.com/yarinlevin18-ai/TEEPO',
       },
       {
-        name: 'TEEPO',
-        tag: 'Product · live',
-        what: 'Hebrew-RTL study platform for Israeli university students.',
-        built: 'Next.js + Supabase auth, Moodle/grades scraping via a Chrome extension, Google-Drive-as-datastore, Claude AI assistant.',
-        hard: 'Real auth, a scraper that survives Moodle, and full RTL — a product, not a page.',
-        url: 'https://bgu-study-organizer.vercel.app',
-        repo: 'https://github.com/yarinlevin18-ai/TEEPO',
-        year: 2026,
+        id: 'aerocy', name: 'AeroCy', group: 'landing', kind: 'Business site', tag: 'Client work', year: 2026,
+        tint: '#9fd8ff', img: '/previews/aerocy.jpg',
+        problem: 'An aviation-security company needed a credible bilingual presence and had none.',
+        decision: 'A single Next.js site with English and Hebrew, motion kept to one idea per section, no CMS.',
+        outcome: 'Shipped and live for the brand within days.',
+        stack: 'Next.js · i18n · Framer Motion',
+        url: 'https://aerocy-landing.vercel.app', repo: 'https://github.com/yarinlevin18-ai/aerocy-landing',
       },
       {
-        name: 'Sabai',
-        tag: 'Personal product',
-        what: 'Offline-first trip companion built for a real Thailand journey.',
-        built: 'Schedule, weather, stays, flights, maps, budget, emergency info, AI assistant — Next.js 16, React 19, Tesseract.js OCR.',
-        hard: 'Offline-first data flow and OCR ingestion of real bookings.',
+        id: 'shadiez', name: 'SHADIEZ', group: 'landing', kind: 'E-commerce', tag: 'Client work · paid', year: 2026,
+        tint: '#9fd8ff', img: '/previews/shadiez.jpg',
+        problem: 'A premium beach sun-shade brand needed a landing page that sells the product’s feel, not a spec sheet.',
+        decision: 'A storytelling page around one 3D GLB hero with scroll-driven motion and lead capture, and no checkout until the brand needed it.',
+        outcome: 'Paid client work, in production.',
+        stack: 'Next.js 16 · R3F · Tailwind v4 · Framer Motion · Lenis',
+        url: 'https://shadiez.vercel.app', repo: 'https://github.com/yarinlevin18-ai/shadiez',
+      },
+      {
+        id: 'smartcut', name: 'SmartCut', group: 'landing', kind: 'Booking site + admin', tag: 'Client work', year: 2026,
+        tint: '#eab04e', img: '/previews/smartcut.jpg',
+        problem: 'A grooming studio was paying for Wix Bookings and still handling reschedules by phone.',
+        decision: 'A self-hosted slot booking system with approval workflow and customer self-service, on Supabase, instead of another SaaS subscription.',
+        outcome: 'Bookings, gallery and admin in one site the owner runs alone.',
+        stack: 'Next.js 14 · TypeScript · Supabase · Tailwind',
+        url: 'https://smart-cut-gamma.vercel.app', repo: 'https://github.com/yarinlevin18-ai/smartcut',
+      },
+      {
+        id: 'llm-gateway', name: 'LLM Gateway', group: 'saas', kind: 'Control plane', tag: 'SaaS · main focus', year: 2026,
+        tint: '#4fd2ff', img: '/previews/llm-gateway.jpg', private: true,
+        problem: 'Every app I build calls a model provider, and none of them shared routing, budgets or logs.',
+        decision: 'A local control plane: one /v1/route endpoint, provider abstraction, budget check before every call, a log row after it, and an agent platform on top with policies, scrubbing and an approval queue.',
+        outcome: 'Every agent I run goes through it; spend and latency are visible per model, per day.',
+        stack: 'Node · Fastify · SQLite · Anthropic SDK',
+        url: 'https://shaar-ai-landing.vercel.app',
+      },
+      {
+        id: 'focus', name: 'Focus', group: 'saas', kind: 'WIP-capped board', tag: 'SaaS · private build', year: 2026,
+        tint: '#4fd2ff', img: '/previews/focus.jpg', private: true,
+        problem: 'Starting projects is easy; the cost is the ones already open.',
+        decision: 'A board with one capped lane. At most three active projects, enforced in the CLI, the API and the dashboard: to start something you must ship or shelve something.',
+        outcome: 'The tool I plan my own work in.',
+        stack: 'Node · SQLite · Astro dashboard',
         url: '',
-        year: 2026,
       },
       {
-        name: 'Kiara’s Club',
-        tag: 'Brand + storefront · live',
-        what: 'Dachshund-first pet storefront — brand, shop and cart.',
-        built: 'Palette sampled from a real dog; Next.js 16, React 19, Tailwind v4, client-side cart.',
-        hard: 'A complete brand voice and shop UX shipped end-to-end, solo.',
-        url: 'https://kiaras-club.vercel.app',
-        year: 2026,
+        id: 'thailand', name: 'Sabai', group: 'saas', kind: 'Trip companion', tag: 'Product', year: 2026,
+        tint: '#eab04e', img: '/previews/thailand.jpg', private: true,
+        problem: 'A real Thailand trip: bookings in five inboxes, no signal in half the places.',
+        decision: 'Offline-first: schedule, stays, flights, maps, budget and emergency info in one app, with OCR ingestion of the actual booking PDFs.',
+        outcome: 'Used every day of the trip.',
+        stack: 'Next.js 16 · React 19 · Tesseract.js',
+        url: 'https://thailand-trip-app-phi.vercel.app',
       },
     ],
     shipped: [
@@ -190,6 +250,9 @@ export const PROFILE = {
       { name: 'LifeRPG', what: 'Local habit/goal RPG — real-life effort earns in-game progress.', built: 'Three.js third-person life-sim, spec-driven across 14 milestones.', year: 2026 },
       { name: 'BodyLoop', what: 'Adaptive fitness app — weekly webcam scans drive a 3D avatar and self-recalibrating projections.', built: 'Next.js + react-three-fiber, node:sqlite, local-first.', year: 2026 },
       { name: 'שערAI (llm-gateway)', what: 'Local control plane between apps and LLM providers.', built: 'Provider abstraction, routing, cost tracking, live stats dashboard; Hebrew landing page.', year: 2026 },
+      { name: 'Kiara’s Club', what: 'Dachshund-first pet storefront — brand, shop and cart.', built: 'Next.js 16, React 19, Tailwind v4, client-side cart.', url: 'https://kiaras-club.vercel.app', year: 2026 },
+      { name: 'Drift Ghost', what: 'Unity mobile drifting game, PvP and PvE.', built: 'Meshy-generated assets, Unity, built with Claude Code.', year: 2026 },
+      { name: 'Atlas Command Center', what: 'Personal cross-device command center with AI agents — schedule, email, tasks, academics.', built: 'Vite + React, Fastify, Supabase, EN + RTL Hebrew.', year: 2026 },
     ],
     labs: [
       { name: 'motion-lab', what: 'Parametric pattern library for animated React components.' },
