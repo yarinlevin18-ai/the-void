@@ -1,22 +1,32 @@
 /* ---- Reset & base ---- */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-/* Type system — ONE face, everywhere (self-hosted, see @font-face below).
-   Source Code Pro carries the whole site; hierarchy comes from weight, size and
-   letter-spacing instead of from a second or third family. The void is a data
-   space — a mono voice is the honest one, and it means the 3D wordmark, the DOM
-   captions and the HUD are literally the same typeface. */
-/* Self-hosted Source Code Pro (OFL) — variable weight 200–900, one file for the whole UI.
-   Replaces the Adobe Fonts kit (2026-09-07) so the site makes no external requests. */
+/* Type system (v15) — three self-hosted OFL faces, Latin-subset woff2, no external requests.
+   Display: Bricolage Grotesque (condensed-black at display sizes, calm at small).
+   Body:    Schibsted Grotesk.
+   Labels:  Doto (dot-matrix) for eyebrows, stack lines, counters.
+   Source Code Pro remains ONLY for the extruded 3D wordmark (text3d.js). */
 @font-face {
-  font-family: "source-code-pro";
-  src: url("/fonts/SourceCodePro-Variable.ttf") format("truetype-variations"),
-       url("/fonts/SourceCodePro-Variable.ttf") format("truetype");
-  font-weight: 200 900;
-  font-style: normal;
-  font-display: swap;
+  font-family: "Bricolage";
+  src: url("/fonts/BricolageGrotesque.woff2") format("woff2");
+  font-weight: 200 800; font-stretch: 75% 100%; font-style: normal; font-display: swap;
 }
-:root { --f: "source-code-pro", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+@font-face {
+  font-family: "Schibsted";
+  src: url("/fonts/SchibstedGrotesk.woff2") format("woff2");
+  font-weight: 400 900; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Doto";
+  src: url("/fonts/Doto.woff2") format("woff2");
+  font-weight: 100 900; font-style: normal; font-display: swap;
+}
+:root {
+  --f-display: "Bricolage", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Schibsted", "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "Doto", ui-monospace, Menlo, monospace;
+  --f: var(--f-body);   /* legacy alias: dev panels, HUD, loader, print CV keep working */
+}
 
 html, body {
   width: 100%;
