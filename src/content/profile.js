@@ -215,7 +215,8 @@ export const PROFILE = {
         decision: 'A self-hosted slot booking system with approval workflow and customer self-service, on Supabase, instead of another SaaS subscription.',
         outcome: 'The studio dropped its Wix Bookings subscription and stopped rescheduling by phone.',
         stack: 'Next.js 14 · TypeScript · Supabase · Tailwind',
-        url: 'https://smart-cut-gamma.vercel.app', repo: 'https://github.com/yarinlevin18-ai/smartcut',
+        url: 'https://smart-cut-gamma.vercel.app', // ⏳ deployment returned 404 on 2026-09-08 — redeploy before launch
+        repo: 'https://github.com/yarinlevin18-ai/smartcut',
       },
       {
         id: 'llm-gateway', name: 'LLM Gateway', group: 'saas', kind: 'Control plane', tag: 'SaaS · main focus', year: 2026,

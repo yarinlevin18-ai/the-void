@@ -2,23 +2,37 @@
 // The only navigation chrome on the site (replaces the waypoint rail).
 import { esc } from './render.js';
 
+let _t;
 export function copyLabel(set, original, ms = 1800) {
+  clearTimeout(_t);
   set('Copied');
-  setTimeout(() => set(original), ms);
+  _t = setTimeout(() => set(original), ms);
 }
 
-export function initBar({ profile, goTo, workIndex, aboutIndex, root }) {
+export function initBar({ profile, onWork, onAbout, root }) {
+  if (typeof onWork !== 'function' || typeof onAbout !== 'function') {
+    throw new Error('initBar: onWork and onAbout must be functions');
+  }
   root.innerHTML = `
     <span class="bar-name">${esc(profile.name)}</span>
     <span class="bar-avail"><i></i>${esc(profile.status.availability)}</span>
-    <button type="button" class="bar-link" data-go="${workIndex}">Work</button>
-    <button type="button" class="bar-link" data-go="${aboutIndex}">About</button>
+    <button type="button" class="bar-link" data-act="work">Work</button>
+    <button type="button" class="bar-link" data-act="about">About</button>
     <button type="button" class="bar-copy">Copy email</button>`;
   root.addEventListener('click', (e) => {
-    const go = e.target.closest('[data-go]');
-    if (go) { goTo(+go.dataset.go); return; }
+    const act = e.target.closest('[data-act]');
+    if (act) { (act.dataset.act === 'work' ? onWork : onAbout)(); return; }
     const cp = e.target.closest('.bar-copy');
-    if (cp) { navigator.clipboard?.writeText(profile.links.email); copyLabel((v) => { cp.textContent = v; }, 'Copy email'); }
+    if (cp) {
+      const set = (v) => { cp.textContent = v; };
+      const w = navigator.clipboard?.writeText(profile.links.email);
+      if (w) w.then(() => copyLabel(set, 'Copy email')).catch(() => copyLabel(set, 'Copy failed'));
+      else copyLabel(set, 'Copy failed');
+    }
   });
-  return { show() { root.classList.add('show'); }, hide() { root.classList.remove('show'); } };
+  root.inert = true;
+  return {
+    show() { root.inert = false; root.classList.add('show'); },
+    hide() { root.inert = true; root.classList.remove('show'); },
+  };
 }

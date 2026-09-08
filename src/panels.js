@@ -3,6 +3,7 @@
 // the renderer). show(i)/hide() toggle .in; CSS owns the reveal recipe, JS only
 // owns the two things CSS can't: the proof count-up and the print/copy buttons.
 import { renderIntro, renderCV, renderBuild, renderProject, renderContact, esc } from './render.js';
+import { copyLabel } from './bar.js';
 
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -38,8 +39,10 @@ export function initPanels({ beats, profile, root, onTint }) {
     else {
       e.preventDefault();
       const s = t.querySelector('small');
-      const flip = () => { if (s) { s.textContent = 'copied'; setTimeout(() => { s.textContent = 'click to copy'; }, 1800); } };
-      navigator.clipboard?.writeText(profile.links.email).then(() => { flip(); }).catch(() => {});
+      if (s) {
+        const set = (v) => { s.textContent = v; };
+        navigator.clipboard?.writeText(profile.links.email).then(() => copyLabel(set, 'click to copy')).catch(() => {});
+      }
     }
   });
 
