@@ -511,12 +511,12 @@ const openingFX = (() => {
     try {
       const c = document.createElement('canvas'), W = 1100, H = 320; c.width = W; c.height = H;
       const x = c.getContext('2d'); x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle';
-      // One voice: the same mono the DOM and the loader use, uppercased and
-      // tracked to match the loader wordmark, then auto-fitted — mono runs much
-      // wider than the old serif and would have run off the 1100px raster.
+      // One voice: the same display face the DOM and the loader use, uppercased
+      // and tracked to match the loader wordmark, then auto-fitted — the raster
+      // is drawn in Bricolage at weight 800 and auto-fitted to the 1100px canvas.
       const NAME = 'YARIN LEVIN', TRACK = 12;
       if ('letterSpacing' in x) x.letterSpacing = TRACK + 'px';
-      const face = (px) => '500 ' + px + 'px "source-code-pro", ui-monospace, monospace';
+      const face = (px) => '800 ' + px + 'px "Bricolage", "Helvetica Neue", Arial, sans-serif';
       x.font = face(190);
       const fit = Math.min(190, Math.floor(190 * (W * 0.9) / Math.max(1, x.measureText(NAME).width)));
       x.font = face(fit);
@@ -538,7 +538,7 @@ const openingFX = (() => {
       group.scale.setScalar(FX.openFit); built = true;
     } catch (e) { console.warn('[opening] build failed', e); }
   }
-  if (document.fonts && document.fonts.load) document.fonts.load('500 190px "source-code-pro"').catch(() => {}).finally(buildText); else buildText();
+  if (document.fonts && document.fonts.load) document.fonts.load('800 190px "Bricolage"').catch(() => {}).finally(buildText); else buildText();
   // anchor the name in the Opening beat's camera frame (at the look point, facing the camera)
   const C = new THREE.Vector3(), ff = new THREE.Vector3(), rt = new THREE.Vector3(), uu = new THREE.Vector3(), zc = new THREE.Vector3(), basis = new THREE.Matrix4();
   function place() {
@@ -1325,7 +1325,7 @@ function makeLabel(text, selected) {
   const x = c.getContext('2d');
   x.fillStyle = 'rgba(4,6,10,0.55)'; x.beginPath(); x.arc(32, 32, 30, 0, Math.PI * 2); x.fill();
   x.fillStyle = selected ? '#ffffff' : '#4fd2ff';
-  x.font = 'bold 34px "source-code-pro", ui-monospace, monospace';
+  x.font = 'bold 34px "Doto", ui-monospace, monospace';
   x.textAlign = 'center'; x.textBaseline = 'middle';
   x.fillText(text, 32, 35);
   const tex = new THREE.CanvasTexture(c);
