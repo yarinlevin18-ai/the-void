@@ -765,3 +765,87 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
 #workhub .wh-more:hover { color: #eaf4ff; border-color: rgba(79, 210, 255, 0.75); }
 @media (max-width: 900px) { #workhub { display: none; } } /* phones/narrow: the dossier carries the index */
 @media (prefers-reduced-motion: reduce) { #workhub { transition: none; } }
+
+/* ---- v15 flight stops: one DOM block per beat, revealed on arrival ---- */
+#stops { position: fixed; inset: 0; z-index: 3; pointer-events: none; }
+.stop {
+  position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 18vh 6vw 12vh; pointer-events: none; opacity: 0; visibility: hidden;
+  font-family: var(--f-body); color: #cfe8ff;
+  transition: opacity .4s ease, visibility 0s linear .4s;
+}
+.stop.in { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .4s ease; }
+.stop a { color: #7fe0ff; text-decoration: none; }
+.eyebrow, .stack, .context, .cv-years, .group-label, .availability, .foot, .proof-item span, .repo .links, .mail small {
+  font-family: var(--f-mono); font-weight: 700; font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; color: #4fd2ff;
+}
+.eyebrow { margin-bottom: 1rem; }
+.stack, .context, .availability, .foot { color: #7fa8c8; }
+.pill { display: inline-flex; align-items: center; gap: .5rem; padding: .55rem 1rem; border-radius: 999px; border: 1px solid rgba(79,210,255,.55); background: rgba(79,210,255,.08); color: #eaf4ff; font: inherit; font-size: .8rem; cursor: pointer; }
+.pill:hover { background: rgba(79,210,255,.18); border-color: #4fd2ff; }
+.pill.ghost { background: transparent; border-color: rgba(159,216,255,.25); color: #9fc2e0; }
+.links { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: 1.1rem; }
+
+/* 02 Intro — lines fade + rise, stagger 60ms. The whole effect is restraint. */
+.intro .line { font-family: var(--f-display); font-weight: 500; font-stretch: 90%; font-size: clamp(1.5rem, 4.2vw, 3.2rem); line-height: 1.15; letter-spacing: -0.01em; color: #eaf4ff; max-width: 26ch; margin: 0 0 .7em;
+  opacity: 0; transform: translateY(12px); transition: opacity .5s ease, transform .5s cubic-bezier(.22,1,.36,1); transition-delay: calc(var(--i) * 60ms); }
+.stop.in .intro .line { opacity: 1; transform: none; }
+.intro .context { margin-top: 1.6rem; }
+
+/* 03 CV — rows slide from their divider, stagger 40ms. Quiet, small. */
+.cv { border-top: 1px solid rgba(159,216,255,.18); max-width: 60rem; }
+.cv-row { display: grid; grid-template-columns: 1fr; gap: .2rem .6rem; padding: .8rem 0; border-bottom: 1px solid rgba(159,216,255,.14);
+  opacity: 0; transform: translateX(-10px); transition: opacity .35s ease, transform .35s ease; transition-delay: calc(var(--i) * 40ms); }
+.stop.in .cv-row { opacity: 1; transform: none; }
+.cv-body b { display: block; font-weight: 600; color: #eaf4ff; font-size: .95rem; }
+.cv-body span { display: block; font-size: .82rem; color: #9fc2e0; line-height: 1.45; }
+.stop-cv .pill { margin-top: 1.2rem; align-self: flex-start; }
+@media (min-width: 720px) { .cv-row { grid-template-columns: 7rem 1fr; } }
+
+/* 04 How I Build — method as Intro; proof counts up (JS); repo cards lift on hover */
+.method .line { font-family: var(--f-display); font-weight: 500; font-stretch: 90%; font-size: clamp(1.1rem, 2.4vw, 1.8rem); line-height: 1.25; color: #eaf4ff; max-width: 30ch; margin: 0 0 .5em;
+  opacity: 0; transform: translateY(12px); transition: opacity .5s ease, transform .5s ease; transition-delay: calc(var(--i) * 60ms); }
+.stop.in .method .line { opacity: 1; transform: none; }
+.proof { display: grid; grid-template-columns: 1fr; gap: .8rem; margin: 1.6rem 0; }
+.proof-item .num { display: block; font-family: var(--f-mono); font-weight: 800; font-size: clamp(2.2rem, 6vw, 4rem); color: #eaf4ff; font-variant-numeric: tabular-nums; }
+.repos { display: grid; grid-template-columns: 1fr; gap: .6rem; max-width: 60rem; }
+.repo { border: 1px solid rgba(159,216,255,.16); border-radius: 8px; padding: .8rem 1rem; background: rgba(8,16,26,.55); transition: transform .3s ease, border-color .3s ease; }
+.repo:hover { transform: translateY(-4px); border-color: rgba(79,210,255,.6); }
+.repo b { font-family: var(--f-mono); font-size: .85rem; letter-spacing: .06em; color: #eaf4ff; }
+.repo p { font-size: .82rem; color: #9fc2e0; margin: .4rem 0; line-height: 1.45; }
+.repo .stack { display: block; margin-top: .3rem; }
+.repo .links { margin-top: .5rem; }
+.muted { color: #5b768f; }
+@media (min-width: 720px) { .proof { grid-template-columns: repeat(3, 1fr); } .repos { grid-template-columns: 1.4fr 1fr 1fr; } }
+
+/* 05 Projects — text block on the side opposite the WebGL image panel; image first, text 150ms later */
+.stop-project { justify-content: flex-end; }
+.project { max-width: 34rem; opacity: 0; transform: translateY(14px); transition: opacity .45s ease .15s, transform .45s ease .15s; }
+.stop.in .project { opacity: 1; transform: none; }
+.project .title { font-family: var(--f-display); font-weight: 800; font-stretch: 78%; font-size: clamp(2.4rem, 8vw, 5.5rem); line-height: .9; letter-spacing: -0.02em; text-transform: uppercase; color: #eaf4ff; margin: 0 0 1rem; }
+.project dl { margin: 0; display: grid; gap: .55rem; }
+.project dt { font-family: var(--f-mono); font-weight: 700; font-size: .66rem; letter-spacing: .14em; text-transform: uppercase; color: #4fd2ff; }
+.project dd { margin: 0 0 .2rem; font-size: .9rem; line-height: 1.5; color: #b8d4ea; max-width: 52ch; }
+.project .stack { margin-top: .8rem; }
+.group-label { position: absolute; top: 12vh; left: 6vw; }
+@media (min-width: 900px) {
+  .stop-project { justify-content: center; }
+  .stop-project[data-side="left"]  .project { margin-left: auto; margin-right: 0; }   /* image panel sits left → text right */
+  .stop-project[data-side="right"] .project { margin-right: auto; margin-left: 0; }
+}
+
+/* 12 Contact — email scales in, hero scale */
+.contact-line { font-family: var(--f-display); font-weight: 500; font-stretch: 90%; font-size: clamp(1.4rem, 3.6vw, 2.6rem); color: #eaf4ff; margin: 0 0 .6rem; }
+.mail { display: block; font-family: var(--f-display); font-weight: 800; font-stretch: 78%; font-size: clamp(1.6rem, 6.4vw, 5.2rem); line-height: 1; color: #eaf4ff; overflow-wrap: anywhere; margin: .4rem 0 1.4rem;
+  opacity: 0; transform: scale(.96); transition: opacity .5s ease, transform .5s cubic-bezier(.22,1,.36,1); }
+.stop.in .mail { opacity: 1; transform: none; }
+.mail:hover { color: #4fd2ff; }
+.mail small { display: block; margin-top: .6rem; }
+.social { display: flex; gap: 1.4rem; font-size: .9rem; }
+.availability { margin-top: 1rem; }
+.foot { margin-top: 3rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .stop, .stop *, .stop.in * { transition: none !important; transform: none !important; }
+}
