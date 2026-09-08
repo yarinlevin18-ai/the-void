@@ -13,8 +13,11 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { createText3D, defaultText } from './text3d.js';
 import { initMagneticCursor } from './cursor.js';
-import { initDossier, initWorkHub } from './dossier.js';
-let workHub = null; // assigned at bootstrap; setCaption may run first
+import { PROFILE } from './content/profile.js';
+import { initPanels } from './panels.js';
+import { initBar } from './bar.js';
+import { mountPrintCV } from './printcv.js';
+let panels = null, bar = null;   // assigned at bootstrap, after the scene exists
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
@@ -36,7 +39,7 @@ const FX = {
   bloomStrength: 0.85, nebula: 0.9, driftOn: true, // living-void background
   fovPunch: 0,                                 // transient FOV widening mid-transition (whoosh)
   twinkleOn: true, linesOn: true, nebVisible: true,                           // living-void toggles
-  uiHud: true, uiWaypoints: true, uiCaption: true, uiHint: true, uiScale: 1,  // UX panel state
+  uiHud: true, uiHint: true, uiScale: 1,      // UX panel state
   waveAmp: 26, waveSpd: 1, waveCoil: 34, waveOn: true, waveGrid: false,        // neon wave ribbon
   nebSpd: 0.6, nebWarp: 1.4, nebHue: 0.35, nebEmber: 0.06, nebVig: true, nebGlow: 0.35,   // nebula climate + inner glow (restraint: teal family, ember nearly out)
   vignette: 0.45, grain: 0.02,                                                 // final frame grade (three-lab post constants: offset .3 / darkness .6)
@@ -618,7 +621,11 @@ try {
 const text3d = createText3D();
 scene.add(text3d.group);
 text3d.restore();                 // re-place saved texts (meshes build once the font loads)
-text3d.loadFont().then((r) => { const el = document.querySelector('#text-status'); if (el) el.textContent = r.ogg ? 'Source Code Pro loaded ✓' : 'Font missing — check public/fonts/'; });
+// 3D text is dev-only now (the Y panel + restored saved texts) — visitors never
+// pay for the typeface JSON/TTF unless something is actually placed in the scene.
+if (DEV_TOOLS || text3d.list().length) {
+  text3d.loadFont().then((r) => { const el = document.querySelector('#text-status'); if (el) el.textContent = r.ogg ? 'Source Code Pro loaded ✓' : 'Font missing — check public/fonts/'; });
+}
 
 // Live density control for every void layer — uses draw ranges (instant, no
 // rebuild) so you can dial the amount of stars / nodes / energy lines / nebula.
@@ -901,21 +908,30 @@ const makeHeroBeat = () => ({
   fov: 70, dur: 1.8, desc: 'Landing pages & SaaS interfaces — fly through the work.',
   img: '', link: '', panel: mkPanel(0, 2, 35, 120, 64),
 });
-// Baked from the user's exported path (Copy config) — kept exactly as-is.
-// Real content per CONTENT.md (Phase B). Cameras kept exactly as authored.
+// v15 flight (2026-09-08): thirteen stops. The Opening and Hero cameras are the
+// authored v14 shots, kept verbatim. Everything after them is a *stop*: the DOM
+// content block (src/panels.js) carries the words, and — for the seven project
+// stops — a WebGL image panel sits on `side` opposite the text. The cameras for
+// stops 2–11 are provisional placeholders on a straight run down -Z; a later
+// task composes them in Director Mode.
+const P = (z, side) => mkPanel(side === 'left' ? -34 : 34, 4, z - 48, 70, 44);
 const DEFAULT_BEATS = [
-  { name: 'Opening', cam: [-56, 2, 120], look: [-11, 59, 42], up: [0, 1, 0], fov: 25, dur: 1.4, desc: 'Landing pages & SaaS interfaces — fly through the work.', img: '', link: '', fx: { bloomStrength: 0.65 }, panel: null },
-  { name: 'Hero', cam: [1, 53, 33], look: [192, -55, -56], up: [0, 1, 0], fov: 41, dur: 2.1, desc: '', img: '', link: '', panel: null },
-  // ---- The person (v13 restructure: the flight is about Yarin; projects are one chapter) ----
-  { name: 'Who', cam: [3, 8, -8], look: [-30, 20, -70], up: [0, 1, 0], fov: 55, dur: 1.6, desc: 'In five months of directing AI: a dozen shipped products — paid client work, a full SaaS study platform, and the void you’re flying through.', cap: { title: 'Yarin Levin — AI-Native Builder.' }, img: '', link: '', panel: null },
-  { name: 'The Road Here', cam: [-10, 14, -60], look: [35, -10, -130], up: [0, 1, 0], fov: 62, dur: 1.5, desc: 'Four years of IDF command — deputy company commander through Operation Guardian of Walls — then 35+ talks across the US and Panama, rooms of 10 to 700. Own the outcome. Stay calm when it’s loud.', cap: { title: 'Before code: command and a crowd.' }, img: '', link: '', panel: null },
-  { name: 'What I Work With', cam: [9, 10, -69], look: [15, 4, -119], up: [-0.66418640324206, 0.7376001166578326, -0.1216654825935754], fov: 83, dur: 1.8, desc: 'React 19 / Next.js 16 · TypeScript · Tailwind v4 — and the motion layer: Three.js, GLSL, Framer Motion. Every easing curve on this site was tuned in a daily lab first.', img: '', link: '', panel: null },
-  { name: 'My Projects', cam: [0, 2, -190], look: [-22, 0, -235], up: [0, 1, 0], fov: 70, dur: 1.5, desc: 'Seventeen builds — SHADIEZ, TEEPO, Sabai, Kiara’s Club, Worldiez, Mentorship, AeroCy, SecScan, BodyLoop, and a daily practice of motion labs.', cap: { desc: 'A glimpse of the full body of work — keep flying.' }, img: '', link: '', panel: null },
-  { name: 'The Work', cam: [0, 2, -310], look: [22, 0, -355], up: [0, 1, 0], fov: 80, dur: 1.35, desc: 'SHADIEZ — paid client e-commerce with a 3D hero. TEEPO — a full Hebrew-RTL study platform with real auth. Twelve more in the dossier — press C.', img: '/previews/shadiez.jpg', img2: '/previews/teepo.jpg', link: 'https://shadiez.vercel.app', fx: { bloomStrength: 0.5 }, panel: { pos: [22, 0, -355], size: [70, 44], billboard: false, rot: [0, 0, 0] } },
-  // ⏳ Ambitions copy pending Yarin's own words (PORTFOLIO_PLAN §4b) — status line stands in.
-  { name: 'Where This Goes', cam: [0, 35, -410], look: [0, 60, -475], up: [0, 1, 0], fov: 68, dur: 1.5, desc: 'A part-time student position building with AI, where the bar is high and the feedback is honest — available now, and I reply fast.', img: '', link: '', panel: null },
-  { name: 'Let’s build something', cam: [0, 49, -560], look: [1, 290, -560], up: [0, 0, -1], fov: 52, dur: 3, desc: 'Have a landing page or product interface in mind? I reply fast.', cap: { desc: 'yarinlevin18@gmail.com — or hit the button.' }, img: '', link: 'mailto:yarinlevin18@gmail.com', panel: null },
+  /* 0 */ { name: 'Opening', cam: [-56, 2, 120], look: [-11, 59, 42], up: [0, 1, 0], fov: 25, dur: 1.4, desc: 'Landing pages & SaaS interfaces — fly through the work.', img: '', link: '', fx: { bloomStrength: 0.65 }, panel: null },
+  /* 1 */ { name: 'Hero', cam: [1, 53, 33], look: [192, -55, -56], up: [0, 1, 0], fov: 41, dur: 2.1, desc: '', img: '', link: '', panel: null },
+  /* 2 */ { name: 'Intro', stop: 'intro', ease: 'easeOut', cam: [3, 8, -8], look: [-30, 20, -70], up: [0, 1, 0], fov: 55, dur: 2.4, desc: '', img: '', link: '', panel: null },
+  /* 3 */ { name: 'CV', stop: 'cv', cam: [-10, 14, -60], look: [35, -10, -130], up: [0, 1, 0], fov: 62, dur: 1.6, desc: '', img: '', link: '', panel: null },
+  /* 4 */ { name: 'How I Build', stop: 'build', cam: [9, 10, -69], look: [15, 4, -119], up: [0, 1, 0], fov: 70, dur: 1.6, desc: '', img: '', link: '', panel: null },
+  /* 5 */ { name: 'TEEPO', stop: 'project', id: 'teepo', side: 'left', groupLabel: 'Landing pages', cam: [0, 2, -130], look: [0, 2, -178], up: [0, 1, 0], fov: 70, dur: 1.35, desc: '', img: '/previews/teepo.jpg', link: '', panel: P(-130, 'left') },
+  /* 6 */ { name: 'AeroCy', stop: 'project', id: 'aerocy', side: 'right', cam: [0, 2, -180], look: [0, 2, -228], up: [0, 1, 0], fov: 70, dur: 1.35, desc: '', img: '/previews/aerocy.jpg', link: '', panel: P(-180, 'right') },
+  /* 7 */ { name: 'SHADIEZ', stop: 'project', id: 'shadiez', side: 'left', cam: [0, 2, -230], look: [0, 2, -278], up: [0, 1, 0], fov: 70, dur: 1.35, desc: '', img: '/previews/shadiez.jpg', link: '', panel: P(-230, 'left') },
+  /* 8 */ { name: 'SmartCut', stop: 'project', id: 'smartcut', side: 'right', cam: [0, 2, -280], look: [0, 2, -328], up: [0, 1, 0], fov: 70, dur: 1.35, desc: '', img: '/previews/smartcut.jpg', link: '', panel: P(-280, 'right') },
+  /* 9 */ { name: 'LLM Gateway', stop: 'project', id: 'llm-gateway', side: 'left', groupLabel: 'SaaS', cam: [0, 2, -330], look: [0, 2, -378], up: [0, 1, 0], fov: 70, dur: 1.35, desc: '', img: '/previews/llm-gateway.jpg', link: '', panel: P(-330, 'left') },
+  /* 10 */ { name: 'Focus', stop: 'project', id: 'focus', side: 'right', cam: [0, 2, -380], look: [0, 2, -428], up: [0, 1, 0], fov: 70, dur: 1.35, desc: '', img: '/previews/focus.jpg', link: '', panel: P(-380, 'right') },
+  /* 11 */ { name: 'Sabai', stop: 'project', id: 'sabai', side: 'left', cam: [0, 2, -430], look: [0, 2, -478], up: [0, 1, 0], fov: 70, dur: 1.35, desc: '', img: '/previews/sabai.jpg', link: '', panel: P(-430, 'left') },
+  /* 12 */ { name: 'Contact', stop: 'contact', cam: [0, 49, -560], look: [1, 290, -560], up: [0, 0, -1], fov: 52, dur: 3, desc: '', img: '', link: 'mailto:yarinlevin18@gmail.com', panel: null },
 ];
+const WORK_INDEX = DEFAULT_BEATS.findIndex((b) => b.stop === 'project');
+const ABOUT_INDEX = DEFAULT_BEATS.findIndex((b) => b.stop === 'intro');
 
 // ---- State -----------------------------------------------------------------
 let beats = [];
@@ -951,7 +967,7 @@ function fitFov(v) {
   return Math.min(115, THREE.MathUtils.radToDeg(2 * Math.atan(t)));
 }
 // global (non-keyframed) state that Save must persist alongside the beats
-const GLOBAL_KEYS = ['starFrac', 'nodeFrac', 'lineFrac', 'nebFrac', 'driftOn', 'fovPunch', 'warpStrength', 'warpLength', 'twinkleOn', 'linesOn', 'nebVisible', 'uiHud', 'uiWaypoints', 'uiCaption', 'uiHint', 'uiScale', 'waveAmp', 'waveSpd', 'waveCoil', 'waveOn', 'waveGrid', 'nebSpd', 'nebWarp', 'nebHue', 'nebEmber', 'nebVig', 'nebGlow', 'vignette', 'grain', 'pulse', 'flare', 'breath', 'breathRoll', 'lightning', 'glowSpots', 'lightInt', 'lightReach', 'lightRate', 'glowBright', 'glowFlick', 'cursorDrive', 'waterStr', 'waterRad', 'waterAtt', 'waterDisp', 'waterSheen', 'openFit', 'openSize', 'openGlow', 'openForm', 'openShatterR', 'openPush', 'openSpring', 'openColor'];
+const GLOBAL_KEYS = ['starFrac', 'nodeFrac', 'lineFrac', 'nebFrac', 'driftOn', 'fovPunch', 'warpStrength', 'warpLength', 'twinkleOn', 'linesOn', 'nebVisible', 'uiHud', 'uiHint', 'uiScale', 'waveAmp', 'waveSpd', 'waveCoil', 'waveOn', 'waveGrid', 'nebSpd', 'nebWarp', 'nebHue', 'nebEmber', 'nebVig', 'nebGlow', 'vignette', 'grain', 'pulse', 'flare', 'breath', 'breathRoll', 'lightning', 'glowSpots', 'lightInt', 'lightReach', 'lightRate', 'glowBright', 'glowFlick', 'cursorDrive', 'waterStr', 'waterRad', 'waterAtt', 'waterDisp', 'waterSheen', 'openFit', 'openSize', 'openGlow', 'openForm', 'openShatterR', 'openPush', 'openSpring', 'openColor'];
 let activePunch = 0;   // 0..1 across a transition, peaks at the midpoint (for FOV punch)
 const DEF_FOV = 68, DEF_DUR = 1.6;
 // a sensible starter panel for a section: sits at its aim point, fixed orientation
@@ -1071,6 +1087,14 @@ function load() {
           beats.forEach(backfillBeat);
           migrated = true;
         }
+        if (!(d.version >= 15)) {
+          // v15 (2026-09-08): the flight restructure — 13 stops with DOM content
+          // blocks, new order. The beat shape changed (stop/id/side), so re-adopt
+          // DEFAULT_BEATS wholesale; the visitor's global FX / speed / ease stay.
+          beats = structuredClone(DEFAULT_BEATS);
+          beats.forEach(backfillBeat);
+          migrated = true;
+        }
         if (migrated) save();
         return;
       }
@@ -1081,7 +1105,7 @@ function load() {
 }
 function save() {
   const g = {}; for (const k of GLOBAL_KEYS) g[k] = FX[k]; g.ease = txEaseName;
-  localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 14 }));
+  localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 15 }));
 }
 // push the global (saved) FX/UX/transition state into the live scene + DOM
 function applyGlobals() {
@@ -1096,9 +1120,7 @@ function applyGlobals() {
   livingVoid.nebMat.uniforms.uGlow.value = FX.nebGlow;
   livingVoid.spots.visible = FX.glowSpots;
   transitionEase = EASINGS[txEaseName] || easeInOut;
-  captionsOn = FX.uiCaption;
   const hud = document.querySelector('#hud'); if (hud) hud.style.display = FX.uiHud ? '' : 'none';
-  if (wpEl) wpEl.style.display = FX.uiWaypoints ? '' : 'none';
   const hint = document.querySelector('#overlay .hint'); if (hint) hint.style.display = FX.uiHint ? '' : 'none';
   applyRootFont();
 }
@@ -1108,8 +1130,18 @@ function applyGlobals() {
 let uiMobileMul = 1;
 function computeUiMul() { uiMobileMul = (IS_TOUCH && window.innerWidth < 640) ? 0.85 : 1; }
 function applyRootFont() { document.documentElement.style.fontSize = (16 * (FX.uiScale || 1) * uiMobileMul) + 'px'; }
+// Each project stop paints the void in its own brand hue (profile.js owns the
+// value). Non-project beats fall back to the CHAPTER_COLORS cycle.
+function applyProjectTints() {
+  for (const b of beats) {
+    if (b.stop !== 'project') { b.tintColor = null; continue; }
+    const x = PROFILE.work.featured.find((p) => p.id === b.id);
+    b.tintColor = x ? parseInt(x.tint.slice(1), 16) : null;
+  }
+}
 computeUiMul();
 load();
+applyProjectTints();
 beats.forEach(ensureBeatFX);   // ensure every beat (incl. defaults) carries a full FX keyframe set
 { // anchor the wave ribbon around the "My Projects" section (now that beats exist)
   const _ai = Math.max(0, beats.findIndex((b) => /projects/i.test(b.name)));
@@ -1543,8 +1575,7 @@ renderer.domElement.addEventListener('click', (e) => {
 });
 
 // ---- Play-mode navigation ---------------------------------------------------
-let freeRoam = false;
-const freeBtn = document.querySelector('#freeroam');
+let freeRoam = false;   // Director-Mode-adjacent guard: the visitor build never leaves the rails
 function lastIdx() { return Math.max(0, beats.length - 1); }
 // Every input path (wheel / keys / swipe / waypoint tap) funnels through goTo:
 // one cooldown means hybrid devices can't double-step (e.g. a wheel event
@@ -1559,16 +1590,23 @@ function goTo(i) {
   // start a timed flight into the new section (per-shot duration, scaled by speed)
   const target = index / Math.max(1, lastIdx());
   const dur = (beats[index]?.dur ?? DEF_DUR) / Math.max(0.05, speedMul);
-  tween = { from: progress, to: target, t: 0, dur: Math.max(0.15, dur) };
-  freeBtn.hidden = index !== lastIdx();
+  // per-beat easing (beat.ease) overrides the global transition curve
+  tween = { from: progress, to: target, t: 0, dur: Math.max(0.15, dur), ease: EASINGS[beats[index]?.ease] || null };
 }
 function step(dir) { goTo(index + dir); }
 // One section per scroll GESTURE: a trackpad swipe fires dozens of wheel events,
 // so we step once on the first event, then stay locked until the scroll has
 // fully stopped (no wheel events for `idle` ms). You must scroll again to advance.
 let navLock = false, wheelIdle = null;
+// A stop whose DOM content overflows its box owns the gesture: it scrolls
+// natively instead of stepping the flight. Short stops still swipe/scroll-navigate.
+function isOverflowingStop(target) {
+  const sc = target?.closest?.('.stop.in');
+  return !!sc && sc.scrollHeight > sc.clientHeight + 8;
+}
 window.addEventListener('wheel', (e) => {
   if (editMode || freeRoam) return;   // editor uses orbit zoom
+  if (isOverflowingStop(e.target)) return;   // a tall stop scrolls its own content first
   e.preventDefault();
   if (Math.abs(e.deltaY) < 6) return;
   clearTimeout(wheelIdle);
@@ -1595,6 +1633,7 @@ window.addEventListener('touchstart', (e) => {
 window.addEventListener('touchmove', (e) => {
   if (editMode || freeRoam || _tAxis === 'multi') return;
   if (isTextEntry(e.target)) return;
+  if (isOverflowingStop(e.target)) return;                   // tall stop → native scroll
   e.preventDefault();                                        // the reliable iOS pull-to-refresh / overscroll kill
   const dx = e.touches[0].clientX - _tX, dy = e.touches[0].clientY - _tY;
   if (!_tAxis && Math.hypot(dx, dy) > 12) _tAxis = Math.abs(dy) >= Math.abs(dx) ? 'y' : 'x';   // axis lock
@@ -1612,98 +1651,6 @@ window.addEventListener('keydown', (e) => {
   else if (['ArrowUp','PageUp'].includes(e.key)) { e.preventDefault(); step(-1); }
 });
 
-freeBtn.addEventListener('click', () => setFreeRoam(!freeRoam));
-function setFreeRoam(on) {
-  freeRoam = on; controls.enabled = on; clearFly();
-  if (on) {
-    // drop into noclip right where we are, looking the same way
-    camera.up.set(0, 1, 0);
-    const fwd = new THREE.Vector3(); camera.getWorldDirection(fwd);
-    controls.target.copy(camera.position).addScaledVector(fwd, 60);
-    controls.update();
-    freeBtn.hidden = false; freeBtn.textContent = 'Exit free-fly (V)';
-  } else {
-    progress = index / Math.max(1, lastIdx()); tween = null; // resume on the rails at the current section
-    freeBtn.hidden = index !== lastIdx();
-    freeBtn.textContent = 'Enter free roam';
-  }
-}
-
-// ---- Waypoint rail: a dot per section that fills/ignites as you travel --------
-const wpEl = document.querySelector('#waypoints');
-let wpDots = [], wpFill = null;
-function buildWaypoints() {
-  if (!wpEl) return;
-  wpEl.innerHTML = '<div class="wp-track"></div><div class="wp-fill"></div>';
-  wpFill = wpEl.querySelector('.wp-fill');
-  wpDots = beats.map((b, i) => {
-    const dot = document.createElement('button');
-    dot.type = 'button'; dot.className = 'wp-dot';
-    dot.setAttribute('aria-label', `Fly to ${b.name} (${i + 1} of ${beats.length})`);
-    dot.innerHTML = `<span class="wp-label" aria-hidden="true">${b.name}</span>`;
-    dot.addEventListener('click', () => {
-      if (editMode) return;
-      if (freeRoam) setFreeRoam(false);
-      goTo(i);
-    });
-    wpEl.appendChild(dot);
-    return dot;
-  });
-  wpEl.hidden = editMode;
-}
-function updateWaypoints() {
-  if (!wpDots.length) return;
-  const cur = editMode ? sel : index;
-  for (let i = 0; i < wpDots.length; i++) {
-    wpDots[i].classList.toggle('active', i === cur);
-    wpDots[i].classList.toggle('done', i < cur);
-    if (i === cur) wpDots[i].setAttribute('aria-current', 'step');
-    else wpDots[i].removeAttribute('aria-current');
-  }
-  if (wpFill) wpFill.style.transform = `scaleY(${clamp(progress, 0, 1)})`;
-}
-buildWaypoints();
-
-// ---- Kinetic section caption (demo content until real copy drops in) --------
-const capEl = document.querySelector('#caption');
-const capLabel = capEl && capEl.querySelector('.cap-label');
-const capTitle = capEl && capEl.querySelector('.cap-title');
-const capDesc = capEl && capEl.querySelector('.cap-desc');
-const HERO_SUBLINE = true;   // Frame 2: set false to show the headline alone (no sub-line)
-function resolveCaption(i) {                      // per-section caption text — beat.cap override wins, else the default
-  const b = beats[i] || {};
-  const isHero = /^hero$/i.test((b.name || '').trim());
-  const baseTitle = isHero ? 'From knowing nothing about coding and design.' : (b.name || '');
-  const baseDesc = isHero ? (HERO_SUBLINE ? 'Self-taught — everything here, I built.' : '') : (b.desc || '');
-  const ov = b.cap || {};
-  return { label: '', title: (ov.title !== undefined && ov.title !== '') ? ov.title : baseTitle, desc: ov.desc !== undefined ? ov.desc : baseDesc };
-}
-let _capShown = -1;
-let captionsOn = true;   // UI/UX panel toggle
-function setCaption(i) {
-  if (!capEl || !captionsOn || i === _capShown) return;
-  _capShown = i;
-  const c = resolveCaption(i);
-  if (workHub) { if (/projects/i.test((beats[i] && beats[i].name) || '')) workHub.show(); else workHub.hide(); }
-  capLabel.textContent = c.label;
-  requestAnimationFrame(() => {                 // set text → replay each asset's in-animation
-    capTitle.textContent = c.title;
-    capDesc.textContent = c.desc;
-    capEl.classList.add('show');
-    if (assetCfg.capTitle && assetCfg.capTitle.mesh3d) hideAsset(assetDef('capTitle'));   // 3D mesh shows the title instead
-    else replayAsset(assetDef('capTitle'));
-    replayAsset(assetDef('capDesc'));
-  });
-}
-function hideCaption() {
-  if (!capEl || _capShown === -1) return;
-  _capShown = -1;
-  if (workHub) workHub.hide();
-  capEl.classList.remove('show');
-  hideAsset(assetDef('capTitle'));
-  hideAsset(assetDef('capDesc'));
-}
-
 // subtle parallax (play mode only)
 const mouse = { x: 0, y: 0 };
 window.addEventListener('pointermove', (e) => {
@@ -1718,7 +1665,6 @@ window.addEventListener('pointermove', (e) => {
 const overlay = document.querySelector('#overlay');
 const hudBeat = document.querySelector('#hud-beat');
 const hudProgress = document.querySelector('#hud-progress');
-const visitBtn = document.querySelector('#visitlive');
 
 // ---- Text assets: per-asset content + in/out animation + DOF blur -------------
 //  Every text box on the site is an "asset" you can re-word and re-time. The reveal
@@ -1728,8 +1674,6 @@ const ASSET_DEFS = [
   { id: 'wordmark', label: 'Wordmark',      sel: '#overlay h1',         group: 'overlay', editable: true },
   { id: 'tagline',  label: 'Tagline',       sel: '#overlay .sub',       group: 'overlay', editable: true },
   { id: 'hint',     label: 'Scroll hint',   sel: '#overlay .hint',      group: 'overlay', editable: true },
-  { id: 'capTitle', label: 'Caption title', sel: '#caption .cap-title', group: 'caption', editable: false },
-  { id: 'capDesc',  label: 'Caption sub',   sel: '#caption .cap-desc',  group: 'caption', editable: false },
   { id: 'card_shadiez',  label: 'Screen · Shadiez',  group: 'hero' },
   { id: 'card_smartcut', label: 'Screen · SmartCut', group: 'hero' },
 ];
@@ -1743,13 +1687,6 @@ const ASSET_KEY = 'voidAssets';
 // roadmap's state recipe (headline 16-24px, subhead 8-12px).
 const _aDefault = () => ({ text: null, size: 1, font: '', depth: 0, mesh3d: false, in: { dur: 900, delay: 120, y: 22, blur: 7, ease: 'out' }, out: { dur: 630, delay: 0, y: -12, blur: 6, ease: 'gravity' } });
 let assetCfg = {}; ASSET_DEFS.forEach((a) => { assetCfg[a.id] = a.group === 'hero' ? { ...HERO_DEFAULTS[a.id] } : _aDefault(); });
-// Caption choreography (transition-lab): the heading leads its slot by ~60ms,
-// the sub follows one stagger step later — and on the way out the order
-// REVERSES at half the gap, so the last thing in is the first thing gone.
-Object.assign(assetCfg.capTitle.in, { delay: 60, y: 22 });
-Object.assign(assetCfg.capDesc.in, { delay: 200, y: 10 });
-Object.assign(assetCfg.capTitle.out, { delay: 70 });
-Object.assign(assetCfg.capDesc.out, { delay: 0, y: -8 });
 let assetDof = 6;            // DOF → text blur amount (px) at full defocus
 let _domDefocus = 0;
 // The house easing set, lifted from transition-lab / motion-lab: 'out' for
@@ -1814,56 +1751,12 @@ function initAssets() {
 function updateAssetDOF(flying) {            // depth-of-field blur layered on the group containers
   // animating CSS blur() re-rasterizes big text layers every frame — a top
   // jank source on phone GPUs mid-flight, and invisible at phone text sizes
-  if (PREFERS_REDUCED || IS_TOUCH) { if (overlay) overlay.style.filter = ''; if (capEl) capEl.style.filter = ''; return; }
+  if (PREFERS_REDUCED || IS_TOUCH) { if (overlay) overlay.style.filter = ''; return; }
   _domDefocus += ((flying ? 1 : 0) - _domDefocus) * 0.07;
   const db = _domDefocus * assetDof;
-  const f = db > 0.03 ? `blur(${db.toFixed(2)}px)` : '';
-  if (overlay) overlay.style.filter = f;
-  if (capEl) capEl.style.filter = f;
+  if (overlay) overlay.style.filter = db > 0.03 ? `blur(${db.toFixed(2)}px)` : '';
 }
 try { initAssets(); } catch (e) { console.error('[initAssets]', e); }
-
-// ---- 3D mesh headline — a section's caption title rendered as a real extruded
-//  extruded mesh (via text3d), framed left-of-center in the beat view, with grouped
-//  scale/fade/rise in & out. The DOM title is hidden while this is on. Best for
-//  short titles ("My Projects", project names) — long statements stay DOM text.
-const headline3D = (() => {
-  let mesh = null, op = 0, curKey = '';
-  const C = new THREE.Vector3(), f = new THREE.Vector3(), rt = new THREE.Vector3(), uu = new THREE.Vector3(), zc = new THREE.Vector3(), pos = new THREE.Vector3();
-  const baseQ = new THREE.Quaternion(), basis = new THREE.Matrix4();
-  function pose(b) {
-    C.set(b.cam[0], b.cam[1], b.cam[2]);
-    f.set(b.look[0] - C.x, b.look[1] - C.y, b.look[2] - C.z).normalize();
-    uu.set(b.up?.[0] ?? 0, b.up?.[1] ?? 1, b.up?.[2] ?? 0);
-    rt.copy(f).cross(uu).normalize(); uu.copy(rt).cross(f).normalize();
-    zc.copy(rt).cross(uu); basis.makeBasis(rt, uu, zc); baseQ.setFromRotationMatrix(basis);
-  }
-  function dispose() { if (mesh) { scene.remove(mesh); mesh.geometry.dispose(); mesh.material.dispose(); mesh = null; } }
-  function rebuild(title) {
-    dispose();
-    const c = assetCfg.capTitle;
-    mesh = text3d.buildHeadline(title, { size: 13 * (c.size || 1), depth: Math.max(2, (c.depth || 0) * 0.6 + 3), bevel: 1.0, color: '#eaf4ff', glow: 1.7 });
-    if (mesh) { mesh.material.opacity = 0; mesh.visible = false; scene.add(mesh); }
-  }
-  function update(on, t, b, title) {
-    op += ((on ? 1 : 0) - op) * 0.08;
-    if (on && b && b.cam && title && text3d.fontReady()) {
-      const c = assetCfg.capTitle, key = title + '|' + (c.size || 1) + '|' + (c.depth || 0);
-      if (key !== curKey) { rebuild(title); curKey = key; }
-      pose(b);
-    }
-    if (!mesh) return;
-    if (op < 0.01) { mesh.visible = false; return; }
-    mesh.visible = true;
-    const RM = PREFERS_REDUCED, e = op * op * (3 - 2 * op);
-    pos.copy(C).addScaledVector(f, 72).addScaledVector(rt, -22).addScaledVector(uu, -1 + (RM ? 0 : (1 - e) * -5));
-    mesh.position.copy(pos); mesh.quaternion.copy(baseQ);
-    mesh.scale.setScalar(RM ? 1 : (0.86 + 0.14 * e));
-    mesh.material.opacity = e;
-    if (mesh.material.userData && mesh.material.userData.shader) mesh.material.userData.shader.uniforms.uSweep.value = RM ? 0 : t * 0.3;
-  }
-  return { update };
-})();
 
 // ===========================================================================
 //  EDITOR
@@ -1913,7 +1806,12 @@ function applySnapshot(str) {
 }
 function undo() { if (hPtr > 0) { hPtr--; applySnapshot(history[hPtr]); flash('Undo'); } }
 function redo() { if (hPtr < history.length - 1) { hPtr++; applySnapshot(history[hPtr]); flash('Redo'); } }
-function commit(msg) { beats.forEach(ensureBeatFX); rebuildDerived(); rebuildGizmos(); rebuildPanels(); buildWaypoints(); reattach(); pushHistory(); save(); if (msg) flash(msg); }
+function commit(msg) {
+  beats.forEach(ensureBeatFX); applyProjectTints(); rebuildDerived(); rebuildGizmos(); rebuildPanels();
+  // Director Mode can reorder / add / delete beats, so the DOM stop blocks are rebuilt with them
+  panels = initPanels({ beats, profile: PROFILE, root: document.querySelector('#stops'), onTint: () => {} });
+  reattach(); pushHistory(); save(); if (msg) flash(msg);
+}
 function flash(t) { edStatus.textContent = t; }
 pushHistory(); // initial state
 
@@ -2298,15 +2196,12 @@ function setEdit(on) {
   editMode = on;
   editor.hidden = !on;
   timelineEl.hidden = !on;
-  if (wpEl) wpEl.hidden = on;
   if (fxEl) fxEl.hidden = on;        // hide the FX panel in Director Mode (no overlap with the editor)
   if (on) { if (txEl) txEl.hidden = true; if (uxEl) uxEl.hidden = true; if (textEl) textEl.hidden = true; }  // hide the extra panels too
   pathGroup.visible = on;
   controls.enabled = on;
   clearFly();
   if (on) {
-    if (freeRoam) setFreeRoam(false);
-    freeBtn.hidden = true;
     sel = clamp(index, 0, beats.length - 1);
     controls.rotateSpeed = sens;
     rebuildGizmos();
@@ -2331,10 +2226,6 @@ window.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && k === 'y') { e.preventDefault(); redo(); return; }
   const typing = isTextEntry(e.target);
   if (k === 'e' && !typing && DEV_TOOLS) { setEdit(!editMode); }   // preview-only: no Director Mode
-  if (k === 'v' && !typing) {                    // V = drop into / out of noclip free-fly
-    if (editMode) { setEdit(false); setFreeRoam(true); }
-    else setFreeRoam(!freeRoam);
-  }
   if (editMode && !typing) {
     if (k === 't') setGizmoMode('rotate');      // moved off 'r' (now fly-up)
     else if (k === 'g') setGizmoMode('translate'); // moved off 'w' (now fly-forward)
@@ -2609,11 +2500,10 @@ function togglePanel(target) {
 const asEl = document.querySelector('#assetpanel');
 let asSel = ASSET_DEFS[0].id;
 let _asFrame = -1;
-function curCapIdx() { return _capShown >= 0 ? _capShown : index; }   // caption text edits the section you're currently on
 function frameAssets() {                          // assets that belong to the current frame
   if (index === 0) return ASSET_DEFS.filter((a) => a.group === 'overlay');
   const isHero = /^hero$/i.test((beats[index]?.name || '').trim());
-  return ASSET_DEFS.filter((a) => a.group === 'caption' || (isHero && a.group === 'hero'));
+  return ASSET_DEFS.filter((a) => isHero && a.group === 'hero');
 }
 function loadAssetFields() {
   if (!asEl) return;
@@ -2639,21 +2529,12 @@ function loadAssetFields() {
   const txt = document.querySelector('#as-text');
   if (txt) {
     txt.disabled = false;
-    if (def.group === 'caption') {                 // per-section text (whichever section you're on)
-      const cc = resolveCaption(curCapIdx());
-      txt.value = def.id === 'capTitle' ? cc.title : (cc.desc || '');
-      txt.placeholder = (beats[curCapIdx()]?.name || 'this section') + '…';
-    } else {
-      txt.value = c.text ?? (assetEl(def)?.textContent || '');
-      txt.placeholder = 'text…';
-    }
+    txt.value = c.text ?? (assetEl(def)?.textContent || '');
+    txt.placeholder = 'text…';
   }
   const szv = document.querySelector('#as-size'); if (szv) { szv.value = c.size ?? 1; const o = document.querySelector('#as-size-v'); if (o) o.textContent = (c.size ?? 1).toFixed(2) + '×'; }
   const fnv = document.querySelector('#as-font'); if (fnv) fnv.value = c.font || '';
   const dpv = document.querySelector('#as-depth'); if (dpv) { dpv.value = c.depth ?? 0; const o = document.querySelector('#as-depth-v'); if (o) o.textContent = (c.depth ?? 0) + 'px'; }
-  const m3v = document.querySelector('#as-mesh3d'), m3r = document.querySelector('#as-mesh3d-row');
-  if (m3r) m3r.style.display = (asSel === 'capTitle') ? '' : 'none';      // 3D mesh option only for the headline
-  if (m3v) m3v.checked = !!c.mesh3d;
   const put = (id, v, fmt) => { const el = document.querySelector('#as-' + id); if (el) el.value = v; const o = document.querySelector('#as-' + id + '-v'); if (o) o.textContent = fmt ? fmt(v) : v; };
   for (const ph of ['in', 'out']) {
     put(ph + '-dur', c[ph].dur, (v) => v + 'ms'); put(ph + '-delay', c[ph].delay, (v) => v + 'ms');
@@ -2669,16 +2550,7 @@ function loadAssetFields() {
   const txt = document.querySelector('#as-text');
   if (txt) txt.addEventListener('input', () => {
     const def = assetDef(asSel);
-    if (def.group === 'caption') {                 // write the current section's caption override + live-update
-      const i = curCapIdx(), b = beats[i]; if (!b) return;
-      b.cap = b.cap || {};
-      b.cap[def.id === 'capTitle' ? 'title' : 'desc'] = txt.value;
-      if (def.id === 'capTitle' && capTitle) capTitle.textContent = txt.value;
-      if (def.id === 'capDesc' && capDesc) capDesc.textContent = txt.value;
-      save();
-    } else {
-      assetCfg[asSel].text = txt.value; const el = assetEl(def); if (el) el.textContent = txt.value || ''; saveAssets();
-    }
+    assetCfg[asSel].text = txt.value; const el = assetEl(def); if (el) el.textContent = txt.value || ''; saveAssets();
   });
   const bindRange = (id, ph, key, fmt) => {
     const el = document.querySelector('#as-' + id); if (!el) return;
@@ -2697,8 +2569,6 @@ function loadAssetFields() {
   if (fni) fni.addEventListener('change', () => { assetCfg[asSel].font = fni.value; applyAssetStyle(assetDef(asSel)); saveAssets(); });
   const dpi = document.querySelector('#as-depth');
   if (dpi) dpi.addEventListener('input', () => { assetCfg[asSel].depth = parseFloat(dpi.value); applyAssetStyle(assetDef(asSel)); const o = document.querySelector('#as-depth-v'); if (o) o.textContent = parseFloat(dpi.value) + 'px'; saveAssets(); });
-  const m3i = document.querySelector('#as-mesh3d');
-  if (m3i) m3i.addEventListener('change', () => { assetCfg.capTitle.mesh3d = m3i.checked; saveAssets(); if (m3i.checked) hideAsset(assetDef('capTitle')); else replayAsset(assetDef('capTitle')); });
   const ahBind = (id, key, fmt) => {              // floating-card position/scale → live into heroCluster
     const el = document.querySelector('#' + id); if (!el) return;
     el.addEventListener('input', () => { const v = parseFloat(el.value); assetCfg[asSel][key] = v; const o = document.querySelector('#' + id + '-v'); if (o) o.textContent = fmt ? fmt(v) : v; saveAssets(); });
@@ -2742,8 +2612,6 @@ const uxEl = document.querySelector('#uxpanel');
   const overlayHint = document.querySelector('#overlay .hint');
   const chk = (id, key, fn) => { const el = document.querySelector('#ux-' + id); if (!el) return; el.checked = !!FX[key]; el.addEventListener('change', () => { FX[key] = el.checked; fn(el.checked); }); };
   chk('hud', 'uiHud', (v) => { if (hud) hud.style.display = v ? '' : 'none'; });
-  chk('waypoints', 'uiWaypoints', (v) => { if (wpEl) wpEl.style.display = v ? '' : 'none'; });
-  chk('caption', 'uiCaption', (v) => { captionsOn = v; if (!v) hideCaption(); });
   chk('hint', 'uiHint', (v) => { if (overlayHint) overlayHint.style.display = v ? '' : 'none'; });
   const scale = document.querySelector('#ux-scale'), scaleOut = document.querySelector('#ux-scale-v');
   if (scale) {
@@ -2815,18 +2683,6 @@ const textEl = document.querySelector('#textpanel');
   });
 })();
 
-// ---- Hotkeys legend (toggle with ?) ----------------------------------------
-(() => {
-  const hk = document.querySelector('#hotkeys');
-  if (!hk || IS_TOUCH) return;   // keyboard-only affordance — meaningless on touch (even with a BT keyboard the legend lies)
-  if (!DEV_TOOLS) hk.querySelector('#hk-dev')?.remove();   // visitors only see keys that actually work for them
-  window.addEventListener('keydown', (e) => {
-    if (isTextEntry(e.target)) return;
-    if (e.key === '?') hk.hidden = !hk.hidden;
-    else if (e.key === 'Escape') hk.hidden = true;
-  });
-})();
-
 applyGlobals();   // apply the loaded global FX/UX/transition state before the loop starts
 
 // ---- Animation loop ---------------------------------------------------------
@@ -2860,6 +2716,9 @@ function perfGovern(dt) {
   console.info('[void] perf governor -> tier', _perfTier);
 }
 
+let _barShown = false;                       // the bar's show/hide is idempotent, but don't touch the DOM every frame
+function setBar(on) { if (on === _barShown) return; _barShown = on; on ? bar.show() : bar.hide(); }
+
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.05); // seconds since last frame (clamped for tab-switches)
   elapsed += dt;
@@ -2873,7 +2732,7 @@ function animate() {
     if (tween) {                       // time-based flight between shots
       tween.t += dt;
       const k = clamp(tween.t / tween.dur, 0, 1);
-      progress = tween.from + (tween.to - tween.from) * transitionEase(k);
+      progress = tween.from + (tween.to - tween.from) * (tween.ease || transitionEase)(k);
       activePunch = Math.sin(Math.PI * k);   // 0 at ends, 1 at the midpoint
       if (k >= 1) { progress = tween.to; tween = null; activePunch = 0; }
     } else activePunch = 0;
@@ -2919,7 +2778,6 @@ function animate() {
     const hsc = heroOn ? Math.max(-0.5, Math.min(0.5, progress * Math.max(1, lastIdx()) - index)) : 0;
     heroCluster.update(heroOn, t, beats[index], hsc);
   }
-  headline3D.update(!editMode && !freeRoam && index !== 0 && !!(assetCfg.capTitle && assetCfg.capTitle.mesh3d), t, beats[index], resolveCaption(index).title);
   text3d.update(t, PREFERS_REDUCED);           // placed 3D text: light sweep + idle float
   try { openingFX.update(!editMode && !freeRoam && index === 0 && progress < 0.06, t); } catch (e) { if (!animate._oerr) { console.error('[opening]', e); animate._oerr = 1; } }
   {                                          // neon wave ribbon — drift + warp around its section
@@ -2946,18 +2804,19 @@ function animate() {
       if (d < bd) { bd = d; bi = i; }
     }
     const s = clamp(1 - Math.sqrt(bd) / curFX.colorReach, 0, 1) * curFX.colorIntensity;   // 1 at a section, 0 far between
-    const tint = CHAPTER_COLORS[bi % CHAPTER_COLORS.length];
+    const tint = (beats[bi]?.tintColor) ?? CHAPTER_COLORS[bi % CHAPTER_COLORS.length];   // project stops carry their brand hue
     livingVoid.setTint(tint, s);
     if (network) network.setTint(tint, s);   // the network recolors with the chapter too
   }
-  {                                          // kinetic caption: reveal on arrival, hide while moving / in editor
-    if (editMode || freeRoam) hideCaption();
+  if (panels && bar) {                       // stop content: reveal on arrival, hide while moving / in editor
+    if (editMode || freeRoam) { panels.hide(); setBar(false); }
     else {
       const c = beats[index].cam;
       const dx = camera.position.x - c[0], dy = camera.position.y - c[1], dz = camera.position.z - c[2];
       const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      if (!tween && dist < 26 && index !== 0) setCaption(index);   // arrived & parked (skip hero — it has the wordmark)
-      else if (tween || dist > 70) hideCaption();
+      if (!tween && dist < 26) panels.show(index);   // Opening/Hero have no stop → panels no-ops
+      else if (tween || dist > 70) panels.hide();
+      setBar(progress > 0.02);                       // the bar arrives once the flight leaves the wordmark
     }
   }
 
@@ -2973,7 +2832,6 @@ function animate() {
       m.scale.setScalar(0.92 + 0.08 * a);
     }
   }
-  updateWaypoints();
   fxMaybeSync();                              // FX panel mirrors the focused section's keyframe
   if (!editMode && !freeRoam) {              // liquid cursor only while hovering a lit section panel
     _ray.setFromCamera(_cN, camera);
@@ -2989,14 +2847,6 @@ function animate() {
     updateAssetDOF(!editMode && !freeRoam && !!tween);              // text defocuses while flying
     if (asEl && !asEl.hidden && index !== _asFrame) loadAssetFields();   // panel follows the frame you fly to
   } catch (e) { if (!animate._aerr) { console.error('[assets]', e); animate._aerr = 1; } }
-
-  // "visit live" button for the section currently in view (play mode only)
-  const cur = beats[index];
-  if (!editMode && !freeRoam && cur && cur.link) {
-    visitBtn.hidden = false; visitBtn.href = cur.link;
-    const lbl = /^mailto:/i.test(cur.link) ? 'Get in touch ↗' : 'Visit live ↗';
-    if (visitBtn.textContent !== lbl) visitBtn.textContent = lbl;
-  } else visitBtn.hidden = true;
 
   if (bokeh && bokeh.uniforms && bokeh.uniforms.focus) {   // lock focus onto the NEAREST section
     if (editMode || freeRoam) _focusV.copy(controls.target);
@@ -3108,8 +2958,10 @@ function animate() {
 try { renderer.compile(scene, camera); } catch (e) { console.warn('[precompile]', e); }
 animate();
 initMagneticCursor();
-const dossier = initDossier();
-workHub = initWorkHub(() => dossier.show('work'));
+// ---- The v15 DOM layer: one content block per stop + the fixed bar ----------
+mountPrintCV(PROFILE);
+panels = initPanels({ beats, profile: PROFILE, root: document.querySelector('#stops'), onTint: () => {} });
+bar = initBar({ profile: PROFILE, onWork: () => goTo(WORK_INDEX), onAbout: () => goTo(ABOUT_INDEX), root: document.querySelector('#bar') });
 
 // ---- Intro loader: the void wires itself up, then warps into the flight -----
 //  Built from the scene's own vocabulary — nodes, links, one mono voice — so it

@@ -156,32 +156,6 @@ html, body {
 #hud #hud-beat { color: #cfe8ff; }
 #hud #hud-progress { color: #4fd2ff; }
 
-/* ---- Free-roam button (shown only at the final beat) ---- */
-#freeroam {
-  position: fixed;
-  left: 50%;
-  bottom: 2rem;
-  transform: translateX(-50%);
-  z-index: 3;
-  padding: 0.7rem 1.4rem;
-  font: inherit;
-  font-size: 0.8rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: #eaf4ff;
-  background: rgba(79, 210, 255, 0.08);
-  border: 1px solid rgba(79, 210, 255, 0.5);
-  border-radius: 999px;
-  cursor: pointer;
-  backdrop-filter: blur(6px);
-  transition: background 0.25s ease, border-color 0.25s ease;
-}
-#freeroam:hover {
-  background: rgba(79, 210, 255, 0.18);
-  border-color: rgba(79, 210, 255, 0.9);
-}
-#freeroam[hidden] { display: none; }
-
 /* ---- Live edit panel (press E) ---- */
 #editor {
   position: fixed;
@@ -281,18 +255,6 @@ html, body {
 .beat-row.dragover { outline: 2px dashed rgba(79,210,255,0.85); outline-offset: 1px; }
 .beat-row .bidx { cursor: grab; }
 
-/* "visit live" button — play mode, when the current section has a link */
-#visitlive {
-  position: fixed; right: 1.5rem; bottom: 2rem; z-index: 3;
-  padding: 0.6rem 1.2rem; font: inherit; font-size: 0.78rem;
-  letter-spacing: 0.16em; text-transform: uppercase; text-decoration: none;
-  color: #eaf4ff; background: rgba(79,210,255,0.12);
-  border: 1px solid rgba(79,210,255,0.6); border-radius: 999px;
-  backdrop-filter: blur(6px); transition: background 0.25s ease, border-color 0.25s ease;
-}
-#visitlive:hover { background: rgba(79,210,255,0.24); border-color: rgba(79,210,255,0.95); }
-#visitlive[hidden] { display: none; }
-
 /* ---- Camera timeline (keyframes = sections) ---- */
 #timeline {
   position: fixed; left: 1.5rem; right: 320px; bottom: 1rem; z-index: 60;
@@ -356,36 +318,6 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
 .cursor-ring.cursor-press { width: 30px; height: 30px; margin: -15px 0 0 -15px; }
 [data-magnetic] { transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1); }
 
-/* ---- Waypoint rail: the visible journey, a dot per section ---- */
-#waypoints {
-  position: fixed; left: 1.7rem; top: 50%; transform: translateY(-50%);
-  z-index: 4; height: 46vh; min-height: 240px;
-  display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start;
-}
-#waypoints[hidden] { display: none; }
-#waypoints .wp-track, #waypoints .wp-fill { position: absolute; left: 5px; top: 0; width: 1px; }
-#waypoints .wp-track { bottom: 0; background: rgba(143, 176, 204, 0.22); }
-#waypoints .wp-fill { height: 100%; transform-origin: top; transform: scaleY(0); background: linear-gradient(#4fd2ff, rgba(79, 210, 255, 0.12)); box-shadow: 0 0 8px rgba(79, 210, 255, 0.5); }
-.wp-dot {
-  position: relative; width: 11px; height: 11px; margin: 0; padding: 0; flex: 0 0 auto;
-  border-radius: 50%; border: 1px solid rgba(143, 176, 204, 0.5);
-  background: rgba(6, 20, 28, 0.85); cursor: pointer; transition: all .25s ease;
-}
-.wp-dot .wp-label {
-  font-family: var(--f);
-  position: absolute; left: 22px; top: 50%; transform: translateY(-50%);
-  white-space: nowrap; font-size: 0.62rem; letter-spacing: 0.18em; text-transform: uppercase;
-  color: #8fb0cc; opacity: 0; transition: opacity .25s ease; pointer-events: none;
-}
-.wp-dot:hover .wp-label, .wp-dot.active .wp-label { opacity: 1; }
-.wp-dot.done { border-color: rgba(79, 210, 255, 0.55); background: rgba(79, 210, 255, 0.35); }
-/* keyboard navigation: a visible ring only for focus-visible (mouse clicks stay clean) */
-.wp-dot:focus-visible, #freeroam:focus-visible, #visitlive:focus-visible {
-  outline: 2px solid #4fd2ff; outline-offset: 4px; border-radius: 50%;
-}
-#freeroam:focus-visible, #visitlive:focus-visible { border-radius: 6px; }
-.wp-dot.active { width: 15px; height: 15px; border-color: #4fd2ff; background: #4fd2ff; box-shadow: 0 0 14px rgba(79, 210, 255, 0.95); }
-
 /* ---- FX control panel (B) ---- */
 #fxpanel {
   position: fixed; right: 1.2rem; top: 1.2rem; z-index: 6;
@@ -401,31 +333,6 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
 #fxpanel .fx-head { display: flex; justify-content: space-between; align-items: center; color: #eaf4ff; letter-spacing: 0.16em; margin-bottom: 0.2rem; }
 #fxpanel .fx-head span { color: #5b768f; border: 1px solid rgba(143, 176, 204, 0.3); border-radius: 3px; padding: 0 5px; }
 #fxpanel .fx-sec { color: #4fd2ff; letter-spacing: 0.14em; font-size: 0.6rem; margin: 0 0 0.2rem; }
-
-/* ---- Hotkeys legend (?) ---- */
-#hotkeys {
-  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 70;
-  width: min(460px, 92vw); max-height: 86vh; overflow-y: auto;
-  padding: 1.1rem 1.3rem; border-radius: 12px;
-  background: rgba(6, 20, 28, 0.95); border: 1px solid rgba(79, 210, 255, 0.3); backdrop-filter: blur(10px);
-  font-family: var(--f); color: #cfe8ff; font-size: 0.66rem; letter-spacing: 0.03em;
-}
-#hotkeys[hidden] { display: none; }
-#hotkeys .fx-head { display: flex; justify-content: space-between; align-items: center; color: #eaf4ff; letter-spacing: 0.16em; text-transform: uppercase; margin-bottom: 0.4rem; }
-#hotkeys .fx-head span { color: #5b768f; border: 1px solid rgba(143, 176, 204, 0.3); border-radius: 3px; padding: 0 5px; }
-#hotkeys .hk-sec { color: #4fd2ff; letter-spacing: 0.2em; text-transform: uppercase; margin: 0.85rem 0 0.3rem; font-size: 0.56rem; }
-#hotkeys .hk { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: baseline; padding: 0.2rem 0; color: #9fc2e0; }
-#hotkeys .hk span { color: #8fb0cc; flex: 1 1 auto; }
-#hotkeys kbd { font-family: inherit; background: rgba(79, 210, 255, 0.12); border: 1px solid rgba(79, 210, 255, 0.4); border-radius: 4px; padding: 1px 5px; color: #eaf4ff; font-size: 0.6rem; }
-#hotkeys .fx-hint { color: #5b768f; text-align: right; margin-top: 0.6rem; }
-#fxpanel .fx-group { color: #4fd2ff; letter-spacing: 0.18em; margin-top: 0.55rem; padding-top: 0.35rem; border-top: 1px solid rgba(79, 210, 255, 0.14); }
-#fxpanel .fx-row { display: flex; align-items: center; gap: 0.4rem; }
-#fxpanel .fx-row label { flex: 0 0 66px; }
-#fxpanel .fx-row input[type="range"] { flex: 1; min-width: 0; accent-color: #4fd2ff; }
-#fxpanel .fx-row span { flex: 0 0 44px; text-align: right; color: #4fd2ff; }
-#fxpanel .fx-hint { color: #5b768f; text-align: right; margin-top: 0.45rem; }
-#fxpanel .fx-chk { display: flex; align-items: center; gap: 0.4rem; color: #8fb0cc; cursor: pointer; margin-top: 0.15rem; }
-#fxpanel .fx-chk input { accent-color: #4fd2ff; }
 
 /* ---- Extra side panels: Transitions (T) + UI/UX (U) — reuse the FX styling ---- */
 .sidepanel {
@@ -502,35 +409,6 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
   transition: opacity .3s ease;
 }
 
-/* ---- Kinetic section caption ---- */
-#caption {
-  position: fixed; left: 6vw; top: 50%; transform: translateY(-50%);
-  z-index: 3; max-width: min(440px, 42vw); pointer-events: none;
-}
-#caption .cap-label {
-  font-family: var(--f);
-  font-size: 0.66rem; letter-spacing: 0.34em; text-transform: uppercase; color: #4fd2ff;
-  margin-bottom: 0.9rem;
-  opacity: 0; transform: translateY(8px);
-  transition: opacity .5s ease, transform .5s ease;
-}
-#caption .cap-title {
-  font-family: var(--f); font-weight: 500;
-  text-transform: uppercase;
-  font-size: clamp(1.35rem, 3.1vw, 2.5rem); line-height: 1.18; letter-spacing: 0.08em; color: #eaf4ff;
-  opacity: 0; transform: translateY(26px); filter: blur(7px);
-  transition: opacity .9s ease, transform .9s cubic-bezier(0.22, 1, 0.36, 1), filter .9s ease;
-}
-#caption .cap-desc {
-  font-family: var(--f);
-  margin-top: 1rem; font-size: 0.95rem; line-height: 1.55; color: #9fc2e0;
-  opacity: 0; transform: translateY(14px);
-  transition: opacity .7s ease, transform .7s ease;
-}
-#caption.show .cap-label { opacity: 1; transform: none; transition-delay: .05s; }
-#caption.show .cap-title { opacity: 1; transform: none; filter: none; transition-delay: .12s; }
-#caption.show .cap-desc  { opacity: 1; transform: none; transition-delay: .32s; }
-
 /* beat list rows */
 #ed-beatlist { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; }
 .beat-row {
@@ -560,151 +438,17 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
 
 /* ---- Mobile layout (the file's first breakpoint — everything above assumes desktop) ---- */
 @media (max-width: 640px) {
-  /* caption: the 42vw side column collapses to ~160px on phones — re-anchor
-     it full-width above the bottom chrome instead */
-  #caption { left: 5vw; right: 5vw; top: auto; bottom: 6rem; transform: none; max-width: none; }
-  #caption .cap-title { font-size: clamp(1.45rem, 7.5vw, 2.3rem); }
-  #caption .cap-desc { margin-top: 0.6rem; font-size: 0.85rem; line-height: 1.45; }
-  /* waypoint rail: compact; labels only on the active dot (no hover on touch) */
-  #waypoints { left: 0.8rem; height: 38vh; min-height: 190px; }
-  .wp-dot .wp-label { display: none; }
-  .wp-dot.active .wp-label { display: block; left: 20px; font-size: 0.58rem; letter-spacing: 0.12em; opacity: 1; }
-  /* bottom chrome: hud left, visitlive right, freeroam lifted clear of both */
   #hud { left: 1rem; bottom: 0.9rem; gap: 0.6rem; font-size: 0.62rem; }
-  #visitlive { right: 1rem; bottom: 0.8rem; padding: 0.55rem 1rem; font-size: 0.7rem; }
-  /* finale shows freeroam + a tall caption at once — the bottom is full, so
-     the button takes the empty top-right sky instead */
-  #freeroam { left: auto; right: 1rem; top: 1rem; bottom: auto; transform: none; padding: 0.6rem 1.1rem; font-size: 0.72rem; }
   #whisper { font-size: 0.68rem; letter-spacing: 0.16em; padding: 0 1.2rem; }
 }
 
 @media (pointer: coarse) {
-  /* invisible hit-area expansion: 11px dot, >=44px touch target */
-  .wp-dot::after { content: ''; position: absolute; inset: -16px; border-radius: 50%; }
   /* the infinite blurred sweep repaints a large layer every frame on mobile GPUs */
   .hero-screen .glass::before { animation: none; }
 }
 
-/* ==== THE DOSSIER — summonable text layer (About · CV · Work · Ambitions) ====
-   A panel that slides over the world (curtain easing) — the skim path for the
-   visitor who wants facts, not flight. Rendered from src/content/profile.js. */
-
-#dossier-btn {
-  position: fixed; top: 1rem; right: 1rem; z-index: 6;
-  font-family: var(--f); font-size: 0.68rem; letter-spacing: 0.18em; text-transform: lowercase;
-  color: #9fc4e0; background: rgba(6, 20, 28, 0.55); cursor: pointer;
-  border: 1px solid rgba(79, 210, 255, 0.28); border-radius: 999px;
-  padding: 0.5rem 1rem; backdrop-filter: blur(6px);
-  transition: color 0.3s ease, border-color 0.3s ease, background 0.3s ease;
-}
-#dossier-btn:hover { color: #eaf4ff; border-color: rgba(79, 210, 255, 0.7); background: rgba(10, 32, 44, 0.75); }
-#dossier-btn span {
-  margin-left: 0.5em; padding: 0.1em 0.45em; border: 1px solid rgba(79, 210, 255, 0.35);
-  border-radius: 4px; font-size: 0.9em; color: #7fe0ff; text-transform: uppercase;
-}
-
-#dossier { position: fixed; inset: 0; z-index: 40; }
-#dossier .do-backdrop {
-  position: absolute; inset: 0; background: rgba(2, 8, 12, 0.55);
-  opacity: 0; transition: opacity 0.5s ease;
-}
-#dossier.open .do-backdrop { opacity: 1; }
-#dossier .do-panel {
-  position: absolute; top: 0; right: 0; bottom: 0;
-  width: min(680px, 94vw);
-  display: flex; flex-direction: column;
-  background: rgba(5, 15, 22, 0.96);
-  border-left: 1px solid rgba(79, 210, 255, 0.22);
-  box-shadow: -40px 0 90px rgba(0, 0, 0, 0.55);
-  transform: translateX(102%);
-  transition: transform 0.6s cubic-bezier(0.76, 0, 0.24, 1); /* curtain — a panel over a world */
-}
-#dossier.open .do-panel { transform: translateX(0); }
-
-#dossier .do-head {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  padding: 1.4rem 1.6rem 1rem;
-}
-#dossier .do-name { font-size: 1.05rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #eaf4ff; }
-#dossier .do-title { margin-top: 0.35rem; font-size: 0.72rem; letter-spacing: 0.08em; color: #7fa8c8; }
-#dossier .do-close {
-  font-family: var(--f); font-size: 0.66rem; letter-spacing: 0.14em; color: #9fc4e0;
-  background: none; border: 1px solid rgba(79, 210, 255, 0.28); border-radius: 6px;
-  padding: 0.4rem 0.7rem; cursor: pointer;
-}
-#dossier .do-close:hover, #dossier .do-close:focus-visible { color: #eaf4ff; border-color: rgba(79, 210, 255, 0.7); }
-
-#dossier .do-tabs { display: flex; gap: 0.3rem; padding: 0 1.6rem; border-bottom: 1px solid rgba(79, 210, 255, 0.16); }
-#dossier .do-tabs [role="tab"] {
-  font-family: var(--f); font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase;
-  color: #7fa8c8; background: none; border: none; border-bottom: 2px solid transparent;
-  padding: 0.65rem 0.9rem; cursor: pointer; margin-bottom: -1px;
-}
-#dossier .do-tabs [role="tab"][aria-selected="true"] { color: #eaf4ff; border-bottom-color: #4fd2ff; }
-#dossier .do-tabs [role="tab"]:hover { color: #cfe8ff; }
-
-#dossier .do-body { flex: 1; overflow-y: auto; padding: 1.4rem 1.6rem 2rem; scrollbar-width: thin; }
-#dossier .do-body section { font-size: 0.82rem; line-height: 1.65; color: #b8d4ea; }
-#dossier .do-body p { margin: 0 0 0.8rem; }
-#dossier .do-body a { color: #7fe0ff; text-decoration: none; border-bottom: 1px solid rgba(127, 224, 255, 0.35); }
-#dossier .do-body a:hover { border-bottom-color: #7fe0ff; }
-#dossier .do-body h3 {
-  margin: 1.6rem 0 0.8rem; font-size: 0.68rem; font-weight: 600;
-  letter-spacing: 0.22em; text-transform: uppercase; color: #4fd2ff;
-}
-#dossier .do-body h3:first-child { margin-top: 0; }
-#dossier .do-lead { font-size: 0.92rem; color: #dcedff; }
-#dossier .do-facts { margin-top: 1.4rem; border-top: 1px solid rgba(79, 210, 255, 0.16); padding-top: 1rem; }
-#dossier .do-facts > div { display: flex; gap: 1rem; padding: 0.3rem 0; }
-#dossier .do-facts span { flex: 0 0 7.5rem; font-size: 0.64rem; letter-spacing: 0.16em; text-transform: uppercase; color: #5b768f; padding-top: 0.2em; }
-#dossier .do-item { margin-bottom: 1.3rem; }
-#dossier .do-item.compact { margin-bottom: 0.9rem; }
-#dossier .do-item-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
-#dossier .do-item-head b { color: #eaf4ff; font-weight: 600; }
-#dossier .do-dates, #dossier .do-tag { font-size: 0.66rem; letter-spacing: 0.12em; color: #5b768f; white-space: nowrap; text-transform: uppercase; }
-#dossier .do-tag { color: #7fe0ff; }
-#dossier .do-org { font-size: 0.7rem; letter-spacing: 0.1em; color: #7fa8c8; margin: 0.15rem 0 0.4rem; }
-#dossier .do-built { color: #8fb3d1; font-size: 0.76rem; }
-#dossier .do-hard { color: #7fa8c8; font-size: 0.76rem; font-style: italic; }
-#dossier .do-links { display: flex; gap: 1rem; margin-top: 0.2rem; }
-#dossier .do-mini { font-size: 0.66rem; letter-spacing: 0.1em; }
-#dossier .do-lab { padding: 0.25rem 0; }
-#dossier .do-lab b { color: #dcedff; font-weight: 600; }
-#dossier .do-note { margin-top: 1rem; color: #7fa8c8; font-style: italic; }
-#dossier .do-skill { padding: 0.3rem 0; }
-#dossier .do-skill span { display: block; font-size: 0.64rem; letter-spacing: 0.16em; text-transform: uppercase; color: #5b768f; margin-bottom: 0.15rem; }
-#dossier .do-cv-top { display: flex; justify-content: flex-end; margin-bottom: 0.4rem; }
-#dossier .do-download {
-  font-family: var(--f); font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase;
-  color: #06141c; background: #4fd2ff; border: none; border-radius: 6px;
-  padding: 0.5rem 0.9rem; cursor: pointer;
-}
-#dossier .do-download:hover { background: #7fe0ff; }
-#dossier .do-foot {
-  display: flex; gap: 1.4rem; padding: 0.9rem 1.6rem;
-  border-top: 1px solid rgba(79, 210, 255, 0.16);
-  font-size: 0.7rem; letter-spacing: 0.08em;
-}
-#dossier .do-foot a { color: #9fc4e0; text-decoration: none; }
-#dossier .do-foot a:hover { color: #eaf4ff; }
-
-@media (max-width: 640px) {
-  /* full-height sheet, not a shrunken desktop panel */
-  #dossier .do-panel { width: 100vw; border-left: none; }
-  #dossier .do-head { padding: 1.1rem 1.1rem 0.8rem; }
-  #dossier .do-tabs { padding: 0 0.6rem; overflow-x: auto; }
-  #dossier .do-body { padding: 1.1rem 1.1rem 1.6rem; }
-  #dossier .do-foot { padding: 0.8rem 1.1rem; gap: 1rem; flex-wrap: wrap; }
-  /* freeroam takes top-right on mobile — the dossier button moves left */
-  #dossier-btn { top: 1rem; right: auto; left: 1rem; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  #dossier .do-panel, #dossier .do-backdrop { transition: none; }
-}
-
 /* ==== PRINT — the downloadable CV ============================================
-   window.print() (Dossier → CV → Download PDF) hides the site and prints
+   window.print() (the CV stop's "Download PDF") hides the site and prints
    #print-cv, rendered from the same profile.js. One page, A4/Letter. */
 
 #print-cv { display: none; }
@@ -737,34 +481,6 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
   #print-cv li { margin: 0.5pt 0; }
   #print-cv .pcv-skill { margin: 1.5pt 0; }
 }
-
-/* ==== In-world work hub (My Projects beat only) ============================== */
-#workhub {
-  position: fixed; right: 5vw; top: 50%; transform: translateY(-50%) translateX(14px);
-  z-index: 3; width: min(340px, 30vw);
-  font-family: var(--f); color: #b8d4ea;
-  opacity: 0; pointer-events: none;
-  transition: opacity 0.6s ease, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
-}
-#workhub.show { opacity: 1; transform: translateY(-50%); pointer-events: auto; }
-#workhub .wh-sec {
-  font-size: 0.6rem; letter-spacing: 0.3em; text-transform: uppercase; color: #4fd2ff;
-  margin: 0.9rem 0 0.4rem;
-}
-#workhub .wh-sec:first-child { margin-top: 0; }
-#workhub .wh-row { display: flex; gap: 0.6rem; align-items: baseline; padding: 0.14rem 0; font-size: 0.68rem; line-height: 1.4; }
-#workhub .wh-row b { color: #eaf4ff; font-weight: 600; white-space: nowrap; }
-#workhub .wh-row span { color: #7fa8c8; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; }
-#workhub .wh-row.lab { display: inline-flex; margin-right: 0.9rem; }
-#workhub .wh-more {
-  margin-top: 1rem; font-family: var(--f); font-size: 0.62rem; letter-spacing: 0.14em;
-  text-transform: lowercase; color: #7fe0ff; background: none; cursor: pointer;
-  border: 1px solid rgba(79, 210, 255, 0.3); border-radius: 999px; padding: 0.45rem 0.9rem;
-  transition: border-color 0.3s ease, color 0.3s ease;
-}
-#workhub .wh-more:hover { color: #eaf4ff; border-color: rgba(79, 210, 255, 0.75); }
-@media (max-width: 900px) { #workhub { display: none; } } /* phones/narrow: the dossier carries the index */
-@media (prefers-reduced-motion: reduce) { #workhub { transition: none; } }
 
 /* ---- v15 flight stops: one DOM block per beat, revealed on arrival ---- */
 #stops { position: fixed; inset: 0; z-index: 3; pointer-events: none; }

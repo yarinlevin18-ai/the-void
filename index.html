@@ -78,46 +78,6 @@
       <span id="hud-progress">1 / 6</span>
     </div>
 
-    <button id="freeroam" hidden data-magnetic>Enter free roam</button>
-    <a id="visitlive" hidden target="_blank" rel="noopener" data-magnetic>Visit live ↗</a>
-
-    <!-- Journey waypoint rail (a dot per section, lights up as you arrive) -->
-    <nav id="waypoints" hidden aria-label="Sections"></nav>
-
-    <!-- Hotkeys legend (toggle with ?) -->
-    <div id="hotkeys" hidden>
-      <div class="fx-head">Hotkeys <span>?</span></div>
-      <div class="hk-sec">Navigate</div>
-      <div class="hk"><kbd>Scroll</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>Space</kbd><span>fly between sections</span></div>
-      <div class="hk"><kbd>click dot</kbd><span>jump to a section (left rail)</span></div>
-      <div class="hk"><kbd>V</kbd><span>free roam the void (and back)</span></div>
-      <div class="hk"><kbd>C</kbd><span>the dossier — about · CV · work</span></div>
-      <!-- dev-only rows: removed at runtime unless DEV_TOOLS -->
-      <div id="hk-dev">
-      <div class="hk-sec">Author panels</div>
-      <div class="hk"><kbd>E</kbd><span>Director Mode (free-fly editor)</span></div>
-      <div class="hk"><kbd>B</kbd><span>FX — per-section keyframes + density</span></div>
-      <div class="hk"><kbd>T</kbd><span>Transitions</span></div>
-      <div class="hk"><kbd>U</kbd><span>UI / UX</span></div>
-      <div class="hk"><kbd>Y</kbd><span>3D Text</span></div>
-      <div class="hk"><kbd>A</kbd><span>Assets — text + in/out + DOF blur</span></div>
-      <div class="hk"><kbd>?</kbd><span>this list</span></div>
-      <div class="hk-sec">In Director Mode</div>
-      <div class="hk"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>fly · <kbd>R</kbd>/<kbd>F</kbd> up·down · <kbd>Shift</kbd> boost</span></div>
-      <div class="hk"><kbd>drag</kbd><span>look around · <kbd>scroll</kbd> zoom</span></div>
-      <div class="hk"><kbd>G</kbd><kbd>T</kbd><span>move / rotate the gizmo</span></div>
-      <div class="hk"><kbd>Ctrl+Z</kbd><span>undo · <kbd>Ctrl+Shift+Z</kbd> redo</span></div>
-      </div>
-      <div class="fx-hint">? or Esc to close</div>
-    </div>
-
-    <!-- Kinetic section caption (reveals on arrival) -->
-    <div id="caption" aria-hidden="true">
-      <div class="cap-label"></div>
-      <h2 class="cap-title"></h2>
-      <p class="cap-desc"></p>
-    </div>
-
     <!-- FX control panel (toggle with B) — live-edits every effect -->
     <div id="fxpanel" hidden>
       <div class="fx-head">FX Controls <span>B</span></div>
@@ -238,8 +198,6 @@
 
       <div class="fx-group">Interface</div>
       <label class="fx-chk"><input id="ux-hud" type="checkbox" checked /> HUD readout</label>
-      <label class="fx-chk"><input id="ux-waypoints" type="checkbox" checked /> Waypoint rail</label>
-      <label class="fx-chk"><input id="ux-caption" type="checkbox" checked /> Section captions</label>
       <label class="fx-chk"><input id="ux-hint" type="checkbox" checked /> "Scroll to fly" hint</label>
 
       <div class="fx-group">Scale</div>
@@ -259,7 +217,7 @@
       <div class="fx-row"><label>Size</label><input id="as-size" type="range" min="0.4" max="2.6" step="0.05" /><span id="as-size-v"></span></div>
       <div class="fx-row"><label>Font</label><select id="as-font"><option value="">default</option><option value='var(--f)'>Source Code (mono)</option></select></div>
       <div class="fx-row"><label>3D depth</label><input id="as-depth" type="range" min="0" max="16" step="1" /><span id="as-depth-v"></span></div>
-      <label class="fx-chk" id="as-mesh3d-row" style="display:none"><input id="as-mesh3d" type="checkbox" /> 3D mesh headline (real extruded type)</label>
+
 
       <div class="fx-group">Animate in</div>
       <div class="fx-row"><label>Duration</label><input id="as-in-dur" type="range" min="0" max="2500" step="50" /><span id="as-in-dur-v"></span></div>
@@ -389,8 +347,7 @@
       </div>
     </div>
 
-    <!-- No-JS / crawler fallback: the whole story in plain text. The dossier
-         (src/dossier.js) is the interactive version of this same content. -->
+    <!-- No-JS / crawler fallback: the whole story in plain text. -->
     <noscript>
       <div style="max-width:640px;margin:3rem auto;padding:0 1.2rem;font-family:monospace;color:#cfe8ff;line-height:1.6">
         <h1>Yarin Levin — AI-Native Builder</h1>
