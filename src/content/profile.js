@@ -69,6 +69,8 @@ export const PROFILE = {
     { n: 7, label: 'live on the web today' },
     { n: 1, label: 'paid client site in production' },
   ],
+  // stop 04 repo block: which featured ids get the lead card and the two compact rows
+  buildStop: { lead: 'llm-gateway', rows: ['teepo', 'shadiez'] },
 
   // stop 03 "CV" — 5 rows, years left, role + one line right. Fits one screen.
   // cv.* below is the canonical record; cvStop is the edited five-row cut for the CV stop.

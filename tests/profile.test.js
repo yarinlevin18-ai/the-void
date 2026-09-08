@@ -48,7 +48,7 @@ test('cv rows for the CV stop: 5 entries', () => {
 test('ids are unique and the ids render.js hardcodes exist', () => {
   const ids = featured.map((p) => p.id);
   assert.equal(new Set(ids).size, ids.length);
-  for (const id of ['llm-gateway', 'teepo', 'shadiez']) assert.ok(ids.includes(id), id);
+  for (const id of [PROFILE.buildStop.lead, ...PROFILE.buildStop.rows]) assert.ok(ids.includes(id), id);
 });
 
 test('public entries have live url and repo; every img matches its id', () => {

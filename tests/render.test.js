@@ -15,13 +15,13 @@ test('intro renders one .line per sentence plus context', () => {
 
 test('cv renders 5 rows with years and role', () => {
   const h = renderCV(PROFILE);
-  assert.equal((h.match(/class="cv-row"/g) || []).length, 5);
+  assert.equal((h.match(/class="cv-row"/g) || []).length, PROFILE.cvStop.length);
   assert.ok(h.includes('Rescue &amp; Training'));
 });
 
 test('build renders method, 3 proof numbers with data-n, and the gateway card', () => {
   const h = renderBuild(PROFILE);
-  assert.equal((h.match(/data-n="\d+"/g) || []).length, 3);
+  assert.equal((h.match(/data-n="\d+"/g) || []).length, PROFILE.proof.length);
   assert.ok(h.includes('LLM Gateway'));
   assert.ok(h.includes('shaar-ai-landing.vercel.app'));
   assert.ok(h.includes('github.com/yarinlevin18-ai/TEEPO'));
@@ -49,4 +49,19 @@ test('contact renders mailto, availability and text links', () => {
   assert.ok(h.includes(PROFILE.contact.availability));
   assert.ok(h.includes('>GitHub<') && h.includes('>LinkedIn<'));
   assert.equal(h.includes('>X<'), !!PROFILE.links.x);
+});
+
+test('renderers escape hostile text and attributes', () => {
+  const h = renderIntro({ intro: { lines: ['<script>x</script>'], context: 'a & b' } });
+  assert.ok(!h.includes('<script>'));
+  assert.ok(h.includes('a &amp; b'));
+  const hp = renderProject({ id: 'q', name: 'n', kind: 'k', tag: 't', tint: '#000000', problem: 'p', decision: 'd', outcome: 'o', stack: 's', url: 'https://x.test/?a="b"', repo: '' }, 'left');
+  assert.ok(!hp.includes('?a="b"'));
+  assert.ok(hp.includes('&quot;b&quot;'));
+});
+
+test('renderers expose the DOM hooks panels.js binds to', () => {
+  assert.ok(renderCV(PROFILE).includes('data-print-cv'));
+  assert.ok(renderContact(PROFILE).includes('data-copy-email'));
+  assert.ok(renderContact(PROFILE, 2031).includes('2031'));
 });
