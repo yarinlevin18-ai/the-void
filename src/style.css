@@ -849,3 +849,25 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
 @media (prefers-reduced-motion: reduce) {
   .stop, .stop *, .stop.in * { transition: none !important; transform: none !important; }
 }
+
+/* ---- v15 fixed bar ---- */
+#bar { position: fixed; top: 14px; left: 14px; right: 14px; z-index: 6; display: flex; align-items: center; gap: .2rem;
+  padding: .35rem .4rem .35rem .9rem; border-radius: 999px; background: rgba(10,18,29,.55); border: 1px solid rgba(159,216,255,.16);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  font-family: var(--f-mono); font-weight: 700; font-size: .66rem; letter-spacing: .12em; text-transform: uppercase; color: #9fc2e0;
+  opacity: 0; transform: translateY(-10px); transition: opacity .5s ease, transform .5s ease; pointer-events: none; }
+#bar.show { opacity: 1; transform: none; pointer-events: auto; }
+#bar .bar-name { font-family: var(--f-display); font-weight: 700; font-stretch: 85%; font-size: .9rem; letter-spacing: 0; text-transform: none; color: #eaf4ff; margin-right: auto; }
+#bar .bar-avail { display: none; align-items: center; gap: .45rem; margin-right: .6rem; }
+#bar .bar-avail i { width: 6px; height: 6px; border-radius: 50%; background: #3fc978; box-shadow: 0 0 8px #3fc978; }
+#bar .bar-link { display: none; font: inherit; color: inherit; background: none; border: 0; padding: .5rem .6rem; border-radius: 999px; cursor: pointer; }
+#bar .bar-link:hover { color: #eaf4ff; background: rgba(159,216,255,.08); }
+#bar .bar-copy { font: inherit; color: #eaf4ff; background: rgba(79,210,255,.1); border: 1px solid rgba(79,210,255,.45); padding: .5rem .8rem; border-radius: 999px; cursor: pointer; }
+#bar .bar-copy:hover { background: rgba(79,210,255,.2); }
+#bar .bar-link:focus-visible, #bar .bar-copy:focus-visible { outline: 2px solid #4fd2ff; outline-offset: 2px; }
+@media (min-width: 720px) {
+  #bar { left: 50%; right: auto; transform: translate(-50%, -10px); }
+  #bar.show { transform: translate(-50%, 0); }
+  #bar .bar-avail, #bar .bar-link { display: inline-flex; }
+  #bar .bar-name { margin-right: .9rem; }
+}
