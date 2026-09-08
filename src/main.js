@@ -916,7 +916,7 @@ const makeHeroBeat = () => ({
 // task composes them in Director Mode.
 const P = (z, side) => mkPanel(side === 'left' ? -34 : 34, 4, z - 48, 70, 44);
 const DEFAULT_BEATS = [
-  /* 0 */ { name: 'Opening', cam: [-56, 2, 120], look: [-11, 59, 42], up: [0, 1, 0], fov: 25, dur: 1.4, desc: 'Landing pages & SaaS interfaces — fly through the work.', img: '', link: '', fx: { bloomStrength: 0.65 }, panel: null },
+  /* 0 */ { name: 'Opening', cam: [-56, 2, 120], look: [-11, 59, 42], up: [0, 1, 0], fov: 25, dur: 1.4, desc: '', img: '', link: '', fx: { bloomStrength: 0.65 }, panel: null },
   /* 1 */ { name: 'Hero', cam: [1, 53, 33], look: [192, -55, -56], up: [0, 1, 0], fov: 41, dur: 2.1, desc: '', img: '', link: '', panel: null },
   /* 2 */ { name: 'Intro', stop: 'intro', ease: 'easeOut', cam: [3, 8, -8], look: [-30, 20, -70], up: [0, 1, 0], fov: 55, dur: 2.4, desc: '', img: '', link: '', panel: null },
   /* 3 */ { name: 'CV', stop: 'cv', cam: [-10, 14, -60], look: [35, -10, -130], up: [0, 1, 0], fov: 62, dur: 1.6, desc: '', img: '', link: '', panel: null },
@@ -928,10 +928,15 @@ const DEFAULT_BEATS = [
   /* 9 */ { name: 'LLM Gateway', stop: 'project', id: 'llm-gateway', side: 'left', groupLabel: 'SaaS', cam: [0, 2, -330], look: [0, 2, -378], up: [0, 1, 0], fov: 70, dur: 1.35, desc: '', img: '/previews/llm-gateway.jpg', link: '', panel: P(-330, 'left') },
   /* 10 */ { name: 'Focus', stop: 'project', id: 'focus', side: 'right', cam: [0, 2, -380], look: [0, 2, -428], up: [0, 1, 0], fov: 70, dur: 1.35, desc: '', img: '/previews/focus.jpg', link: '', panel: P(-380, 'right') },
   /* 11 */ { name: 'Sabai', stop: 'project', id: 'sabai', side: 'left', cam: [0, 2, -430], look: [0, 2, -478], up: [0, 1, 0], fov: 70, dur: 1.35, desc: '', img: '/previews/sabai.jpg', link: '', panel: P(-430, 'left') },
-  /* 12 */ { name: 'Contact', stop: 'contact', cam: [0, 49, -560], look: [1, 290, -560], up: [0, 0, -1], fov: 52, dur: 3, desc: '', img: '', link: 'mailto:yarinlevin18@gmail.com', panel: null },
+  /* 12 */ { name: 'Contact', stop: 'contact', cam: [0, 49, -560], look: [1, 290, -560], up: [0, 0, -1], fov: 52, dur: 3, desc: '', img: '', link: '', panel: null },
 ];
-const WORK_INDEX = DEFAULT_BEATS.findIndex((b) => b.stop === 'project');
-const ABOUT_INDEX = DEFAULT_BEATS.findIndex((b) => b.stop === 'intro');
+// Live indices into `beats` (not DEFAULT_BEATS) — Director Mode can reorder /
+// add / delete stops, so these are recomputed after load() and on every commit().
+let WORK_INDEX = 0, ABOUT_INDEX = 0;
+function computeStopIndices() {
+  WORK_INDEX = Math.max(0, beats.findIndex((b) => b.stop === 'project'));
+  ABOUT_INDEX = Math.max(0, beats.findIndex((b) => b.stop === 'intro'));
+}
 
 // ---- State -----------------------------------------------------------------
 let beats = [];
@@ -1131,20 +1136,29 @@ let uiMobileMul = 1;
 function computeUiMul() { uiMobileMul = (IS_TOUCH && window.innerWidth < 640) ? 0.85 : 1; }
 function applyRootFont() { document.documentElement.style.fontSize = (16 * (FX.uiScale || 1) * uiMobileMul) + 'px'; }
 // Each project stop paints the void in its own brand hue (profile.js owns the
-// value). Non-project beats fall back to the CHAPTER_COLORS cycle.
+// value); the contact beat gets the single warm ember accent; every other named
+// stop falls back to the cyan chapter tint; beats with no stop (Opening/Hero)
+// carry no tint at all. Kept OUT of save() — not a beat field, so it can't
+// smuggle stale/legacy colors into a visitor's persisted config.
+let stopTints = [];
 function applyProjectTints() {
-  for (const b of beats) {
-    if (b.stop !== 'project') { b.tintColor = null; continue; }
-    const x = PROFILE.work.featured.find((p) => p.id === b.id);
-    b.tintColor = x ? parseInt(x.tint.slice(1), 16) : null;
-  }
+  stopTints = beats.map((b) => {
+    if (b.stop === 'project') {
+      const x = PROFILE.work.featured.find((p) => p.id === b.id);
+      return x ? parseInt(x.tint.slice(1), 16) : null;
+    }
+    if (b.stop === 'contact') return 0xff9e7a;
+    if (b.stop) return 0x4fd2ff;   // intro / cv / build
+    return null;                   // Opening / Hero
+  });
 }
 computeUiMul();
 load();
+computeStopIndices();
 applyProjectTints();
 beats.forEach(ensureBeatFX);   // ensure every beat (incl. defaults) carries a full FX keyframe set
-{ // anchor the wave ribbon around the "My Projects" section (now that beats exist)
-  const _ai = Math.max(0, beats.findIndex((b) => /projects/i.test(b.name)));
+{ // anchor the wave ribbon around the first project stop (now that beats exist)
+  const _ai = Math.max(0, beats.findIndex((b) => b.stop === 'project'));
   const la = beats[_ai] && beats[_ai].look;
   if (la) { waveRibbon.group.userData.anchor.set(la[0], la[1], la[2]); waveRibbon.group.position.copy(waveRibbon.group.userData.anchor); }
 }
@@ -1598,15 +1612,16 @@ function step(dir) { goTo(index + dir); }
 // so we step once on the first event, then stay locked until the scroll has
 // fully stopped (no wheel events for `idle` ms). You must scroll again to advance.
 let navLock = false, wheelIdle = null;
-// A stop whose DOM content overflows its box owns the gesture: it scrolls
-// natively instead of stepping the flight. Short stops still swipe/scroll-navigate.
-function isOverflowingStop(target) {
+// A tall stop scrolls natively, but only while it still has room in the
+// gesture's direction — at either end the gesture goes back to the flight.
+function scrollableStop(target, dy) {
   const sc = target?.closest?.('.stop.in');
-  return !!sc && sc.scrollHeight > sc.clientHeight + 8;
+  if (!sc || sc.scrollHeight <= sc.clientHeight + 8) return false;
+  return dy > 0 ? sc.scrollTop < sc.scrollHeight - sc.clientHeight - 1 : sc.scrollTop > 1;
 }
 window.addEventListener('wheel', (e) => {
   if (editMode || freeRoam) return;   // editor uses orbit zoom
-  if (isOverflowingStop(e.target)) return;   // a tall stop scrolls its own content first
+  if (scrollableStop(e.target, e.deltaY)) return;   // a tall stop scrolls its own content first
   e.preventDefault();
   if (Math.abs(e.deltaY) < 6) return;
   clearTimeout(wheelIdle);
@@ -1624,20 +1639,27 @@ window.addEventListener('wheel', (e) => {
 const SWIPE_DIST = 70;    // px — a deliberate drag
 const FLICK_DIST = 30;    // px — minimum travel for a velocity-fired flick
 const FLICK_VEL = 0.45;   // px/ms
-let _tX = 0, _tY = 0, _tT = 0, _tAxis = null, _tFired = false;
+let _tX = 0, _tY = 0, _tT = 0, _tAxis = null, _tFired = false, _tPrevY = 0;
 window.addEventListener('touchstart', (e) => {
   if (e.touches.length !== 1) { _tAxis = 'multi'; return; }
-  _tX = e.touches[0].clientX; _tY = e.touches[0].clientY;
+  _tX = e.touches[0].clientX; _tY = e.touches[0].clientY; _tPrevY = _tY;
   _tT = performance.now(); _tAxis = null; _tFired = false;
 }, { passive: true });
 window.addEventListener('touchmove', (e) => {
   if (editMode || freeRoam || _tAxis === 'multi') return;
   if (isTextEntry(e.target)) return;
-  if (isOverflowingStop(e.target)) return;                   // tall stop → native scroll
   e.preventDefault();                                        // the reliable iOS pull-to-refresh / overscroll kill
-  const dx = e.touches[0].clientX - _tX, dy = e.touches[0].clientY - _tY;
+  const curY = e.touches[0].clientY;
+  const dx = e.touches[0].clientX - _tX, dy = curY - _tY;
   if (!_tAxis && Math.hypot(dx, dy) > 12) _tAxis = Math.abs(dy) >= Math.abs(dx) ? 'y' : 'x';   // axis lock
-  if (_tAxis === 'y' && !_tFired && Math.abs(dy) > SWIPE_DIST) { _tFired = true; step(dy < 0 ? 1 : -1); }   // swipe up = advance
+  if (_tAxis === 'y') {
+    // preventDefault above blocks native scrolling, so an overflowing stop with
+    // room left in this direction gets scrolled manually from the raw per-move delta.
+    const sc = e.target?.closest?.('.stop.in');
+    if (scrollableStop(e.target, _tPrevY - curY)) { sc.scrollTop += (_tPrevY - curY); _tPrevY = curY; return; }
+    if (!_tFired && Math.abs(dy) > SWIPE_DIST) { _tFired = true; step(dy < 0 ? 1 : -1); }   // swipe up = advance
+  }
+  _tPrevY = curY;
 }, { passive: false });
 window.addEventListener('touchend', (e) => {
   if (editMode || freeRoam || _tFired || _tAxis !== 'y') return;
@@ -1807,9 +1829,12 @@ function applySnapshot(str) {
 function undo() { if (hPtr > 0) { hPtr--; applySnapshot(history[hPtr]); flash('Undo'); } }
 function redo() { if (hPtr < history.length - 1) { hPtr++; applySnapshot(history[hPtr]); flash('Redo'); } }
 function commit(msg) {
-  beats.forEach(ensureBeatFX); applyProjectTints(); rebuildDerived(); rebuildGizmos(); rebuildPanels();
-  // Director Mode can reorder / add / delete beats, so the DOM stop blocks are rebuilt with them
-  panels = initPanels({ beats, profile: PROFILE, root: document.querySelector('#stops'), onTint: () => {} });
+  beats.forEach(ensureBeatFX); applyProjectTints(); computeStopIndices(); rebuildDerived(); rebuildGizmos(); rebuildPanels();
+  // Director Mode can reorder / add / delete beats, so the DOM stop blocks are rebuilt with them —
+  // an unknown stop/id typed in the editor must not be able to break commit/undo/save.
+  try {
+    panels = initPanels({ beats, profile: PROFILE, root: document.querySelector('#stops'), onTint: () => {} });
+  } catch (e) { console.warn('[panels]', e); flash('Panels: ' + e.message); }
   reattach(); pushHistory(); save(); if (msg) flash(msg);
 }
 function flash(t) { edStatus.textContent = t; }
@@ -2804,7 +2829,7 @@ function animate() {
       if (d < bd) { bd = d; bi = i; }
     }
     const s = clamp(1 - Math.sqrt(bd) / curFX.colorReach, 0, 1) * curFX.colorIntensity;   // 1 at a section, 0 far between
-    const tint = (beats[bi]?.tintColor) ?? CHAPTER_COLORS[bi % CHAPTER_COLORS.length];   // project stops carry their brand hue
+    const tint = stopTints[bi] ?? CHAPTER_COLORS[bi % CHAPTER_COLORS.length];   // project stops carry their brand hue
     livingVoid.setTint(tint, s);
     if (network) network.setTint(tint, s);   // the network recolors with the chapter too
   }
