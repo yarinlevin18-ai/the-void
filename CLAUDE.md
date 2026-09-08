@@ -1,25 +1,30 @@
 # CLAUDE.md — context for "The Void" portfolio
 
 Read this first. It captures the locked decisions and where everything lives so
-you can pick up the build with full context. Last synced to code: **v14, 2026-09-05**.
+you can pick up the build with full context. Last synced to code: **v15, 2026-09-08**.
 
 ## What this is
 A 3D, scroll-driven portfolio for **Yarin Levin — AI-Native Builder**. The
 visitor flies through a dark "void" (a 900-node data network with living energy
 links, star parallax, volumetric nebula); sections are camera "beats" along a
-flight path. Since the v13 restructure the flight is **about the person**, and
-the projects are one chapter of it. A DOM overlay, **the Dossier**, carries the
-skimmable portfolio (about · CV · full work index · ambitions) for time-poor
-recruiters. Audience: hiring teams (part-time student position) + clients.
+flight path. The **v15 flight restructure** (2026-09-08) puts the work first:
+13 stops from Hero straight into Intro → CV → How I Build → seven project
+stops (Landing pages, then SaaS) → Contact, each project stop pairing the
+existing WebGL image panel with a DOM text block from `profile.js`. The
+dossier overlay, hub, waypoint rail and free-roam are gone — see
+`docs/superpowers/specs/2026-09-08-flight-restructure-design.md` for the full
+design. Audience: hiring teams (part-time student position) + clients.
 
 **Live:** https://the-void-khaki-pi.vercel.app — Vercel project `the-void`,
 repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
 `build.sh` bootstrap deploy is gone).
 
 **Source-of-truth docs (read in this order):**
-- `PORTFOLIO_PLAN.md` — the current plan (showreel → portfolio). Phases 2–4, 6, 7
-  built; §4b holds the locked interview answers. **Start here.**
-- `BUILD_PLAN.md` — the original A→G plan, now a status ledger of what shipped.
+- `docs/superpowers/specs/2026-09-08-flight-restructure-design.md` — the v15
+  flight restructure design (approved). **Start here for the current flight.**
+- `PORTFOLIO_PLAN.md` — the v13/v14 "person-first" plan, superseded by v15
+  (dossier/hub/rail phases marked accordingly); §4b still holds locked bio/CV facts.
+- `BUILD_PLAN.md` — the original A→G plan plus the Phase H v15 ledger.
 - `CONTENT.md` — locked featured-project table (SHADIEZ · TEEPO · Sabai · Kiara's Club).
 - `PRD.md`, `PLAN.md` — original requirements / concept / storyboard (historic).
 - `BACKGROUND.md`, `ENVIRONMENT.md`, `FX-IDEAS.md`, `ARSENAL.md` — atmosphere
@@ -30,64 +35,79 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   Chapter tints per beat carry brand hue (SHADIEZ coastal blue, TEEPO green,
   Sabai/Kiara mustard); the contact beat's ember is the single warm accent.
   Final grade pass = vignette (0.45) + fine grain on every device.
-- **ONE typeface: Source Code Pro** everywhere (DOM, canvas loader, extruded 3D
-  text). Hierarchy comes from weight/size/tracking. CSS uses `var(--f)`; 3D text
-  loads `public/fonts/SourceCodePro-Medium.ttf` (static, weight 500). The DOM
-  gets `public/fonts/SourceCodePro-Variable.ttf` (OFL, wght 200–900) via the
-  `@font-face` at the top of `src/style.css`, preloaded in `index.html`. The
-  Adobe Fonts kit was dropped 2026-09-07 — **no external requests at all**.
+- **Three typefaces:** Bricolage Grotesque (display, `--f-display`), Schibsted
+  Grotesk (body, `--f-body`, also aliased `--f`), Doto (labels/counters,
+  `--f-mono`) — all OFL, self-hosted Latin-subset woff2 in `public/fonts`,
+  preloaded, ~142KB total. Source Code Pro Medium TTF survives only for the
+  extruded 3D wordmark (`text3d.js`), dev-only, font load gated. No external
+  requests.
 - **Panels are pure image artifacts** — full-bleed screenshot(s), hairline frame,
-  no text or CTA baked in. Captions (DOM) own the words; one focal point and one
-  CTA per screen. Beats with no imagery have no panel.
-- **Flight:** 9 beats (see below), section-snapping. Per-shot FOV + duration
-  with a deliberate rhythm (Hero 2.1s breath · project hops 1.35s · finale 3s
-  held). `fitFov()` widens vertical FOV on portrait screens so composed shots
-  don't crop. Quaternion-slerp orientation, finale looks straight up.
-- **Inputs:** wheel · ↑/↓/Space · touch swipe (one section per swipe) · waypoint
-  rail dots. `V` free-roam, `C` dossier, `?` hotkeys. Everything funnels
-  through `goTo(i)` with a 300ms cooldown.
-- **Dossier:** `src/dossier.js` — summoned by button / `C` / deep links
-  `#about #cv #work #ambitions`. Tabs About · CV · Work · Ambitions, focus trap,
-  arrow-key tabs, mobile full-height sheet. **Download PDF** = print stylesheet
-  over the same data (verified one page). All content from `src/content/profile.js`.
+  no text or CTA baked in. A DOM text block (`src/panels.js` + `src/render.js`)
+  sits on the opposite side and owns the words; one focal point and one CTA
+  per screen. Beats with no imagery have no panel.
+- **Flight:** 13 stops (see below), section-snapping. Per-shot FOV + duration
+  with a deliberate rhythm (Hero 2.1s breath · Hero→Intro 2.4s exhale · CV/How
+  I Build 1.6s · project hops 1.35s · finale 3s held). `fitFov()` widens
+  vertical FOV on portrait screens so composed shots don't crop. Quaternion-
+  slerp orientation, finale looks straight up.
+- **Inputs:** wheel · ↑/↓/Space · touch swipe (one section per swipe). Everything
+  funnels through `goTo(i)` with a 300ms cooldown. No free-roam, no hotkeys
+  legend — the fixed bar is the only navigation chrome for visitors.
+- **Stops:** `src/panels.js` builds one `<section class="stop">` per beat from
+  `profile.js` (hidden by default), shows/hides on arrival/departure, and runs
+  one reveal recipe per stop (≤600ms, disabled under reduced-motion).
+  `src/render.js` holds the pure `(data) => HTMLElement` renderers (intro, cv,
+  build, project, contact) — no Three.js imports, node-tested.
+- **Fixed bar:** `src/bar.js` — name, availability dot, Work (`goTo(5)`), About
+  (`goTo(2)`), Copy email. Visible from Opening onward; phones show name +
+  Copy email only. Replaces the old dossier button / waypoint rail.
 - **Director Mode** (`E`) and the FX/Transitions/UI/3D-Text/Assets panels
   (`B T U Y A`) are **dev-only**: gated by `DEV_TOOLS = import.meta.env.DEV ||
-  ?edit` in the URL. Visitors never see them; the hotkeys legend strips dev rows.
+  ?edit` in the URL. Visitors never see them.
 
 ## The flight (DEFAULT_BEATS, `src/main.js`)
-1. **Opening** — wordmark decodes from particles (loader hands straight into it).
-2. **Hero** — the two live hero screens (Shadiez landing jpg + SmartCut CRM iframe;
+0. **Opening** — wordmark decodes from particles (loader hands straight into it).
+1. **Hero** — the two live hero screens (Shadiez landing jpg + SmartCut CRM iframe;
    static png on touch since 3D-transformed iframes blank on iOS).
-3. **Who** — five months of directing AI, a dozen shipped products.
-4. **The Road Here** — IDF command → US speaking tour → self-taught April 2026.
-5. **What I Work With** — stack / method.
-6. **My Projects** — in-world work hub (Shipped + Labs index, "full index" → dossier).
-7. **The Work** — SHADIEZ + TEEPO panels (the featured pair; Sabai + Kiara's Club
-   live in the hub/dossier).
-8. **Where This Goes** — ambitions. ⏳ Copy is a stand-in until Yarin writes his own.
-9. **Let's build something** — contact, GET IN TOUCH mailto, camera tilts up.
+2. **Intro** — 2–3 first-person lines on directing AI end-to-end + location/availability.
+3. **CV** — 5 rows, years · role/org · one line, from `profile.js` `cvStop`.
+4. **How I Build** — method (2–3 sentences), proof numbers count up once, repo
+   block (LLM Gateway lead card + TEEPO/SHADIEZ compact rows).
+5. **TEEPO** — project stop, image left, Landing pages group label.
+6. **AeroCy** — project stop, image right.
+7. **SHADIEZ** — project stop, image left.
+8. **SmartCut** — project stop, image right.
+9. **LLM Gateway** — project stop, image left, SaaS group label.
+10. **Focus** — project stop, image right, private build (no live link).
+11. **Sabai** — project stop, image left.
+12. **Contact** — mailto at hero scale, GitHub · LinkedIn links, camera tilts up.
 
 ## Code map
 | File | Lines | What |
 |---|---|---|
-| `src/main.js` | ~3,220 | Scene, network, nebula, flight, Director Mode, perf tiers, save/migrate |
-| `src/dossier.js` | 333 | Dossier overlay + in-world work hub |
-| `src/content/profile.js` | 203 | **Single source of truth** for bio, CV, 17 projects (3 tiers), links, status |
-| `src/text3d.js` | 190 | Extruded 3D text (Source Code Pro) |
+| `src/main.js` | ~3,076 | Scene, network, nebula, flight, Director Mode, perf tiers, save/migrate |
+| `src/panels.js` | 79 | DOM stop layer: builds/shows/hides stops, reveal recipes |
+| `src/render.js` | 74 | Pure HTML renderers (intro, cv, build, project, contact), node-tested |
+| `src/bar.js` | 38 | Fixed top bar: name, availability, Work, About, Copy email |
+| `src/printcv.js` | 54 | Print-only CV (moved out of the old dossier.js) |
+| `src/content/profile.js` | 269 | **Single source of truth** for bio, CV, intro/method/proof, 7 featured + shipped/labs projects, links, status |
+| `src/text3d.js` | 193 | Extruded 3D text (Source Code Pro, dev-only) |
 | `src/cursor.js` | 57 | Magnetic cursor |
-| `src/style.css` | 747 | All styling incl. @media phone layout + print CV |
-| `index.html` | 417 | Shell, loader, hotkeys legend, editor panels, JSON-LD, noscript skim path |
-| `public/previews/*.jpg` | | shadiez · teepo · sabai · kiaras-club (42–118KB each) |
+| `src/style.css` | 596 | All styling incl. @media phone layout + print CV |
+| `index.html` | 378 | Shell, loader, editor panels, JSON-LD, noscript skim path |
+| `public/previews/*.jpg` | | teepo · aerocy · shadiez · smartcut · llm-gateway · focus · sabai · kiaras-club |
 | `public/assets/hero/` | | Hero screens (SmartCut html + png, Shadiez jpg) |
 
 Deps: `three` 0.169, `meshline`, `three.quarks`, `vite` 8. No React.
 
 ### Persistence / migrations
 Path + FX config persists in **localStorage** `voidConfig`, currently **save
-version 14**. Any change to `DEFAULT_BEATS` shape or defaults needs a migration
-step in the load block (~`src/main.js:980–1070`) and a version bump, because
-visitors carry old beat arrays. Use Director Mode → **Copy config** to export
-tuned `BEATS` and paste into `DEFAULT_BEATS`.
+version 15**. The v15 migration (`main.js` ~1090) replaces the saved beat array
+wholesale with `DEFAULT_BEATS` (structure changed too much to patch) while
+keeping the visitor's global FX/speed/ease settings. Any future
+`DEFAULT_BEATS` shape change needs its own migration step + version bump,
+because visitors carry old beat arrays. Use Director Mode → **Copy config** to
+export tuned `BEATS` and paste into `DEFAULT_BEATS`.
 
 ### Perf tiers (all in `main.js`, top)
 - `IS_TOUCH` — DPR cap 1.25, nebula res 0.33 / fewer steps, halved star/node/link
@@ -106,21 +126,23 @@ tuned `BEATS` and paste into `DEFAULT_BEATS`.
 npm install
 npm run dev      # http://localhost:5173  (DEV_TOOLS on → E/B/T/U/Y/A work)
 npm run build    # dist/
+npm test         # node --test tests/*.test.js — profile, render, bar
 ```
 `.claude/launch.json` has a `void-dev` config for the browser preview.
 Fully offline-capable: fonts are self-hosted, no external requests. HMR can be flaky —
 hard-refresh if a change doesn't show.
 
-## Open work (authoritative checklist in PORTFOLIO_PLAN.md + BUILD_PLAN.md)
-1. **Ambitions copy** in Yarin's own words (PORTFOLIO_PLAN §4b — the one Phase 1
-   blocker) → `profile.js` + "Where This Goes" beat. Optional: the portrait
-   photo for the Who beat.
-2. **Phase 9 ship items:** 30–60s capture with the dossier in shot; live URL on
-   CV PDF / LinkedIn / GitHub profile.
-3. **Housekeeping:** decide whether the preserved
+## Open work (authoritative checklist in BUILD_PLAN.md Phase H)
+1. **Camera authoring in Director Mode** for stops 2–11 (Intro, CV, How I
+   Build, the 7 project stops) — currently provisional, baked via Copy config.
+2. **Confirm the three proof numbers** in `profile.js` `proof[]` before launch.
+3. **X handle** — `links.x` is commented out pending confirmation.
+4. **SmartCut redeploy** — `smart-cut-gamma.vercel.app` returned 404 on 2026-09-08.
+5. **Lighthouse + phone pass** on the Vercel preview (perf + a11y ≥ 90, 390×844
+   @ 6× CPU, keyboard-only, `prefers-reduced-motion`, returning-visitor migration).
+6. **Housekeeping:** decide whether the preserved
    branch `local-phase-b-d-2026-07` (sound module, brand recolor-on-approach)
-   has anything worth porting — sound is otherwise **not** in v14.
-4. Optional trust signal: one real line from the SHADIEZ client, or skip.
+   has anything worth porting — sound is otherwise **not** in v15.
 
 ## Conventions / guardrails
 - Keep it vanilla JS + Vite + Three.js. No React.

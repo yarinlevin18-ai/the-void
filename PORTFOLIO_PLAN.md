@@ -1,5 +1,14 @@
 # PORTFOLIO_PLAN.md — from showreel to professional portfolio
 
+> **2026-09-08 — Superseded in part by the v15 flight restructure.** The
+> dossier overlay, the in-world work hub, the waypoint rail, and the "Who" /
+> "Ambitions" beats described below (Phases 3–6) were removed; the work moved
+> to the front of the flight instead of living behind a summoned overlay. See
+> `docs/superpowers/specs/2026-09-08-flight-restructure-design.md` for the
+> current design and `BUILD_PLAN.md` Phase H for the shipped ledger. This file
+> is kept as history — checklist items it affects are marked **SUPERSEDED**
+> below rather than deleted; the bio/CV facts in §4b are still current.
+
 > Plan to turn "The Void" into a portfolio that carries **Yarin, his CV, his full
 > body of work, and his ambitions** — without killing the thing that makes it
 > work. Companion to `PRD.md` (which this extends) and `BUILD_PLAN.md` (which is
@@ -110,7 +119,7 @@ portfolio with a vague CV is worse than one with none.
       (~12) across three tiers: **Featured (4)** · **Shipped** · **Labs & R&D**.
 **Exit:** all copy written and approved; no lorem, no TODO.
 
-### Phase 3 — The Dossier shell
+### Phase 3 — The Dossier shell — **SUPERSEDED by v15** (dossier removed, see top note)
 - [ ] Overlay + four tabs + hash routing + deep links.
 - [ ] Keyboard: `C` to open, `Esc` to close, focus trap, restore focus on close,
       tabs reachable by arrow keys.
@@ -122,7 +131,7 @@ portfolio with a vague CV is worse than one with none.
       tracking, per the type system now locked in `style.css`.
 **Exit:** opens from any beat, closes cleanly, keyboard-complete, no console errors.
 
-### Phase 4 — CV + PDF
+### Phase 4 — CV + PDF — **PARTIALLY SUPERSEDED by v15** (CV is now its own flight stop, not a dossier tab; the print stylesheet in `src/printcv.js` survives)
 - [ ] CV tab rendered from `profile.js`: experience with dates and roles,
       education, skills grouped (not a 40-item word cloud), languages.
 - [ ] **Download PDF** via a real print stylesheet + `window.print()` — no
@@ -131,7 +140,7 @@ portfolio with a vague CV is worse than one with none.
 - [ ] Direct link `/#cv` opens the site with the dossier already on that tab.
 **Exit:** a clean one-page PDF; `/#cv` deep-links correctly.
 
-### Phase 5 — The two new beats
+### Phase 5 — The two new beats — **SUPERSEDED by v15** (no Who/Ambitions beats or waypoint rail in the 13-stop flight; see Intro/CV/How I Build stops instead)
 - [ ] **Who** beat: portrait resolving from the node field; recompose cameras.
 - [ ] **Ambitions** beat before Contact.
 - [ ] Re-time the flight 7 → 9 beats; update waypoint rail, HUD count, and the
@@ -140,7 +149,7 @@ portfolio with a vague CV is worse than one with none.
 **Exit:** the flight still reads as composed, not padded. If a beat feels like
 filler, cut it — nine beats is not a target.
 
-### Phase 6 — The work hub
+### Phase 6 — The work hub — **SUPERSEDED by v15** (no in-world hub or dossier Work tab; the 7 featured projects are now their own flight stops)
 - [ ] In-world index at the My Projects beat (compact, legible at speed).
 - [ ] Full tiered index in the dossier's Work tab, each with role, stack, year,
       live link where one exists.

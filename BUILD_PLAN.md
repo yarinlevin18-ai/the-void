@@ -2,9 +2,10 @@
 
 > Execution plan derived from `PRD.md`. Phases A→G below are **complete** as of
 > v14 (2026-08-30); this file is now the status ledger for that original plan.
-> Current forward work lives in **`PORTFOLIO_PLAN.md`** (showreel → portfolio),
-> whose remaining items are mirrored in the "Open work" section at the bottom.
-> Last updated: 2026-09-05 (synced to code at commit `ebbcd8d`, save v14).
+> Phase H (below) is the v15 flight restructure, superseding the v13/v14
+> person-first flight described in Phases B–C. Design doc:
+> `docs/superpowers/specs/2026-09-08-flight-restructure-design.md`.
+> Last updated: 2026-09-08 (synced to code on branch `flight-v15`, save v15).
 
 ---
 
@@ -90,17 +91,47 @@
 - [ ] 30–60s capture for CV / LinkedIn — with the dossier in shot.
 - [ ] Live URL onto CV PDF + LinkedIn + GitHub profile.
 
+## Phase H — v15 flight restructure ✅ (2026-09-08)
+Design: `docs/superpowers/specs/2026-09-08-flight-restructure-design.md`.
+Supersedes the v13/v14 nine-beat "person-first" flight (Phases B–C above);
+work moves to the front of the flight instead of being one chapter of it.
+- [x] 13 stops in order: Opening, Hero, Intro, CV, How I Build, TEEPO, AeroCy,
+      SHADIEZ, SmartCut, LLM Gateway, Focus, Sabai, Contact.
+- [x] Save version 15; migration replaces the beat array wholesale, keeps
+      global FX/speed/ease settings for returning visitors.
+- [x] `src/render.js` — pure, node-tested HTML renderers (intro, cv, build,
+      project, contact); `src/panels.js` — DOM stop layer, show/hide, reveal
+      recipes; `src/bar.js` — fixed top bar (name, availability, Work, About,
+      Copy email), the only nav chrome; `src/printcv.js` — print-only CV
+      split out of the deleted `dossier.js`.
+- [x] Removed: dossier overlay, in-world work hub, waypoint rail, free-roam
+      (`V`), hotkeys legend (`?`), caption system, visit-live pill — JS, CSS
+      and HTML all gone. Director Mode + dev panels stay dev-only.
+- [x] Type: Bricolage Grotesque (display) · Schibsted Grotesk (body) · Doto
+      (labels), OFL, self-hosted Latin-subset woff2, ~142KB total, preloaded.
+      Source Code Pro Medium TTF kept only for the dev-only extruded 3D text.
+- [x] Content model in `profile.js`: `intro`, `cvStop`, `method`, `proof`,
+      `buildStop`, `contact`, `work.featured` (7 projects, `landing`/`saas`
+      groups, problem/decision/outcome), `links.x` held back pending handle.
+- [x] Tests: `npm test` (node --test) — profile, render, bar, 19 passing.
+      Previews added: aerocy, smartcut, llm-gateway, focus.
+- [x] Inputs unchanged: wheel / ↑↓ / Space / touch swipe, 300ms cooldown,
+      `goTo(i)`; a tall stop scrolls natively.
+
 ---
 
-## Open work (2026-09-05) — in priority order
-1. **Ambitions copy** in Yarin's own words → `profile.js` ambitions + the
-   "Where This Goes" beat desc (PORTFOLIO_PLAN §4b, the last Phase 1 blocker).
-2. Optional **portrait** for the Who beat (PORTFOLIO_PLAN Phase 5 idea: face
-   resolving out of the node field). Skip if it reads as filler.
-3. **Phase G leftovers:** capture video, custom domain, URL on CV/LinkedIn/GitHub.
-4. **Housekeeping:** (fonts self-hosted 2026-09-07);
-   contrast pass; decide on porting sound from `local-phase-b-d-2026-07`.
-5. Optional trust signal: one genuine SHADIEZ client line, or none.
+## Open work (2026-09-08) — in priority order
+1. **Camera authoring in Director Mode** for stops 2–11 (Intro, CV, How I
+   Build, the 7 project stops) — currently provisional values, baked into
+   `DEFAULT_BEATS` via Copy config once tuned.
+2. **Confirm the three proof numbers** in `profile.js` `proof[]` before launch.
+3. **X handle** — `links.x` is commented out pending confirmation with Yarin.
+4. **SmartCut redeploy** — `smart-cut-gamma.vercel.app` returned 404 on 2026-09-08.
+5. **Formal contrast pass** on the new DOM text blocks over the void / panels
+   (carried over from Phase E, still open) + Lighthouse ≥ 90 perf/a11y check.
+6. **Phase G leftovers:** capture video, custom domain, URL on CV/LinkedIn/GitHub.
+7. **Housekeeping:** decide on porting sound from `local-phase-b-d-2026-07`.
+8. Optional trust signal: one genuine SHADIEZ client line, or none.
 
 ## Risks / watch-items
 - **Save migrations** — every `DEFAULT_BEATS` change needs a version bump +
