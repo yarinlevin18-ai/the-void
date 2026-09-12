@@ -28,7 +28,7 @@ export function renderBuild(p) {
   const byId = (id) => p.work.featured.find((x) => x.id === id);
   const lead = byId(p.buildStop.lead);
   if (!lead) throw new Error(`renderBuild: no featured project "${p.buildStop.lead}"`);
-  const rows = p.buildStop.rows.map(byId).filter(Boolean);
+  const rows = p.buildStop.rows.map((id) => { const x = byId(id); if (!x) throw new Error(`renderBuild: no featured project "${id}"`); return x; });
   const link = (href, label) => href ? `<a href="${escAttr(href)}" target="_blank" rel="noopener">${label} ↗</a>` : '';
   return `${eyebrow('How I build')}
     <div class="method">${method}</div>
@@ -48,7 +48,7 @@ export function renderProject(x, side) {
   const live = x.url ? `<a class="pill" href="${escAttr(x.url)}" target="_blank" rel="noopener">Visit live ↗</a>` : '<span class="pill ghost">Private build</span>';
   const repo = x.repo ? `<a class="pill ghost" href="${escAttr(x.repo)}" target="_blank" rel="noopener">GitHub ↗</a>` : '';
   const privateRepo = (x.url && x.private && !x.repo) ? '<span class="pill ghost">Private repo</span>' : '';
-  return `<article class="project" data-side="${escAttr(side)}" data-tint="${escAttr(x.tint)}">
+  return `<article class="project" data-side="${escAttr(side)}">
     ${eyebrow(`${x.kind} · ${x.tag}`)}
     <h2 class="title">${esc(x.name)}</h2>
     <dl>

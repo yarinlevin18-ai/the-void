@@ -36,7 +36,7 @@ export function mountPrintCV(p) {
       <h1>${esc(p.name)}</h1>
       <div class="pcv-sub">${esc(p.title)} · ${esc(p.status.seeking)} · ${esc(p.status.availability)}</div>
       <div class="pcv-contact">
-        ${p.links.email} · ${esc(p.links.phone)} · ${p.links.linkedin.replace('https://www.', '')} · ${p.links.github.replace('https://', '')} · ${p.links.site.replace('https://', '')}
+        ${esc(p.links.email)} · ${esc(p.links.phone)} · ${esc(p.links.linkedin.replace('https://www.', ''))} · ${esc(p.links.github.replace('https://', ''))} · ${esc(p.links.site.replace('https://', ''))}
       </div>
     </header>
     <p class="pcv-profile">${esc(p.bio.short)}</p>

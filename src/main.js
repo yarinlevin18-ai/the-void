@@ -40,7 +40,6 @@ const FX = {
   fovPunch: 0,                                 // transient FOV widening mid-transition (whoosh)
   twinkleOn: true, linesOn: true, nebVisible: true,                           // living-void toggles
   uiHud: true, uiHint: true, uiScale: 1,      // UX panel state
-  waveAmp: 26, waveSpd: 1, waveCoil: 34, waveOn: true, waveGrid: false,        // neon wave ribbon
   nebSpd: 0.6, nebWarp: 1.4, nebHue: 0.35, nebEmber: 0.06, nebVig: true, nebGlow: 0.35,   // nebula climate + inner glow (restraint: teal family, ember nearly out)
   vignette: 0.45, grain: 0.02,                                                 // final frame grade (three-lab post constants: offset .3 / darkness .6)
   pulse: 1, flare: 1, breath: 1.1, breathRoll: 0.4,                            // signs of life: link traffic, node flares, idle camera sway
@@ -105,7 +104,6 @@ let _flash = 0, _nextFlash = 2.5;                  // nebula lightning strikes
 let _cVel = 0, _cVelRaw = 0, _flickCD = 0, _pPX = null, _pPY = null;   // smoothed cursor velocity
 const _cN = new THREE.Vector2(9, 9), _cWorld = new THREE.Vector3();    // pointer NDC + world-ray scratch
 const _ray = new THREE.Raycaster();                                   // cursor → section hit-test (liquid cursor)
-const _waveTgt = new THREE.Vector3();                                 // wave-ribbon follow target
 const _pc = new THREE.Vector3();                                      // panel-corner projection (water rect)
 const _wUV = new THREE.Vector2(-9, -9);                               // pointer in 0..1 uv (water sim drop)
 const PREFERS_REDUCED = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -307,62 +305,6 @@ const livingVoid = (() => {
   const setWarp = (v) => { smat.uniforms.uWarp.value = v; };           // stars swell on a chapter warp burst
   const setRes = (r) => { _res = r; sizeRT(); };   // adaptive governor can shrink the raymarch target further
   return { composite, nebMat, nebRT, fsScene, fsCam, sizeRT, setRes, smat, sgeo, STAR_N, spots, update, setTint, setWarp };
-})();
-
-// ---- Neon wave ribbon (ported 1:1 from demo-wave-ribbon.APPROVED.html) -------
-// A contained chrome / liquid-glass band: traveling-sine displacement with an
-// analytic normal (fresnel rim + thin-film iridescence + sweeping glint), drifting
-// in a bounded Lissajous path around one section. Optional crisp neon grid.
-const waveRibbon = (() => {
-  const uniforms = { uTime: { value: 0 }, uAmp: { value: FX.waveAmp }, uSpd: { value: FX.waveSpd }, uCoil: { value: FX.waveCoil } };
-  const VERT = `uniform float uTime,uAmp,uSpd,uCoil;varying float vH;varying vec2 vUv;varying vec3 vN;varying vec3 vVP;
-    void main(){vUv=uv;vec3 p=position;float t=uTime*uSpd;
-      float w=sin(p.x*0.018+t*1.8)*uAmp + sin(p.x*0.05-t*1.3)*uAmp*0.45 + sin(p.y*0.06+t)*5.0;
-      float wx=cos(p.x*0.018+t*1.8)*uAmp*0.018 + cos(p.x*0.05-t*1.3)*uAmp*0.45*0.05;
-      float wy=cos(p.y*0.06+t)*5.0*0.06;
-      float cx=cos(p.x*0.012+t*0.9)*uCoil*0.012;
-      p.z+=w;
-      p.y+=sin(p.x*0.012+t*0.9)*uCoil;
-      vH=w;
-      vec3 nrm=normalize(cross(vec3(1.0,cx,wx),vec3(0.0,1.0,wy)));
-      vN=normalize(normalMatrix*nrm);
-      vec4 mv=modelViewMatrix*vec4(p,1.0); vVP=mv.xyz;
-      gl_Position=projectionMatrix*mv;}`;
-  const FRAG = `uniform float uTime;varying float vH;varying vec2 vUv;
-    void main(){
-      vec3 cy=vec3(0.28,0.92,1.0), vi=vec3(0.55,0.40,1.0), mg=vec3(0.92,0.40,0.85);
-      float m=fract(vUv.x*1.3 - uTime*0.45);
-      vec3 col = m<0.5 ? mix(cy,vi,m*2.0) : mix(vi,mg,(m-0.5)*2.0);
-      float crest=smoothstep(0.3,1.0,vH/34.0); col+=crest*0.45;
-      float edge=smoothstep(0.0,0.18,vUv.y)*smoothstep(1.0,0.82,vUv.y);
-      float ends=smoothstep(0.0,0.16,vUv.x)*smoothstep(1.0,0.84,vUv.x);
-      gl_FragColor=vec4(col, 0.5*edge*ends);}`;
-  const FILL_FRAG = `uniform float uTime;varying float vH;varying vec2 vUv;varying vec3 vN;varying vec3 vVP;
-    void main(){
-      vec3 n=normalize(vN), v=normalize(-vVP);
-      float fres=pow(1.0-max(dot(n,v),0.0),2.4);
-      float hue=fres*0.8 + vUv.x*0.5 + vH*0.012 + uTime*0.04;
-      vec3 irid=0.5+0.5*cos(6.28318*(hue+vec3(0.0,0.35,0.62))); irid.r*=0.85;
-      float streak=fract(vUv.x*1.2 - uTime*0.12);
-      float spec=smoothstep(0.05,0.0,abs(streak-0.5))*0.9;
-      vec3 chrome=vec3(0.09,0.15,0.23);
-      vec3 col=mix(chrome,irid,0.7)+fres*vec3(0.5,0.7,1.0)*0.6+spec;
-      float edge=smoothstep(0.0,0.16,vUv.y)*smoothstep(1.0,0.84,vUv.y);
-      float ends=smoothstep(0.0,0.16,vUv.x)*smoothstep(1.0,0.84,vUv.x);
-      float a=(0.42+fres*0.5+spec)*edge*ends;
-      gl_FragColor=vec4(col,a);}`;
-  const rgeo = new THREE.PlaneGeometry(620, 80, 240, 14);
-  const fillMat = new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FILL_FRAG, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.FrontSide });
-  const lineMat = new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, wireframe: true });
-  const group = new THREE.Group();
-  const fill = new THREE.Mesh(rgeo, fillMat), grid = new THREE.Mesh(rgeo, lineMat);
-  grid.visible = false;
-  group.add(fill, grid);
-  group.scale.setScalar(0.2);                                  // fit the 620-wide band to a section's scale
-  group.userData.anchor = new THREE.Vector3(0, 0, -120);       // placeholder; real anchor set once beats load
-  group.position.copy(group.userData.anchor);
-  scene.add(group);
-  return { uniforms, group, fill, grid };
 })();
 
 // ---- Falling stars (shooting-star streaks) — view-space, gated to one frame -----
@@ -1004,7 +946,7 @@ function fitFov(v) {
   return Math.min(115, THREE.MathUtils.radToDeg(2 * Math.atan(t)));
 }
 // global (non-keyframed) state that Save must persist alongside the beats
-const GLOBAL_KEYS = ['starFrac', 'nodeFrac', 'lineFrac', 'nebFrac', 'driftOn', 'fovPunch', 'warpStrength', 'warpLength', 'twinkleOn', 'linesOn', 'nebVisible', 'uiHud', 'uiHint', 'uiScale', 'waveAmp', 'waveSpd', 'waveCoil', 'waveOn', 'waveGrid', 'nebSpd', 'nebWarp', 'nebHue', 'nebEmber', 'nebVig', 'nebGlow', 'vignette', 'grain', 'pulse', 'flare', 'breath', 'breathRoll', 'lightning', 'glowSpots', 'lightInt', 'lightReach', 'lightRate', 'glowBright', 'glowFlick', 'cursorDrive', 'waterStr', 'waterRad', 'waterAtt', 'waterDisp', 'waterSheen', 'openFit', 'openSize', 'openGlow', 'openForm', 'openShatterR', 'openPush', 'openSpring', 'openColor'];
+const GLOBAL_KEYS = ['starFrac', 'nodeFrac', 'lineFrac', 'nebFrac', 'driftOn', 'fovPunch', 'warpStrength', 'warpLength', 'twinkleOn', 'linesOn', 'nebVisible', 'uiHud', 'uiHint', 'uiScale', 'nebSpd', 'nebWarp', 'nebHue', 'nebEmber', 'nebVig', 'nebGlow', 'vignette', 'grain', 'pulse', 'flare', 'breath', 'breathRoll', 'lightning', 'glowSpots', 'lightInt', 'lightReach', 'lightRate', 'glowBright', 'glowFlick', 'cursorDrive', 'waterStr', 'waterRad', 'waterAtt', 'waterDisp', 'waterSheen', 'openFit', 'openSize', 'openGlow', 'openForm', 'openShatterR', 'openPush', 'openSpring', 'openColor'];
 let activePunch = 0;   // 0..1 across a transition, peaks at the midpoint (for FOV punch)
 const DEF_FOV = 68, DEF_DUR = 1.6;
 // a sensible starter panel for a section: sits at its aim point, fixed orientation
@@ -1036,6 +978,7 @@ function load() {
         beats.forEach(backfillBeat); // bring older saves up to the current schema
         if (d.g) { for (const k of GLOBAL_KEYS) if (d.g[k] != null) FX[k] = d.g[k]; if (d.g.ease) txEaseName = d.g.ease; } // restore global FX/UX/transition state
         let migrated = false;
+        // Migration blocks MUST stay in ascending version order: later blocks assume earlier ones ran.
         if (!(d.version >= 2)) { beats.forEach((b) => { if (b.panel) b.panel.billboard = false; }); migrated = true; } // stop the old auto-facing default
         if (!(d.version >= 3)) { beats.unshift(makeHeroBeat()); migrated = true; }      // add a hero opening shot before everything
         if (!(d.version >= 4)) {
@@ -1086,14 +1029,15 @@ function load() {
           }
           migrated = true;
         }
-        if (!(d.version >= 12)) {
-          // LifeRPG out of the featured twin slot, Sabai (Thailand trip
-          // companion) in — Yarin's call. Only fields still at old defaults move.
-          const tw = beats.find((x) => /liferpg/i.test(x.name || ''));
-          if (tw) {
-            tw.name = 'Sabai & Kiara’s Club';
-            if (tw.img === '/previews/liferpg.jpg' || !tw.img) tw.img = '/previews/sabai.jpg';
-            if (/life-RPG/i.test(tw.desc || '')) tw.desc = 'An offline-first trip companion for a real Thailand journey — and a dachshund-first store brand, built from palette to cart.';
+        if (!(d.version >= 10)) {
+          // 2026-08 flow pass: give the journey rhythm — a long breath leaving
+          // the wordmark, settle into the hub, snappy hops between projects.
+          // Only touch beats still at the old uniform default.
+          const pace = { hero: 2.1, 'my projects': 1.8, shadiez: 1.35, teepo: 1.35, liferpg: 1.35 };
+          for (const b of beats) {
+            if (b.dur !== 1.6) continue;
+            const key = Object.keys(pace).find((k) => (b.name || '').toLowerCase().includes(k));
+            if (key) b.dur = pace[key];
           }
           migrated = true;
         }
@@ -1104,15 +1048,14 @@ function load() {
           for (const b of beats) if (b.panel && !b.img && !b.img2) b.panel = null;
           migrated = true;
         }
-        if (!(d.version >= 10)) {
-          // 2026-08 flow pass: give the journey rhythm — a long breath leaving
-          // the wordmark, settle into the hub, snappy hops between projects.
-          // Only touch beats still at the old uniform default.
-          const pace = { hero: 2.1, 'my projects': 1.8, shadiez: 1.35, teepo: 1.35, liferpg: 1.35 };
-          for (const b of beats) {
-            if (b.dur !== 1.6) continue;
-            const key = Object.keys(pace).find((k) => (b.name || '').toLowerCase().includes(k));
-            if (key) b.dur = pace[key];
+        if (!(d.version >= 12)) {
+          // LifeRPG out of the featured twin slot, Sabai (Thailand trip
+          // companion) in — Yarin's call. Only fields still at old defaults move.
+          const tw = beats.find((x) => /liferpg/i.test(x.name || ''));
+          if (tw) {
+            tw.name = 'Sabai & Kiara’s Club';
+            if (tw.img === '/previews/liferpg.jpg' || !tw.img) tw.img = '/previews/sabai.jpg';
+            if (/life-RPG/i.test(tw.desc || '')) tw.desc = 'An offline-first trip companion for a real Thailand journey — and a dachshund-first store brand, built from palette to cart.';
           }
           migrated = true;
         }
@@ -1136,13 +1079,14 @@ function load() {
         return;
       }
     }
-  } catch (e) { /* ignore */ }
+  } catch (e) { console.warn('[load] falling back to DEFAULT_BEATS', e); }
   beats = structuredClone(DEFAULT_BEATS);
   speedMul = 1; smooth = 0.5;
 }
 function save() {
   const g = {}; for (const k of GLOBAL_KEYS) g[k] = FX[k]; g.ease = txEaseName;
-  localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 15 }));
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 15 })); }
+  catch (e) { console.warn('[save]', e); }   // private mode / quota: never let a failed write abort the boot
 }
 // push the global (saved) FX/UX/transition state into the live scene + DOM
 function applyGlobals() {
@@ -1190,11 +1134,6 @@ computeStopIndices();
 applyProjectTints();
 applyPortraitPoses();
 beats.forEach(ensureBeatFX);   // ensure every beat (incl. defaults) carries a full FX keyframe set
-{ // anchor the wave ribbon around the first project stop (now that beats exist)
-  const _ai = Math.max(0, beats.findIndex((b) => b.stop === 'project'));
-  const la = beats[_ai] && beats[_ai].look;
-  if (la) { waveRibbon.group.userData.anchor.set(la[0], la[1], la[2]); waveRibbon.group.position.copy(waveRibbon.group.userData.anchor); }
-}
 network = buildNetwork();      // the data network hubs around the loaded path (edit path → refresh to re-seed)
 applyVoidDensity();            // apply saved node/line density now that the network exists
 
@@ -1504,7 +1443,7 @@ function applyFly(dt) {
   controls.target.add(_move);        // keep the orbit pivot in front of us
 }
 window.addEventListener('keydown', (e) => {
-  if (!(editMode || freeRoam)) return;
+  if (!editMode) return;
   if (isTextEntry(e.target)) return;
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   switch (e.key.toLowerCase()) {
@@ -1623,7 +1562,7 @@ renderer.domElement.addEventListener('pointerdown', (e) => {
 });
 // play mode: clicking a panel that has a link opens it
 renderer.domElement.addEventListener('click', (e) => {
-  if (editMode || freeRoam) return;
+  if (editMode) return;
   ndc.x = (e.clientX / window.innerWidth) * 2 - 1;
   ndc.y = -(e.clientY / window.innerHeight) * 2 + 1;
   raycaster.setFromCamera(ndc, camera);
@@ -1632,14 +1571,13 @@ renderer.domElement.addEventListener('click', (e) => {
 });
 
 // ---- Play-mode navigation ---------------------------------------------------
-let freeRoam = false;   // Director-Mode-adjacent guard: the visitor build never leaves the rails
 function lastIdx() { return Math.max(0, beats.length - 1); }
 // Every input path (wheel / keys / swipe / waypoint tap) funnels through goTo:
 // one cooldown means hybrid devices can't double-step (e.g. a wheel event
 // trailing a touch swipe).
 const NAV_COOLDOWN = 300;
 function goTo(i) {
-  if (editMode || freeRoam) return;
+  if (editMode) return;
   if (performance.now() - lastNav < NAV_COOLDOWN) return;
   const n = clamp(i, 0, lastIdx());
   if (n === index) return;
@@ -1663,7 +1601,7 @@ function scrollableStop(dy) {
   return dy > 0 ? sc.scrollTop < sc.scrollHeight - sc.clientHeight - 1 : sc.scrollTop > 1;
 }
 window.addEventListener('wheel', (e) => {
-  if (editMode || freeRoam) return;   // editor uses orbit zoom
+  if (editMode) return;   // editor uses orbit zoom
   if (scrollableStop(e.deltaY)) return;   // a tall stop scrolls its own content first
   e.preventDefault();
   if (Math.abs(e.deltaY) < 6) return;
@@ -1689,7 +1627,7 @@ window.addEventListener('touchstart', (e) => {
   _tT = performance.now(); _tAxis = null; _tFired = false;
 }, { passive: true });
 window.addEventListener('touchmove', (e) => {
-  if (editMode || freeRoam || _tAxis === 'multi') return;
+  if (editMode || _tAxis === 'multi') return;
   if (isTextEntry(e.target)) return;
   e.preventDefault();                                        // the reliable iOS pull-to-refresh / overscroll kill
   const curY = e.touches[0].clientY;
@@ -1705,12 +1643,13 @@ window.addEventListener('touchmove', (e) => {
   _tPrevY = curY;
 }, { passive: false });
 window.addEventListener('touchend', (e) => {
-  if (editMode || freeRoam || _tFired || _tAxis !== 'y') return;
+  if (editMode || _tFired || _tAxis !== 'y') return;
   const dy = e.changedTouches[0].clientY - _tY, dt = performance.now() - _tT;
   if (Math.abs(dy) > FLICK_DIST && Math.abs(dy) / Math.max(1, dt) > FLICK_VEL) step(dy < 0 ? 1 : -1);
 }, { passive: true });
 window.addEventListener('keydown', (e) => {
   if (isTextEntry(e.target)) return;
+  if (e.target instanceof Element && e.target.closest('button, a, select, [tabindex]:not([tabindex="-1"])')) return;   // Space/arrows belong to the focused control
   if (editMode || e.repeat) return;   // ignore key auto-repeat → one section per press
   if (['ArrowDown','PageDown',' ','Spacebar'].includes(e.key)) { e.preventDefault(); step(1); }
   else if (['ArrowUp','PageUp'].includes(e.key)) { e.preventDefault(); step(-1); }
@@ -1750,7 +1689,7 @@ const ASSET_KEY = 'voidAssets';
 // Enter/exit asymmetry, per the transition-lab rule: an exit runs at 0.7x the
 // enter's duration on the departure curve. Rise distance follows the motion
 // roadmap's state recipe (headline 16-24px, subhead 8-12px).
-const _aDefault = () => ({ text: null, size: 1, font: '', depth: 0, mesh3d: false, in: { dur: 900, delay: 120, y: 22, blur: 7, ease: 'out' }, out: { dur: 630, delay: 0, y: -12, blur: 6, ease: 'gravity' } });
+const _aDefault = () => ({ text: null, size: 1, font: '', depth: 0, in: { dur: 900, delay: 120, y: 22, blur: 7, ease: 'out' }, out: { dur: 630, delay: 0, y: -12, blur: 6, ease: 'gravity' } });
 let assetCfg = {}; ASSET_DEFS.forEach((a) => { assetCfg[a.id] = a.group === 'hero' ? { ...HERO_DEFAULTS[a.id] } : _aDefault(); });
 let assetDof = 6;            // DOF → text blur amount (px) at full defocus
 let _domDefocus = 0;
@@ -1876,7 +1815,7 @@ function commit(msg) {
   // Director Mode can reorder / add / delete beats, so the DOM stop blocks are rebuilt with them —
   // an unknown stop/id typed in the editor must not be able to break commit/undo/save.
   try {
-    panels = initPanels({ beats, profile: PROFILE, root: document.querySelector('#stops'), onTint: () => {} });
+    panels = initPanels({ beats, profile: PROFILE, root: document.querySelector('#stops') });
   } catch (e) { console.warn('[panels]', e); flash('Panels: ' + e.message); }
   reattach(); pushHistory(); save(); if (msg) flash(msg);
 }
@@ -2497,9 +2436,6 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
   const globalRows = [
     ['warpstr', () => FX.warpStrength, (v) => { FX.warpStrength = v; }, f2],
     ['warplen', () => FX.warpLength, (v) => { FX.warpLength = v; }, f3],
-    ['waveamp', () => FX.waveAmp, (v) => { FX.waveAmp = v; }, f0],
-    ['wavespd', () => FX.waveSpd, (v) => { FX.waveSpd = v; }, f2],
-    ['wavecoil', () => FX.waveCoil, (v) => { FX.waveCoil = v; }, f0],
     ['stars', () => FX.starFrac, (v) => { FX.starFrac = v; applyVoidDensity(); }, f2],
     ['nodes', () => FX.nodeFrac, (v) => { FX.nodeFrac = v; applyVoidDensity(); }, f2],
     ['links', () => FX.lineFrac, (v) => { FX.lineFrac = v; applyVoidDensity(); }, f2],
@@ -2548,17 +2484,17 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
   chk('twinkle', 'twinkleOn', (v) => { livingVoid.smat.uniforms.uTwinkle.value = v ? 1 : 0; if (network) network.pmat.uniforms.uTwinkle.value = (v && !PREFERS_REDUCED) ? 1 : 0; });
   chk('drift', 'driftOn', () => {});
   chk('lines', 'linesOn', (v) => { if (network) network.lines.visible = v; });
-  chk('waveon', 'waveOn', () => {});
-  chk('wavegrid', 'waveGrid', () => {});
   chk('nebvig', 'nebVig', () => {});   // raymarch nebula has a baked vignette; toggle is a no-op now
   chk('lightning', 'lightning', () => {});
   chk('glowspots', 'glowSpots', (v) => { livingVoid.spots.visible = v; });
   chk('neb', 'nebVisible', (v) => { livingVoid.composite.visible = v; });
-  window.addEventListener('keydown', (e) => {
-    if (e.key.toLowerCase() === 'b' && !isTextEntry(e.target) && !editMode) togglePanel(fxEl);
-  });
+  bindPanelHotkey('b', () => togglePanel(fxEl));
 })();
 
+// dev-panel hotkeys share one guard: not while typing, not in Director Mode
+function bindPanelHotkey(key, fn) {
+  window.addEventListener('keydown', (e) => { if (e.key.toLowerCase() === key && !isTextEntry(e.target) && !editMode) fn(); });
+}
 // only one side-panel open at a time (they live in overlapping corners)
 function togglePanel(target) {
   if (!target) return;
@@ -2670,9 +2606,7 @@ const txEl = document.querySelector('#txpanel');
   bind('warplen', () => FX.warpLength, (v) => { FX.warpLength = v; }, f3);
   const sel = document.querySelector('#tx-ease');
   if (sel) { sel.value = txEaseName; sel.addEventListener('change', () => { txEaseName = sel.value; transitionEase = EASINGS[sel.value] || easeInOut; }); }
-  window.addEventListener('keydown', (e) => {
-    if (e.key.toLowerCase() === 't' && !isTextEntry(e.target) && !editMode) togglePanel(txEl);
-  });
+  bindPanelHotkey('t', () => togglePanel(txEl));
 })();
 
 // ---- UI / UX panel (toggle with U) — the interface layer --------------------
@@ -2689,9 +2623,7 @@ const uxEl = document.querySelector('#uxpanel');
     scale.value = FX.uiScale; if (scaleOut) scaleOut.textContent = (+FX.uiScale).toFixed(2) + '×';
     scale.addEventListener('input', () => { const v = parseFloat(scale.value); FX.uiScale = v; applyRootFont(); if (scaleOut) scaleOut.textContent = v.toFixed(2) + '×'; });
   }
-  window.addEventListener('keydown', (e) => {
-    if (e.key.toLowerCase() === 'u' && !isTextEntry(e.target) && !editMode) togglePanel(uxEl);
-  });
+  bindPanelHotkey('u', () => togglePanel(uxEl));
 })();
 
 // ---- 3D Text panel (toggle with Y) — place & style extruded 3D text ---------
@@ -2748,10 +2680,8 @@ const textEl = document.querySelector('#textpanel');
   });
 
   renderList(); loadFields();
-  window.addEventListener('keydown', (e) => {
-    if (e.key.toLowerCase() === 'y' && !isTextEntry(e.target) && !editMode) { togglePanel(textEl); renderList(); loadFields(); }
-    if (e.key.toLowerCase() === 'a' && !isTextEntry(e.target) && !editMode) { togglePanel(asEl); loadAssetFields(); }
-  });
+  bindPanelHotkey('y', () => { togglePanel(textEl); renderList(); loadFields(); });
+  bindPanelHotkey('a', () => { togglePanel(asEl); loadAssetFields(); });
 })();
 
 applyGlobals();   // apply the loaded global FX/UX/transition state before the loop starts
@@ -2790,13 +2720,24 @@ function perfGovern(dt) {
 let _barShown = false;                       // the bar's show/hide is idempotent, but don't touch the DOM every frame
 function setBar(on) { if (on === _barShown) return; _barShown = on; on ? bar.show() : bar.hide(); }
 
+// index of the beat whose point (getPoint(beat) → [x,y,z]) is nearest the camera, plus the squared distance
+function nearestBeat(getPoint) {
+  let bi = 0, bd = Infinity;
+  for (let i = 0; i < beats.length; i++) {
+    const c = getPoint(beats[i]);
+    const dx = camera.position.x - c[0], dy = camera.position.y - c[1], dz = camera.position.z - c[2];
+    const d = dx * dx + dy * dy + dz * dz;
+    if (d < bd) { bd = d; bi = i; }
+  }
+  return [bi, bd];
+}
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.05); // seconds since last frame (clamped for tab-switches)
   elapsed += dt;
   const t = elapsed;
   perfGovern(dt);
 
-  if (editMode || freeRoam) {
+  if (editMode) {
     if (!scrubbing) { applyFly(dt); controls.update(); } // scrubbing drives the camera directly
   } else {
     const last = Math.max(1, lastIdx());
@@ -2846,45 +2787,24 @@ function animate() {
   livingVoid.update(t);                      // advance nebula + starfield time
   if (gradePass) { gradePass.uniforms.uTime.value = t; gradePass.uniforms.uDark.value = FX.vignette; gradePass.uniforms.uGrain.value = FX.grain; }
   if (network) network.update(t, (FX.driftOn && !PREFERS_REDUCED) ? 1 : 0, _cN, _cVel * FX.cursorDrive);   // data network: drift + cursor stir
-  cursorLinks.update(t, !editMode && !freeRoam && FX.cursorDrive > 0, _cN, _cVel * FX.cursorDrive, (FX.driftOn && !PREFERS_REDUCED) ? 1 : 0);   // Layer 3: the network reaches toward the cursor
-  meteors.update(dt, !editMode && !freeRoam && index === 0);   // falling stars on the start frame only
+  cursorLinks.update(t, !editMode && FX.cursorDrive > 0, _cN, _cVel * FX.cursorDrive, (FX.driftOn && !PREFERS_REDUCED) ? 1 : 0);   // Layer 3: the network reaches toward the cursor
+  meteors.update(dt, !editMode && index === 0);   // falling stars on the start frame only
   {                                          // Frame 2 — the grouped Hero cluster (assets parallax to cursor + scroll)
-    const heroOn = !editMode && !freeRoam && /^hero$/i.test(beats[index]?.name || '');
+    const heroOn = !editMode && /^hero$/i.test(beats[index]?.name || '');
     const hsc = heroOn ? Math.max(-0.5, Math.min(0.5, progress * Math.max(1, lastIdx()) - index)) : 0;
     heroCluster.update(heroOn, t, beats[index], hsc);
   }
   text3d.update(t, PREFERS_REDUCED);           // placed 3D text: light sweep + idle float
-  try { openingFX.update(!editMode && !freeRoam && index === 0 && progress < 0.06, t); } catch (e) { if (!animate._oerr) { console.error('[opening]', e); animate._oerr = 1; } }
-  {                                          // neon wave ribbon — drift + warp around its section
-    const w = waveRibbon;
-    w.uniforms.uTime.value = t; w.uniforms.uAmp.value = FX.waveAmp; w.uniforms.uSpd.value = FX.waveSpd; w.uniforms.uCoil.value = FX.waveCoil;
-    w.group.visible = false; w.grid.visible = false;   // ribbon taken out of the build
-    if (FX.waveOn) {
-      const last = Math.max(1, beats.length - 1), seg = clamp(progress, 0, 1) * last;
-      const i0 = clamp(Math.floor(seg), 0, last), i1 = clamp(i0 + 1, 0, last), f = seg - i0;
-      const la = beats[i0].look, lb = beats[i1].look;
-      _waveTgt.set(la[0] + (lb[0] - la[0]) * f, la[1] + (lb[1] - la[1]) * f, la[2] + (lb[2] - la[2]) * f);
-      w.group.userData.anchor.lerp(_waveTgt, 0.06);   // ribbon glides with the camera, re-wrapping each section
-      const an = w.group.userData.anchor;
-      w.group.position.set(an.x + Math.sin(t * 0.18) * 18, an.y + Math.cos(t * 0.15) * 9 + 2, an.z + Math.sin(t * 0.12) * 9 - 8);
-      w.group.rotation.set(Math.cos(t * 0.09) * 0.12, Math.sin(t * 0.10) * 0.5, Math.sin(t * 0.07) * 0.22);
-    }
-  }
+  try { openingFX.update(!editMode && index === 0 && progress < 0.06, t); } catch (e) { if (!animate._oerr) { console.error('[opening]', e); animate._oerr = 1; } }
   {                                          // per-chapter color world
-    let bi = 0, bd = Infinity;
-    for (let i = 0; i < beats.length; i++) {
-      const c = bCam(beats[i]);
-      const dx = camera.position.x - c[0], dy = camera.position.y - c[1], dz = camera.position.z - c[2];
-      const d = dx * dx + dy * dy + dz * dz;
-      if (d < bd) { bd = d; bi = i; }
-    }
+    const [bi, bd] = nearestBeat(bCam);
     const s = clamp(1 - Math.sqrt(bd) / curFX.colorReach, 0, 1) * curFX.colorIntensity;   // 1 at a section, 0 far between
     const tint = stopTints[bi] ?? CHAPTER_COLORS[bi % CHAPTER_COLORS.length];   // project stops carry their brand hue
     livingVoid.setTint(tint, s);
     if (network) network.setTint(tint, s);   // the network recolors with the chapter too
   }
   if (panels && bar) {                       // stop content: reveal on arrival, hide while moving / in editor
-    if (editMode || freeRoam) { panels.hide(); setBar(false); }
+    if (editMode) { panels.hide(); setBar(false); }
     else {
       const c = bCam(beats[index]);
       const dx = camera.position.x - c[0], dy = camera.position.y - c[1], dz = camera.position.z - c[2];
@@ -2908,32 +2828,26 @@ function animate() {
     }
   }
   fxMaybeSync();                              // FX panel mirrors the focused section's keyframe
-  if (!editMode && !freeRoam) {              // liquid cursor only while hovering a lit section panel
+  if (!editMode) {              // liquid cursor only while hovering a lit section panel
     _ray.setFromCamera(_cN, camera);
     const hit = _ray.intersectObjects(panelMeshes.filter(Boolean), false);
     document.body.classList.toggle('cursor-liquid', hit.length > 0 && hit[0].object.material.opacity > 0.4);
   } else { document.body.classList.remove('cursor-liquid'); }
 
-  hudBeat.textContent = editMode ? 'Director mode' : (freeRoam ? 'Free roam' : (beats[index]?.name ?? ''));
+  hudBeat.textContent = editMode ? 'Director mode' : (beats[index]?.name ?? '');
   hudProgress.textContent = (editMode ? (sel + 1) : (index + 1)) + ' / ' + beats.length;
   try {                                                             // never let asset reveals break the render loop
-    const showOpening = !editMode && !freeRoam && progress < 0.04;  // the Opening text lives at the very start
+    const showOpening = !editMode && progress < 0.04;  // the Opening text lives at the very start
     for (const a of ASSET_DEFS) if (a.group === 'overlay') (showOpening ? showAsset : hideAsset)(a);
-    updateAssetDOF(!editMode && !freeRoam && !!tween);              // text defocuses while flying
+    updateAssetDOF(!editMode && !!tween);              // text defocuses while flying
     if (asEl && !asEl.hidden && index !== _asFrame) loadAssetFields();   // panel follows the frame you fly to
   } catch (e) { if (!animate._aerr) { console.error('[assets]', e); animate._aerr = 1; } }
 
   if (bokeh && bokeh.uniforms && bokeh.uniforms.focus) {   // lock focus onto the NEAREST section
-    if (editMode || freeRoam) _focusV.copy(controls.target);
+    if (editMode) _focusV.copy(controls.target);
     else {
-      let bi = 0, bd = Infinity;
-      for (let i = 0; i < beats.length; i++) {
-        const lk = beats[i].look;
-        const dx = camera.position.x - lk[0], dy = camera.position.y - lk[1], dz = camera.position.z - lk[2];
-        const d2 = dx * dx + dy * dy + dz * dz;
-        if (d2 < bd) { bd = d2; bi = i; }
-      }
-      _focusV.set(beats[bi].look[0], beats[bi].look[1], beats[bi].look[2]);   // smooth rack-focus to the closest one
+      const [bi] = nearestBeat(bLook), lk = bLook(beats[bi]);   // portrait poses count on phones
+      _focusV.set(lk[0], lk[1], lk[2]);   // smooth rack-focus to the closest one
     }
     bokeh.uniforms.focus.value = Math.max(1, camera.position.distanceTo(_focusV));
     bokeh.uniforms.maxblur.value = curFX.dofBlur;        // per-section blur (keyframed)
@@ -2967,7 +2881,7 @@ function animate() {
   livingVoid.setWarp(voidWarp);
   if (network) network.setWarp(voidWarp);    // nodes swell + links flare on the burst
   if (bloom) bloom.strength = curFX.bloomStrength + voidWarp * 0.5;   // gentler transition flare (restraint pass)
-  if (bokeh) bokeh.enabled = !(editMode || freeRoam);   // DOF only in play; bloom stays on in all modes
+  if (bokeh) bokeh.enabled = !(editMode);   // DOF only in play; bloom stays on in all modes
   _cVel += (_cVelRaw - _cVel) * 0.12; _cVelRaw *= 0.90;   // smoothed cursor velocity drives the FX
   camera.updateMatrixWorld();
   {                                          // electric arc follows the cursor; movement electrifies the gas
@@ -2987,7 +2901,7 @@ function animate() {
   // in flight the parallax moves fast and a held frame reads as judder, so the
   // march runs every frame then (affordable: touch res/steps are cut instead).
   const _nebDue = _nebFrame++ % nebEvery === 0;
-  if (FX.nebVisible && (_nebDue || tween || freeRoam || editMode)) {
+  if (FX.nebVisible && (_nebDue || tween || editMode)) {
     const nm = livingVoid.nebMat.uniforms;
     camera.updateMatrixWorld();
     nm.uCamPos.value.copy(camera.position);
@@ -2999,7 +2913,7 @@ function animate() {
   }
   if (water) {                               // clip the water to the current section's on-screen rectangle
     const pn = beats[index] && beats[index].panel, pm = panelMeshes[index];
-    if (!editMode && !freeRoam && beats[index] && beats[index].water && pn && pm) {
+    if (!editMode && beats[index] && beats[index].water && pn && pm) {
       pm.updateMatrixWorld();
       const hw = pn.size[0] / 2, hh = pn.size[1] / 2;
       let mnx = 9, mny = 9, mxx = -9, mxy = -9;
@@ -3037,7 +2951,7 @@ initMagneticCursor();
 mountPrintCV(PROFILE);
 // a bad saved beat (unknown stop/id from an older config) must never blank the site
 try {
-  panels = initPanels({ beats, profile: PROFILE, root: document.querySelector('#stops'), onTint: () => {} });
+  panels = initPanels({ beats, profile: PROFILE, root: document.querySelector('#stops') });
 } catch (e) {
   console.error('[panels]', e);
   panels = { show() {}, hide() {}, el() { return null; } };

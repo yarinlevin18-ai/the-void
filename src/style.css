@@ -535,7 +535,7 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
 .repo p { font-size: .82rem; color: #9fc2e0; margin: .4rem 0; line-height: 1.45; }
 .repo .stack { display: block; margin-top: .3rem; }
 .repo .links { margin-top: .5rem; }
-.muted { color: #5b768f; }
+.muted { color: #7f97ad; }   /* ≥4.5:1 on the void (was #5b768f ≈ 4:1) */
 @media (min-width: 720px) { .proof { grid-template-columns: repeat(3, 1fr); } .repos { grid-template-columns: 1.4fr 1fr 1fr; } .proof-item .num { font-size: clamp(2.2rem, 6vw, 4rem); } }
 
 /* 05 Projects — text block on the side opposite the WebGL image panel; image first, text 150ms later.

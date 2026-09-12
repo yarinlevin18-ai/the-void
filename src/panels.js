@@ -7,7 +7,7 @@ import { copyLabel } from './bar.js';
 
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-export function initPanels({ beats, profile, root, onTint }) {
+export function initPanels({ beats, profile, root }) {
   root.innerHTML = '';
   const els = beats.map((b, i) => {
     if (!b.stop) return null;
@@ -15,6 +15,7 @@ export function initPanels({ beats, profile, root, onTint }) {
     sec.className = `stop stop-${b.stop}`;
     sec.id = `stop-${b.id || i}`;
     sec.setAttribute('aria-hidden', 'true');
+    sec.inert = true;   // hidden stops are never focusable, even mid-fade
     sec.setAttribute('aria-label', b.name || b.stop);
     if (b.stop === 'intro') sec.innerHTML = renderIntro(profile);
     else if (b.stop === 'cv') sec.innerHTML = renderCV(profile);
@@ -60,23 +61,22 @@ export function initPanels({ beats, profile, root, onTint }) {
     }
   }
 
+  const conceal = (sec) => { sec.classList.remove('in'); sec.setAttribute('aria-hidden', 'true'); sec.inert = true; };
   let shown = -1;
   return {
     show(i) {
       if (i === shown) return;
-      if (shown >= 0 && els[shown]) { els[shown].classList.remove('in'); els[shown].setAttribute('aria-hidden', 'true'); }
+      if (shown >= 0 && els[shown]) conceal(els[shown]);
       shown = i;
       const sec = els[i];
-      if (!sec) { if (onTint) onTint(null); return; }
-      sec.classList.add('in'); sec.setAttribute('aria-hidden', 'false');
+      if (!sec) return;
+      sec.classList.add('in'); sec.setAttribute('aria-hidden', 'false'); sec.inert = false;
       if (sec.classList.contains('stop-build')) countUp(sec);
-      if (onTint) onTint(sec.querySelector('.project')?.dataset.tint || null);
     },
     hide() {
       if (shown < 0) return;
-      const sec = els[shown]; if (sec) { sec.classList.remove('in'); sec.setAttribute('aria-hidden', 'true'); }
+      const sec = els[shown]; if (sec) conceal(sec);
       shown = -1;
-      if (onTint) onTint(null);
     },
     el: (i) => els[i],
   };
