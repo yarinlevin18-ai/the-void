@@ -14,3 +14,5 @@ Israel-open-roles.md
 
 # Automated visual-QA screenshots (regenerated every survey pass).
 .survey/
+.superpowers/
+.playwright-mcp/
