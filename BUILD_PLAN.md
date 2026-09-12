@@ -155,6 +155,19 @@ Nine changes from a fresh walk-through of the live v15 flight:
       `tests/globals.test.js` to fail on any module-scope shadowing of a browser
       global. The flight half of the deep links was working all along; only the
       URL tidy-up was broken. Tests 39 → 41.
+- [x] **Hash-link audit (2026-09-12, 62-agent adversarial pass, 3 findings
+      survived majority vote).** `#__proto__` reached `Object.prototype`
+      through the plain-object lookup table and threw at module scope, freezing
+      the site on the 0% loader → table moved to `src/hash.js`
+      (`Object.create(null)`, typeof + integer + range checks, bootstrap block
+      in try/catch). With scripting off the opaque `#loader` covered the
+      `<noscript>` skim path and `overflow:hidden` stopped scrolling → a
+      `<noscript><style>` in `<head>`. ⌘/Ctrl/Shift/middle-click on "Back to
+      the start" was swallowed → left to the browser. Plus one unverified
+      finding confirmed by measurement: a deep-link arrival pre-played its
+      reveal behind the loader → `panels.show` now waits for `loaderDone`
+      (measured: reveal 32 ms after the loader lifts). An unrecognised hash is
+      now left in the URL instead of stripped. Tests 41 → 45.
 
 ---
 

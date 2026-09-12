@@ -16,6 +16,7 @@ import { initMagneticCursor } from './cursor.js';
 import { PROFILE } from './content/profile.js';
 import { initPanels } from './panels.js';
 import { initBar } from './bar.js';
+import { resolveHash } from './hash.js';
 import { mountPrintCV } from './printcv.js';
 let panels = null, bar = null;   // assigned at bootstrap, after the scene exists
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -913,6 +914,7 @@ let smooth = 0.5;    // 0 = straight segments, 1 = fully curved (spline) path
 let tween = null;    // active section→section transition { from, to, t, dur }
 let _breath = 0;     // 0..1 idle-sway weight — fades out during a flight, back in on arrival
 let firstFrameDone = false; // set after the first composed render; the intro loader waits on it
+let loaderDone = false;     // stops reveal only after the loader lifts — a deep-link arrival must be seen, not pre-played behind it
 let index = 0;       // play-mode target section
 let progress = 0;    // smoothed 0..1 along the path
 let editMode = false;
@@ -2723,7 +2725,7 @@ function animate() {
       const c = bCam(beats[index]);
       const dx = camera.position.x - c[0], dy = camera.position.y - c[1], dz = camera.position.z - c[2];
       const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      if (!tween && dist < 26) panels.show(index);   // Opening/Hero have no stop → panels no-ops
+      if (!tween && dist < 26 && loaderDone) panels.show(index);   // Opening/Hero have no stop → panels no-ops
       else if (tween || dist > 70) panels.hide();
       setBar(progress > 0.02);                       // the bar arrives once the flight leaves the wordmark
     }
@@ -2870,14 +2872,12 @@ try {
   console.error('[panels]', e);
   panels = { show() {}, hide() {}, el() { return null; } };
 }
-// hash deep links: #work #about #cv #contact #top → the matching stop. A hash on
-// first load jumps straight there (no flight); later changes fly. The hash is
-// cleared after use so the URL never pins a stale section.
-const HASH_STOPS = {
-  top: () => 0, work: () => WORK_INDEX, about: () => ABOUT_INDEX,
-  cv: () => beats.findIndex((b) => b.stop === 'cv'), contact: () => beats.findIndex((b) => b.stop === 'contact'),
-};
-function hashIndex() { const f = HASH_STOPS[location.hash.slice(1).toLowerCase()]; const i = f ? f() : -1; return i >= 0 ? i : -1; }
+// hash deep links: #work #about #cv #contact #top → the matching stop (src/hash.js
+// owns the table). A hash on first load jumps straight there (no flight); later
+// changes fly. A hash we handled is cleared so the URL never pins a stale
+// section; one we don't recognise is left alone.
+const hashCtx = () => ({ beats, workIndex: WORK_INDEX, aboutIndex: ABOUT_INDEX });
+function hashIndex() { return resolveHash(location.hash, hashCtx()); }
 // Explicitly window.history: a bare `history` here silently resolved to the
 // Director Mode undo array above for the whole of v16, so the URL never tidied.
 // Best-effort either way — a lingering hash is harmless, and the in-page links
@@ -2887,14 +2887,21 @@ function clearHash() {
   catch (e) { console.warn('[hash] could not tidy the URL', e); }
 }
 function flyToStop(i) { if (i < 0) return false; lastNav = 0; goTo(i); return true; }
-window.addEventListener('hashchange', () => { flyToStop(hashIndex()); clearHash(); });
-{ const i = hashIndex(); if (i > 0 && !editMode) { index = i; progress = i / Math.max(1, lastIdx()); } if (i >= 0) clearHash(); }
+window.addEventListener('hashchange', () => { if (flyToStop(hashIndex())) clearHash(); });
+// Guarded: nothing a URL carries may abort module init — everything below this
+// line (the bar, the loader hand-off) must still run.
+try {
+  const i = hashIndex();
+  if (i > 0 && !editMode) { index = i; progress = i / Math.max(1, lastIdx()); }
+  if (i >= 0) clearHash();
+} catch (e) { console.warn('[hash] ignored', e); }
 // in-page anchors (Contact's "Back to the start") fly instead of jumping, and
-// work even where clearHash can't run — no dependence on a hashchange firing
+// work even where clearHash can't run — no dependence on a hashchange firing.
+// A modified click (new tab / window) is the visitor's call: leave it to the browser.
 document.querySelector('#stops')?.addEventListener('click', (e) => {
+  if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.defaultPrevented) return;
   const a = e.target.closest?.('a[href^="#"]'); if (!a) return;
-  const f = HASH_STOPS[a.getAttribute('href').slice(1).toLowerCase()]; if (!f) return;
-  if (flyToStop(f())) { e.preventDefault(); clearHash(); }
+  if (flyToStop(resolveHash(a.getAttribute('href'), hashCtx()))) { e.preventDefault(); clearHash(); }
 });
 bar = initBar({ profile: PROFILE, onWork: () => goTo(WORK_INDEX), onAbout: () => goTo(ABOUT_INDEX), root: document.querySelector('#bar') });
 
@@ -2906,7 +2913,7 @@ bar = initBar({ profile: PROFILE, onWork: () => goTo(WORK_INDEX), onAbout: () =>
 //  the viewer (lab departure curve: leave with gravity) into the opening shot.
 (() => {
   const ld = document.querySelector('#loader');
-  if (!ld) return;
+  if (!ld) { loaderDone = true; return; }
   const pctEl = document.querySelector('#ld-pct'), labEl = document.querySelector('#ld-label');
   const markEl = document.querySelector('#ld-mark'), ticksEl = document.querySelector('#ld-ticks');
   const cv = document.querySelector('#ld-canvas'), overlay = document.querySelector('#overlay');
@@ -2997,7 +3004,7 @@ bar = initBar({ profile: PROFILE, onWork: () => goTo(WORK_INDEX), onAbout: () =>
     draw(p, 0, ts / 1000);
     if (raw < 1 || !firstFrameDone) { requestAnimationFrame(step); return; }
     // ---- exit: the lattice warps past the viewer, the panel falls away -------
-    ld.classList.add('done');
+    ld.classList.add('done'); loaderDone = true;
     if (overlay) overlay.classList.add('revealed');
     const doneAt = ts;
     (function out(ts2) {

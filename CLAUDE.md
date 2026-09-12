@@ -62,12 +62,16 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   yield to a focused button or link inside a stop or the bar.
   `src/render.js` holds the pure `(data) => HTMLElement` renderers (intro, cv,
   build, project, contact) — no Three.js imports, node-tested.
-- **Deep links:** `#work` `#about` `#cv` `#contact` `#top` fly to that stop
-  (`HASH_STOPS` in `main.js`); a hash on first load lands there without the
-  flight, and the URL is tidied afterwards with `window.history.replaceState`.
-  In-page anchors inside `#stops` (Contact's "Back to the start") are
-  intercepted and routed through `goTo`, so they never depend on a hashchange
-  firing.
+- **Deep links:** `#work` `#about` `#cv` `#contact` `#top` fly to that stop.
+  `src/hash.js` owns the table (`resolveHash(raw, { beats, workIndex,
+  aboutIndex })`, pure, node-tested, prototype-free so `#__proto__` can't throw).
+  A hash on first load lands there without the flight and the stop reveals
+  only once the loader lifts (`loaderDone`); a handled hash is tidied with
+  `window.history.replaceState`, an unrecognised one is left alone. In-page
+  anchors inside `#stops` (Contact's "Back to the start") are intercepted and
+  routed through `goTo`; a modified click (⌘/Ctrl/Shift/middle) is left to the
+  browser. With scripting off, a `<noscript><style>` in `<head>` hides the fixed
+  3D chrome so the skim path at the end of `<body>` is readable.
 - **Fixed bar:** `src/bar.js` — name, availability dot, Work, About, Copy email.
   `initBar({ profile, onWork, onAbout, root })`; the target indices are derived
   live by `computeStopIndices()` (first `project` / first `intro` stop), not
@@ -102,10 +106,11 @@ folds a second featured project in as a compact row under the links.
 ## Code map
 | File | Lines | What |
 |---|---|---|
-| `src/main.js` | ~3,071 | Scene, network, nebula, flight, Director Mode, perf tiers, save/migrate |
+| `src/main.js` | ~3,018 | Scene, network, nebula, flight, Director Mode, perf tiers, save/migrate |
 | `src/panels.js` | 83 | DOM stop layer: builds/shows/hides stops (inert + aria-hidden), count-up, print/copy |
 | `src/render.js` | 74 | Pure HTML renderers (intro, cv, build, project, contact), node-tested |
 | `src/bar.js` | 43 | Fixed top bar: name, availability, Work, About, Copy email |
+| `src/hash.js` | 28 | Deep-link resolver: fragment/anchor → stop index, prototype-free, node-tested |
 | `src/printcv.js` | 54 | Print-only CV (moved out of the old dossier.js) |
 | `src/content/profile.js` | 269 | **Single source of truth** for bio, CV, intro/method/proof, 7 featured + shipped/labs projects, links, status |
 | `src/text3d.js` | 193 | Extruded 3D text (Source Code Pro, dev-only) |
@@ -145,7 +150,7 @@ export tuned `BEATS` and paste into `DEFAULT_BEATS`.
 npm install
 npm run dev      # http://localhost:5173  (DEV_TOOLS on → E/B/T/U/Y/A work)
 npm run build    # dist/
-npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals (happy-dom for the DOM ones), 41 passing
+npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash (happy-dom for the DOM ones), 45 passing
 ```
 `.claude/launch.json` has a `void-dev` config for the browser preview.
 Fully offline-capable: fonts are self-hosted, no external requests. HMR can be flaky —

@@ -30,6 +30,16 @@ test('no src module scope binding shadows a browser global', () => {
   assert.deepEqual(offences, [], `module-scope shadowing of a browser global:\n${offences.join('\n')}`);
 });
 
+test('with scripting off, the noscript skim path is not buried under the loader', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const head = html.slice(0, html.indexOf('</head>'));
+  const m = /<noscript>\s*<style>([^<]*)<\/style>\s*<\/noscript>/.exec(head);
+  assert.ok(m, 'a <noscript><style> block lives in <head>');
+  for (const id of ['#loader', '#scene', '#overlay', '#hud']) assert.ok(m[1].includes(id), `${id} hidden`);
+  assert.match(m[1], /html,\s*body\s*\{[^}]*overflow:\s*auto/, 'page scroll restored');
+  assert.ok(html.includes('<noscript>\n      <div'), 'the skim path itself still ships');
+});
+
 test('clearHash reaches the History API through window', () => {
   const src = readFileSync(new URL('main.js', SRC), 'utf8');
   const m = /function clearHash\(\)[\s\S]{0,400}?\n\}/.exec(src);
