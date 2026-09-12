@@ -844,12 +844,6 @@ const cursorLinks = (() => {
 
 // ---- Default path (used until the user edits / loads saved) -----------------
 const mkPanel = (x, y, z, w, h, rot = [0, 0, 0]) => ({ pos: [x, y, z], size: [w, h], rot, billboard: false });
-// the opening hero shot — a framed camera looking at a big title panel
-const makeHeroBeat = () => ({
-  name: 'Hero', cam: [0, 2, 120], look: [0, 2, 40], up: UP_NORMAL.slice(),
-  fov: 70, dur: 1.8, desc: 'Landing pages & SaaS interfaces — fly through the work.',
-  img: '', link: '', panel: mkPanel(0, 2, 35, 120, 64),
-});
 // v15 flight (2026-09-08): thirteen stops. The Opening and Hero cameras are the
 // authored v14 shots, kept verbatim. Everything after them is a *stop*: the DOM
 // content block (src/panels.js) carries the words, and — for the seven project
@@ -975,106 +969,21 @@ function load() {
         beats = d.beats;
         speedMul = d.speed ?? 1;
         smooth = d.smooth ?? 0.5;
-        beats.forEach(backfillBeat); // bring older saves up to the current schema
         if (d.g) { for (const k of GLOBAL_KEYS) if (d.g[k] != null) FX[k] = d.g[k]; if (d.g.ease) txEaseName = d.g.ease; } // restore global FX/UX/transition state
         let migrated = false;
-        // Migration blocks MUST stay in ascending version order: later blocks assume earlier ones ran.
-        if (!(d.version >= 2)) { beats.forEach((b) => { if (b.panel) b.panel.billboard = false; }); migrated = true; } // stop the old auto-facing default
-        if (!(d.version >= 3)) { beats.unshift(makeHeroBeat()); migrated = true; }      // add a hero opening shot before everything
-        if (!(d.version >= 4)) {
-          beats.forEach((b) => { if (b.name === 'New section') { b.name = 'Transition'; b.panel = null; } }); // drop the leftover panel, keep its camera
-          const fin = beats.find((b) => /final/i.test(b.name)) || beats[beats.length - 1];
-          if (fin) fin.dur = 3;                                                          // slow the last transition into the finale
-          migrated = true;
-        }
-        if (!(d.version >= 6)) {
-          if (beats[0]) { beats[0].name = 'Opening'; beats[0].panel = null; }     // Frame 1: opening = wordmark only, drop the empty panel
-          const tr = beats.find((b) => /^transition$/i.test((b.name || '').trim()));
-          if (tr) tr.name = 'Hero';                                               // Frame 2: the statement beat
-          migrated = true;
-        }
-        if (!(d.version >= 7)) {
-          // Phase B: pour the real content into saved paths (authored cameras stay;
-          // only rename the generic beats and fill EMPTY content fields).
-          const fill = (re, src) => {
-            const b = beats.find((x) => re.test((x.name || '').trim())); if (!b) return;
-            b.name = src.name;
-            if (!b.desc) b.desc = src.desc;
-            if (!b.img) b.img = src.img;
-            if (src.img2 && !b.img2) b.img2 = src.img2;
-            if (!b.link) b.link = src.link;
-          };
-          fill(/^my projects$/i, DEFAULT_BEATS[2]);
-          fill(/^project ?1$/i, DEFAULT_BEATS[3]);
-          fill(/^project ?2$/i, DEFAULT_BEATS[4]);
-          fill(/^project ?3 ?& ?4$/i, DEFAULT_BEATS[5]);
-          fill(/^final/i, DEFAULT_BEATS[6]);
-          migrated = true;
-        }
-        if (!(d.version >= 8)) {
-          // Kiara's Club went live after v7 — fill the twin beat's empty link.
-          const tw = beats.find((x) => /liferpg/i.test(x.name || ''));
-          if (tw && !tw.link) tw.link = 'https://kiaras-club.vercel.app';
-          migrated = true;
-        }
-        if (!(d.version >= 9)) {
-          // 2026-08 restraint pass: one color story, fewer simultaneous layers.
-          // Deliberate art direction — override the saved globals for the quieted
-          // knobs; per-beat keyframes only move if still at their old defaults.
-          Object.assign(FX, { nebHue: 0.35, nebEmber: 0.06, nebGlow: 0.35, lightning: false, glowSpots: false, cursorDrive: 0.6, starFrac: Math.min(FX.starFrac, 0.85) });
-          for (const b of beats) if (b.fx) {
-            if (b.fx.bloomStrength === 1) b.fx.bloomStrength = 0.85;
-            if (b.fx.colorIntensity === 1) b.fx.colorIntensity = 0.85;
-            if (b.fx.nebula === 1) b.fx.nebula = 0.9;
-          }
-          migrated = true;
-        }
-        if (!(d.version >= 10)) {
-          // 2026-08 flow pass: give the journey rhythm — a long breath leaving
-          // the wordmark, settle into the hub, snappy hops between projects.
-          // Only touch beats still at the old uniform default.
-          const pace = { hero: 2.1, 'my projects': 1.8, shadiez: 1.35, teepo: 1.35, liferpg: 1.35 };
-          for (const b of beats) {
-            if (b.dur !== 1.6) continue;
-            const key = Object.keys(pace).find((k) => (b.name || '').toLowerCase().includes(k));
-            if (key) b.dur = pace[key];
-          }
-          migrated = true;
-        }
-        if (!(d.version >= 11)) {
-          // 2026-08 panel art direction: panels are pure image artifacts — the
-          // caption owns all words, the pill button owns the CTA. A panel with
-          // no imagery has nothing left to show, so it goes.
-          for (const b of beats) if (b.panel && !b.img && !b.img2) b.panel = null;
-          migrated = true;
-        }
-        if (!(d.version >= 12)) {
-          // LifeRPG out of the featured twin slot, Sabai (Thailand trip
-          // companion) in — Yarin's call. Only fields still at old defaults move.
-          const tw = beats.find((x) => /liferpg/i.test(x.name || ''));
-          if (tw) {
-            tw.name = 'Sabai & Kiara’s Club';
-            if (tw.img === '/previews/liferpg.jpg' || !tw.img) tw.img = '/previews/sabai.jpg';
-            if (/life-RPG/i.test(tw.desc || '')) tw.desc = 'An offline-first trip companion for a real Thailand journey — and a dachshund-first store brand, built from palette to cart.';
-          }
-          migrated = true;
-        }
-        if (!(d.version >= 14)) {
-          // v14: title changed Frontend Developer → AI-Native Builder — Yarin's
-          // call: the honest positioning is directing AI, and it's the stronger
-          // one. Same wholesale re-adopt as v13 (copy lives in DEFAULT_BEATS).
-          beats = structuredClone(DEFAULT_BEATS);
-          beats.forEach(backfillBeat);
-          migrated = true;
-        }
         if (!(d.version >= 15)) {
           // v15 (2026-09-08): the flight restructure — 13 stops with DOM content
           // blocks, new order. The beat shape changed (stop/id/side), so re-adopt
           // DEFAULT_BEATS wholesale; the visitor's global FX / speed / ease stay.
+          // The v2–v14 patch migrations were deleted on 2026-09-12: v14 already
+          // re-adopted wholesale, so nothing they touched could reach v15, and
+          // running them on old shapes could throw before this reset.
+          // Future shape changes: add `if (!(d.version >= 16)) { ... }` blocks
+          // below this one, in ascending order.
           beats = structuredClone(DEFAULT_BEATS);
-          beats.forEach(backfillBeat);
           migrated = true;
         }
+        beats.forEach(backfillBeat); // bring older saves up to the current schema
         if (migrated) save();
         return;
       }
