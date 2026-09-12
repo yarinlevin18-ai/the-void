@@ -65,3 +65,13 @@ test('renderers expose the DOM hooks panels.js binds to', () => {
   assert.ok(renderContact(PROFILE).includes('data-copy-email'));
   assert.ok(renderContact(PROFILE, 2031).includes('2031'));
 });
+
+test('build lead card links GitHub when the lead repo is public, and rows must exist', () => {
+  const p = structuredClone(PROFILE);
+  p.buildStop = { lead: 'teepo', rows: ['shadiez'] };
+  const h = renderBuild(p);
+  assert.ok(h.includes(`href="${PROFILE.work.featured.find((x) => x.id === 'teepo').repo}"`));
+  assert.ok(!h.includes('private repo'));
+  p.buildStop.rows = ['ghost'];
+  assert.throws(() => renderBuild(p), /no featured project "ghost"/);
+});

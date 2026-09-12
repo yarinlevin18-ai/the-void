@@ -4,12 +4,15 @@ import { esc } from './render.js';
 
 // one pending revert PER setter — the bar button and the contact email each own
 // their own timer, so copying one no longer cancels the other's revert.
+// `text` is what shows for `ms` ('Copied', or 'Copy failed'); then `original` returns.
 const _timers = new Map();
-export function copyLabel(set, original, ms = 1800) {
+export function copyLabel(set, original, ms = 1800, text = 'Copied') {
   clearTimeout(_timers.get(set));
-  set('Copied');
+  set(text);
   _timers.set(set, setTimeout(() => { _timers.delete(set); set(original); }, ms));
 }
+const failLabel = (set, original) => copyLabel(set, original, 1800, 'Copy failed');
+export { failLabel };
 
 export function initBar({ profile, onWork, onAbout, root }) {
   if (typeof onWork !== 'function' || typeof onAbout !== 'function') {
@@ -28,8 +31,8 @@ export function initBar({ profile, onWork, onAbout, root }) {
     if (cp) {
       const set = (v) => { cp.textContent = v; };
       const w = navigator.clipboard?.writeText(profile.links.email);
-      if (w) w.then(() => copyLabel(set, 'Copy email')).catch(() => copyLabel(set, 'Copy failed'));
-      else copyLabel(set, 'Copy failed');
+      if (w) w.then(() => copyLabel(set, 'Copy email')).catch(() => failLabel(set, 'Copy email'));
+      else failLabel(set, 'Copy email');
     }
   });
   root.inert = true;

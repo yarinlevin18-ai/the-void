@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { PROFILE } from '../src/content/profile.js';
 
 const featured = PROFILE.work.featured;
@@ -66,4 +66,11 @@ test('every project id DEFAULT_BEATS hardcodes exists in the profile', () => {
   const ids = [...body.matchAll(/id: '([a-z-]+)'/g)].map((m) => m[1]);
   assert.equal(ids.length, 7);
   for (const id of ids) assert.ok(featured.map((p) => p.id).includes(id), id);
+});
+
+test('buildStop ids exist in featured and every featured preview file is on disk', () => {
+  const ids = featured.map((p) => p.id);
+  assert.ok(ids.includes(PROFILE.buildStop.lead), PROFILE.buildStop.lead);
+  for (const r of PROFILE.buildStop.rows) assert.ok(ids.includes(r), r);
+  for (const p of featured) assert.ok(existsSync(new URL(`../public${p.img}`, import.meta.url)), p.img);
 });
