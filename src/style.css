@@ -486,7 +486,7 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
 #stops { position: fixed; inset: 0; z-index: 3; pointer-events: none; }
 .stop {
   position: absolute; left: 0; right: 0; top: 0; bottom: 0;
-  display: flex; flex-direction: column; justify-content: center;
+  display: flex; flex-direction: column; justify-content: safe center;
   padding: 14vh 6vw 10vh; pointer-events: none; opacity: 0; visibility: hidden;
   font-family: var(--f-body); color: #cfe8ff;
   overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
@@ -541,7 +541,7 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
 /* 05 Projects — text block on the side opposite the WebGL image panel; image first, text 150ms later.
    On phones the text just sits at the bottom (the image lives above it in the 3D layer); the
    left/right split below only kicks in at >= 900px where there's room for both side by side. */
-.stop-project { justify-content: flex-end; }
+.stop-project { justify-content: safe flex-end; }
 .project { max-width: 34rem; opacity: 0; transform: translateY(14px); transition: opacity .45s ease .15s, transform .45s ease .15s; }
 .stop.in .project { opacity: 1; transform: none; }
 .project .title { font-family: var(--f-display); font-weight: 800; font-stretch: 78%; font-size: clamp(2.4rem, 8vw, 5.5rem); line-height: .9; letter-spacing: -0.02em; text-transform: uppercase; color: #eaf4ff; margin: 0 0 1rem; }
@@ -551,7 +551,7 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
 .project .stack { margin-top: .8rem; }
 .group-label { position: absolute; top: 12vh; left: 6vw; }
 @media (min-width: 900px) {
-  .stop-project { justify-content: center; }
+  .stop-project { justify-content: safe center; }
   .stop-project[data-side="left"]  .project { margin-left: auto; margin-right: 0; }   /* image panel sits left → text right */
   .stop-project[data-side="right"] .project { margin-right: auto; margin-left: 0; }
 }

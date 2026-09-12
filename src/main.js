@@ -1657,14 +1657,14 @@ function step(dir) { goTo(index + dir); }
 let navLock = false, wheelIdle = null;
 // A tall stop scrolls natively, but only while it still has room in the
 // gesture's direction — at either end the gesture goes back to the flight.
-function scrollableStop(target, dy) {
-  const sc = target?.closest?.('.stop.in');
+function scrollableStop(dy) {
+  const sc = document.querySelector('#stops .stop.in');
   if (!sc || sc.scrollHeight <= sc.clientHeight + 8) return false;
   return dy > 0 ? sc.scrollTop < sc.scrollHeight - sc.clientHeight - 1 : sc.scrollTop > 1;
 }
 window.addEventListener('wheel', (e) => {
   if (editMode || freeRoam) return;   // editor uses orbit zoom
-  if (scrollableStop(e.target, e.deltaY)) return;   // a tall stop scrolls its own content first
+  if (scrollableStop(e.deltaY)) return;   // a tall stop scrolls its own content first
   e.preventDefault();
   if (Math.abs(e.deltaY) < 6) return;
   clearTimeout(wheelIdle);
@@ -1698,8 +1698,8 @@ window.addEventListener('touchmove', (e) => {
   if (_tAxis === 'y') {
     // preventDefault above blocks native scrolling, so an overflowing stop with
     // room left in this direction gets scrolled manually from the raw per-move delta.
-    const sc = e.target?.closest?.('.stop.in');
-    if (scrollableStop(e.target, _tPrevY - curY)) { sc.scrollTop += (_tPrevY - curY); _tPrevY = curY; return; }
+    const sc = document.querySelector('#stops .stop.in');
+    if (scrollableStop(_tPrevY - curY)) { sc.scrollTop += (_tPrevY - curY); _tPrevY = curY; return; }
     if (!_tFired && Math.abs(dy) > SWIPE_DIST) { _tFired = true; step(dy < 0 ? 1 : -1); }   // swipe up = advance
   }
   _tPrevY = curY;
@@ -2166,7 +2166,8 @@ document.querySelector('#ed-reset').addEventListener('click', () => {
   if (!confirm('Reset the whole path to defaults? This clears your saved edits.')) return;
   beats = structuredClone(DEFAULT_BEATS); speedMul = 1; smooth = 0.5; sel = 0;
   localStorage.removeItem(SAVE_KEY);
-  rebuildDerived(); rebuildGizmos(); rebuildPanels(); refreshEditor(); pushHistory(); flash('Reset to defaults');
+  commit('Reset to defaults');   // tints, portrait poses, stop indices, panels — the whole derived chain
+  refreshEditor();
 });
 document.querySelector('#ed-preview').addEventListener('click', () => { setEdit(false); index = 0; progress = 0; tween = null; });
 document.querySelector('#ed-copy').addEventListener('click', () => {
@@ -2828,10 +2829,12 @@ function animate() {
       camera.rotateZ(Math.sin(t * 0.19 + 0.7) * FX.breathRoll * _breath * 0.01745);
     }
     // per-shot field-of-view (zoom), interpolated across the segment, + transition punch
-    const fa = bFov(beats[i0]), fb = bFov(beats[i1]);
-    const raw = fa + (fb - fa) * f + FX.fovPunch * activePunch;
-    // portrait screens widen to keep the composed framing — unless the shot has its own portrait pose
-    const nf = (usesPortrait(beats[i0]) || usesPortrait(beats[i1])) ? raw : fitFov(raw);
+    // resolve each endpoint's fov for this screen first (portrait pose = as-is,
+    // otherwise fitFov widens it), then blend — resolving after the blend made the
+    // fov jump wherever a portrait-posed beat met a plain one.
+    const fovOf = (b) => (usesPortrait(b) ? b.portrait.fov : fitFov(b?.fov ?? DEF_FOV));
+    const fa = fovOf(beats[i0]), fb = fovOf(beats[i1]);
+    const nf = fa + (fb - fa) * f + FX.fovPunch * activePunch;
     if (Math.abs(camera.fov - nf) > 0.01) { camera.fov = nf; camera.updateProjectionMatrix(); }
   }
 
@@ -3032,7 +3035,13 @@ animate();
 initMagneticCursor();
 // ---- The v15 DOM layer: one content block per stop + the fixed bar ----------
 mountPrintCV(PROFILE);
-panels = initPanels({ beats, profile: PROFILE, root: document.querySelector('#stops'), onTint: () => {} });
+// a bad saved beat (unknown stop/id from an older config) must never blank the site
+try {
+  panels = initPanels({ beats, profile: PROFILE, root: document.querySelector('#stops'), onTint: () => {} });
+} catch (e) {
+  console.error('[panels]', e);
+  panels = { show() {}, hide() {}, el() { return null; } };
+}
 bar = initBar({ profile: PROFILE, onWork: () => goTo(WORK_INDEX), onAbout: () => goTo(ABOUT_INDEX), root: document.querySelector('#bar') });
 
 // ---- Intro loader: the void wires itself up, then warps into the flight -----

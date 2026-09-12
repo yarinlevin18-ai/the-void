@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { PROFILE } from '../src/content/profile.js';
 
 const featured = PROFILE.work.featured;
@@ -56,4 +57,13 @@ test('public entries have live url and repo; every img matches its id', () => {
     if (!p.private) { assert.match(p.url, /^https:\/\//, `${p.id} url`); assert.match(p.repo, /^https:\/\/github\.com\//, `${p.id} repo`); }
     assert.equal(p.img, `/previews/${p.id}.jpg`, `${p.id} img`);
   }
+});
+
+test('every project id DEFAULT_BEATS hardcodes exists in the profile', () => {
+  const src = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  const arr = src.slice(src.indexOf('const DEFAULT_BEATS = ['));
+  const body = arr.slice(0, arr.indexOf('\n];'));
+  const ids = [...body.matchAll(/id: '([a-z-]+)'/g)].map((m) => m[1]);
+  assert.equal(ids.length, 7);
+  for (const id of ids) assert.ok(featured.map((p) => p.id).includes(id), id);
 });

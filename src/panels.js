@@ -31,20 +31,24 @@ export function initPanels({ beats, profile, root, onTint }) {
     return sec;
   });
 
-  // buttons that need JS
-  root.addEventListener('click', (e) => {
+  // buttons that need JS — bound once per root (commit() re-inits panels in Director Mode)
+  if (!root.dataset.bound) {
+   root.dataset.bound = '1';
+   root.addEventListener('click', (e) => {
     const t = e.target.closest('[data-print-cv], [data-copy-email]');
     if (!t) return;
     if (t.hasAttribute('data-print-cv')) window.print(); // needs #print-cv mounted (printcv.js mountPrintCV) — wired in main.js
     else {
-      e.preventDefault();
+      // only swallow the mailto when we can actually copy; otherwise let it navigate
       const s = t.querySelector('small');
-      if (s) {
-        const set = (v) => { s.textContent = v; };
-        navigator.clipboard?.writeText(profile.links.email).then(() => copyLabel(set, 'click to copy')).catch(() => {});
-      }
+      const w = s && navigator.clipboard?.writeText(profile.links.email);
+      if (!w) return;
+      e.preventDefault();
+      const set = (v) => { s.textContent = v; };
+      w.then(() => copyLabel(set, 'click to copy')).catch(() => copyLabel(set, 'Copy failed'));
     }
-  });
+   });
+  }
 
   const counted = new Set();
   function countUp(sec) {

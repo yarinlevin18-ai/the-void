@@ -2,11 +2,13 @@
 // The only navigation chrome on the site (replaces the waypoint rail).
 import { esc } from './render.js';
 
-let _t;
+// one pending revert PER setter — the bar button and the contact email each own
+// their own timer, so copying one no longer cancels the other's revert.
+const _timers = new Map();
 export function copyLabel(set, original, ms = 1800) {
-  clearTimeout(_t);
+  clearTimeout(_timers.get(set));
   set('Copied');
-  _t = setTimeout(() => set(original), ms);
+  _timers.set(set, setTimeout(() => { _timers.delete(set); set(original); }, ms));
 }
 
 export function initBar({ profile, onWork, onAbout, root }) {

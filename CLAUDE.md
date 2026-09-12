@@ -58,9 +58,12 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   one reveal recipe per stop (≤600ms, disabled under reduced-motion).
   `src/render.js` holds the pure `(data) => HTMLElement` renderers (intro, cv,
   build, project, contact) — no Three.js imports, node-tested.
-- **Fixed bar:** `src/bar.js` — name, availability dot, Work (`goTo(5)`), About
-  (`goTo(2)`), Copy email. Visible from Opening onward; phones show name +
-  Copy email only. Replaces the old dossier button / waypoint rail.
+- **Fixed bar:** `src/bar.js` — name, availability dot, Work, About, Copy email.
+  `initBar({ profile, onWork, onAbout, root })`; the target indices are derived
+  live by `computeStopIndices()` (first `project` / first `intro` stop), not
+  hard-coded, so Director Mode reorders stay correct. The bar fades in once the
+  flight leaves the Opening; phones keep Work / About and hide only the
+  availability text. Replaces the old dossier button / waypoint rail.
 - **Director Mode** (`E`) and the FX/Transitions/UI/3D-Text/Assets panels
   (`B T U Y A`) are **dev-only**: gated by `DEV_TOOLS = import.meta.env.DEV ||
   ?edit` in the URL. Visitors never see them.
