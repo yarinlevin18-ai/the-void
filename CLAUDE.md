@@ -133,13 +133,14 @@ Fully offline-capable: fonts are self-hosted, no external requests. HMR can be f
 hard-refresh if a change doesn't show.
 
 ## Open work (authoritative checklist in BUILD_PLAN.md Phase H)
-1. **Camera authoring in Director Mode** for stops 2–11 (Intro, CV, How I
-   Build, the 7 project stops) — currently provisional, baked via Copy config.
+1. ~~Camera authoring for stops 2–11~~ done 2026-09-12; phones use a derived
+   portrait pose per project stop (`applyPortraitPoses` in `main.js`).
 2. **Confirm the three proof numbers** in `profile.js` `proof[]` before launch.
 3. **X handle** — `links.x` is commented out pending confirmation.
 4. **SmartCut redeploy** — `smart-cut-gamma.vercel.app` returned 404 on 2026-09-08.
-5. **Lighthouse + phone pass** on the Vercel preview (perf + a11y ≥ 90, 390×844
-   @ 6× CPU, keyboard-only, `prefers-reduced-motion`, returning-visitor migration).
+5. **Lighthouse + phone pass on the Vercel preview** — local production build
+   passed on 2026-09-12 (mobile perf 89 / a11y 100, v14→v15 migration, 390×844
+   walk); repeat on the deployed preview and on a real phone before merging.
 6. **Housekeeping:** decide whether the preserved
    branch `local-phase-b-d-2026-07` (sound module, brand recolor-on-approach)
    has anything worth porting — sound is otherwise **not** in v15.

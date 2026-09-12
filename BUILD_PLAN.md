@@ -121,14 +121,15 @@ work moves to the front of the flight instead of being one chapter of it.
 ---
 
 ## Open work (2026-09-08) — in priority order
-1. **Camera authoring in Director Mode** for stops 2–11 (Intro, CV, How I
-   Build, the 7 project stops) — currently provisional values, baked into
-   `DEFAULT_BEATS` via Copy config once tuned.
+1. ~~Camera authoring for stops 2–11~~ ✅ 2026-09-12 — desktop shots baked
+   into `DEFAULT_BEATS`; phones get a derived portrait pose per project stop
+   (`applyPortraitPoses`). Re-tune in Director Mode → Copy config if needed.
 2. **Confirm the three proof numbers** in `profile.js` `proof[]` before launch.
 3. **X handle** — `links.x` is commented out pending confirmation with Yarin.
 4. **SmartCut redeploy** — `smart-cut-gamma.vercel.app` returned 404 on 2026-09-08.
 5. **Formal contrast pass** on the new DOM text blocks over the void / panels
-   (carried over from Phase E, still open) + Lighthouse ≥ 90 perf/a11y check.
+   (carried over from Phase E, still open). Lighthouse mobile on the local
+   production build, 2026-09-12: perf 89 / a11y 100 (main was 81 / 100).
 6. **Phase G leftovers:** capture video, custom domain, URL on CV/LinkedIn/GitHub.
 7. **Housekeeping:** decide on porting sound from `local-phase-b-d-2026-07`.
 8. Optional trust signal: one genuine SHADIEZ client line, or none.
