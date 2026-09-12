@@ -130,7 +130,7 @@ html, body {
   position: absolute;
   bottom: 2.2rem;
   left: 0; right: 0;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   letter-spacing: 0.32em;
   text-transform: uppercase;
   color: #5b768f;
@@ -404,7 +404,7 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
 }
 #loader .ld-unit { color: #4fd2ff; margin-left: 0.15em; }
 #loader .ld-label {
-  font-family: var(--f); font-size: 0.6rem; letter-spacing: 0.34em;
+  font-family: var(--f); font-size: 0.75rem; letter-spacing: 0.34em;
   text-transform: uppercase; color: #5b768f; min-height: 1em;
   transition: opacity .3s ease;
 }
@@ -438,8 +438,8 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
 
 /* ---- Mobile layout (the file's first breakpoint — everything above assumes desktop) ---- */
 @media (max-width: 640px) {
-  #hud { left: 1rem; bottom: 0.9rem; gap: 0.6rem; font-size: 0.62rem; }
-  #whisper { font-size: 0.68rem; letter-spacing: 0.16em; padding: 0 1.2rem; }
+  #hud { left: 1rem; bottom: 0.9rem; gap: 0.6rem; }
+  #whisper { font-size: 0.75rem; letter-spacing: 0.16em; padding: 0 1.2rem; }
 }
 
 @media (pointer: coarse) {
@@ -497,7 +497,7 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
 .stop.in > * { pointer-events: auto; }
 .stop a { color: #7fe0ff; text-decoration: none; }
 .eyebrow, .stack, .context, .cv-years, .group-label, .availability, .foot, .proof-item span, .repo .links, .mail small {
-  font-family: var(--f-mono); font-weight: 700; font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; color: #4fd2ff;
+  font-family: var(--f-mono); font-weight: 700; font-size: 0.75rem; letter-spacing: 0.14em; text-transform: uppercase; color: #4fd2ff;
 }
 .eyebrow { margin-bottom: 1rem; }
 .stack, .context, .availability, .foot { color: #7fa8c8; }
@@ -553,11 +553,11 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
 .project .title { font-family: var(--f-display); font-weight: 800; font-stretch: 78%; font-size: clamp(2.4rem, 8vw, 5.5rem); line-height: .9; letter-spacing: -0.02em; text-transform: uppercase; color: #eaf4ff; margin: 0 0 1rem; }
 .project .outcome { font-family: var(--f-display); font-weight: 500; font-stretch: 90%; font-size: clamp(1.1rem, 2.2vw, 1.55rem); line-height: 1.25; color: #eaf4ff; max-width: 30ch; margin: 0 0 1rem; }
 .project dl { margin: 0; display: grid; gap: .55rem; }
-.project dt { font-family: var(--f-mono); font-weight: 700; font-size: .66rem; letter-spacing: .14em; text-transform: uppercase; color: #4fd2ff; }
+.project dt { font-family: var(--f-mono); font-weight: 700; font-size: .75rem; letter-spacing: .14em; text-transform: uppercase; color: #4fd2ff; }
 .project dd { margin: 0 0 .2rem; font-size: .9rem; line-height: 1.5; color: #b8d4ea; max-width: 52ch; }
 .project .stack { margin-top: .8rem; }
 .project .also { display: grid; grid-template-columns: 1fr; gap: .15rem .8rem; margin-top: 1.4rem; padding-top: .9rem; border-top: 1px solid rgba(159,216,255,.16); font-size: .82rem; color: #9fc2e0; }
-.project .also-label { font-family: var(--f-mono); font-weight: 700; font-size: .62rem; letter-spacing: .14em; text-transform: uppercase; color: #4fd2ff; }
+.project .also-label { font-family: var(--f-mono); font-weight: 700; font-size: .75rem; letter-spacing: .14em; text-transform: uppercase; color: #4fd2ff; }
 .project .also b { color: #eaf4ff; font-weight: 600; }
 .project .also-links { display: flex; gap: .9rem; }
 @media (min-width: 720px) { .project .also { grid-template-columns: auto 1fr; } .project .also-label { grid-column: 1 / -1; } .project .also-links { justify-self: end; } }
@@ -593,7 +593,7 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
 #bar { position: fixed; top: 14px; left: 14px; right: 14px; z-index: 6; display: flex; align-items: center; gap: .2rem;
   padding: .35rem .4rem .35rem .9rem; border-radius: 999px; background: rgba(10,18,29,.55); border: 1px solid rgba(159,216,255,.16);
   backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-  font-family: var(--f-mono); font-weight: 700; font-size: .66rem; letter-spacing: .12em; text-transform: uppercase; color: #9fc2e0;
+  font-family: var(--f-mono); font-weight: 700; font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: #9fc2e0;
   opacity: 0; transform: translateY(-10px); transition: opacity .5s ease, transform .5s ease; pointer-events: none; }
 #bar.show { opacity: 1; transform: none; pointer-events: auto; }
 #bar .bar-name { font-family: var(--f-display); font-weight: 700; font-stretch: 85%; font-size: 1.05rem; letter-spacing: 0; text-transform: none; color: #eaf4ff; margin-right: auto; }

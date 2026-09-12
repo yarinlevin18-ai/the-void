@@ -106,7 +106,7 @@ folds a second featured project in as a compact row under the links.
 ## Code map
 | File | Lines | What |
 |---|---|---|
-| `src/main.js` | ~3,018 | Scene, network, nebula, flight, Director Mode, perf tiers, save/migrate |
+| `src/main.js` | ~3,023 | Scene, network, nebula, flight, Director Mode, perf tiers, save/migrate |
 | `src/panels.js` | 83 | DOM stop layer: builds/shows/hides stops (inert + aria-hidden), count-up, print/copy |
 | `src/render.js` | 74 | Pure HTML renderers (intro, cv, build, project, contact), node-tested |
 | `src/bar.js` | 43 | Fixed top bar: name, availability, Work, About, Copy email |
@@ -115,18 +115,20 @@ folds a second featured project in as a compact row under the links.
 | `src/content/profile.js` | 269 | **Single source of truth** for bio, CV, intro/method/proof, 7 featured + shipped/labs projects, links, status |
 | `src/text3d.js` | 193 | Extruded 3D text (Source Code Pro, dev-only) |
 | `src/cursor.js` | 57 | Magnetic cursor |
-| `src/style.css` | 596 | All styling incl. @media phone layout + print CV |
+| `src/style.css` | 613 | All styling incl. @media phone layout + print CV |
 | `index.html` | 390 | Shell, loader, editor panels, JSON-LD, noscript skim path |
-| `public/previews/*.jpg` | | teepo · aerocy · shadiez · smartcut · llm-gateway · focus · sabai · kiaras-club |
+| `public/previews/*.webp` | | teepo · aerocy · shadiez · smartcut · llm-gateway · focus · sabai · kiaras-club (q82, 1400–1600 px wide; the panel canvas is 1024) |
 | `public/assets/hero/` | | Hero screens (SmartCut html + png, Shadiez jpg) |
 
 Deps: `three` 0.169, `meshline`, `three.quarks`, `vite` 8. No React.
 
 ### Persistence / migrations
 Path + FX config persists in **localStorage** `voidConfig`, currently **save
-version 16**. Any save below 16 has its beat array replaced wholesale with
+version 17**. Any save below 16 has its beat array replaced wholesale with
 `DEFAULT_BEATS` (the shape changed too much to patch) while the visitor's
-global FX/speed/ease settings are kept. The v2–v14 patch migrations were
+global FX/speed/ease settings are kept; v17 (2026-09-12) then rewrites
+`/previews/*.jpg` → `.webp` in whatever beat array survived (the JPGs are
+gone), leaving any URL pasted in Director Mode alone. The v2–v14 patch migrations were
 deleted on 2026-09-12: they only ever ran on beats the v14/v15 reset was about
 to discard. Any future
 `DEFAULT_BEATS` shape change needs its own migration step + version bump,
@@ -150,7 +152,7 @@ export tuned `BEATS` and paste into `DEFAULT_BEATS`.
 npm install
 npm run dev      # http://localhost:5173  (DEV_TOOLS on → E/B/T/U/Y/A work)
 npm run build    # dist/
-npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash (happy-dom for the DOM ones), 45 passing
+npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash, save (happy-dom for the DOM ones), 47 passing
 ```
 `.claude/launch.json` has a `void-dev` config for the browser preview.
 Fully offline-capable: fonts are self-hosted, no external requests. HMR can be flaky —
@@ -182,7 +184,12 @@ hard-refresh if a change doesn't show.
   any module-scope `history`/`location`/`document`/… binding.
 - Gone for good (2026-09-12 review): the neon wave ribbon, `freeRoam`, the
   `onTint`/`data-tint` hover channel. Don't reintroduce dead channels.
-- Every `DEFAULT_BEATS` change ships with a save migration + version bump.
+- Every `DEFAULT_BEATS` change ships with a save migration + version bump
+  (`tests/save.test.js` fails if `save()`'s version lags the newest guard).
+- **No root-font multiplier for phones.** `applyRootFont()` once scaled the
+  root to 13.6 px under 640 px, which put every rem label at 8–9 px
+  (Lighthouse: 20 % legible). Phone sizing lives in `style.css`; the
+  visitor-facing label tier is `.75rem` = 12 px and should not go lower.
 - Verify on an emulated phone (390×844, CPU throttle) before pushing — mobile
   perf has been the recurring regression.
 - Root-level `demo-*.html` and `font-specimen*.html` are scratch/reference —

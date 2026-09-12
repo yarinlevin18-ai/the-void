@@ -168,6 +168,19 @@ Nine changes from a fresh walk-through of the live v15 flight:
       reveal behind the loader → `panels.show` now waits for `loaderDone`
       (measured: reveal 32 ms after the loader lifts). An unrecognised hash is
       now left in the URL instead of stripped. Tests 41 → 45.
+- [x] **WebP previews + legible labels (2026-09-12).** The eight
+      `public/previews/*.jpg` (932 KB) are now `.webp` (425 KB, q82, same
+      pixels — the panel canvas is 1024 px wide, PSNR 37.6–44.6 dB). Save
+      **v17** rewrites `/previews/*.jpg` → `.webp` in a stored beat array;
+      a URL pasted in Director Mode is left alone. Lighthouse mobile had
+      found only 20 % legible text at the Opening: `applyRootFont()` shrank
+      the root to 13.6 px on phones (`× 0.85`), so `.62–.68rem` labels landed
+      at 8–9 px and `.82rem` body copy at 11 px. Multiplier deleted; the Doto
+      label tier (`.eyebrow` group, `.project dt`, `.also-label`, `#bar`), the
+      phone HUD/whisper, `#overlay .hint` and the loader caption moved to
+      `.75rem` = 12 px. Dev-only panels and the CSS3D hero captions untouched.
+      `tests/save.test.js` pins save-version ↔ newest migration guard and
+      checks every `DEFAULT_BEATS` image exists as WebP. Tests 45 → 47.
 
 ---
 

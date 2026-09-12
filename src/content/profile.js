@@ -187,7 +187,7 @@ export const PROFILE = {
     featured: [
       {
         id: 'teepo', name: 'TEEPO', group: 'landing', kind: 'Study platform', tag: 'Product · live', year: 2026,
-        tint: '#3fc978', img: '/previews/teepo.jpg',
+        tint: '#3fc978', img: '/previews/teepo.webp',
         problem: 'Israeli students juggle Moodle, grades and deadlines across sites that never talk to each other.',
         decision: 'One Hebrew-RTL platform with real auth and a Chrome-extension scraper; Google Drive as the datastore instead of a backend nobody asked for.',
         outcome: 'Students sign in and use it all semester. A product with users, not a demo.',
@@ -196,7 +196,7 @@ export const PROFILE = {
       },
       {
         id: 'aerocy', name: 'AeroCy', group: 'landing', kind: 'Business site', tag: 'Client work', year: 2026,
-        tint: '#9fd8ff', img: '/previews/aerocy.jpg',
+        tint: '#9fd8ff', img: '/previews/aerocy.webp',
         problem: 'An aviation-security company had no credible bilingual web presence.',
         decision: 'One Next.js site in English and Hebrew, one motion idea per section, no CMS.',
         outcome: 'Shipped and live for the brand within days.',
@@ -205,7 +205,7 @@ export const PROFILE = {
       },
       {
         id: 'shadiez', name: 'SHADIEZ', group: 'landing', kind: 'E-commerce', tag: 'Client work · paid', year: 2026,
-        tint: '#9fd8ff', img: '/previews/shadiez.jpg',
+        tint: '#9fd8ff', img: '/previews/shadiez.webp',
         problem: 'A premium beach-shade brand needed a page that sells the feel of the product, not a spec sheet.',
         decision: 'A storytelling page around one 3D hero with scroll-driven motion and lead capture. No checkout until the brand needs it.',
         outcome: 'Paid client work, in production.',
@@ -214,7 +214,7 @@ export const PROFILE = {
       },
       {
         id: 'smartcut', name: 'SmartCut', group: 'landing', kind: 'Booking site + admin', tag: 'Client work', year: 2026,
-        tint: '#eab04e', img: '/previews/smartcut.jpg',
+        tint: '#eab04e', img: '/previews/smartcut.webp',
         problem: 'A grooming studio paid for Wix Bookings and still handled reschedules by phone.',
         decision: 'Self-hosted slot booking on Supabase with an approval workflow and customer self-service.',
         outcome: 'The studio dropped Wix Bookings and stopped rescheduling by phone.',
@@ -224,7 +224,7 @@ export const PROFILE = {
       },
       {
         id: 'llm-gateway', name: 'LLM Gateway', group: 'saas', kind: 'Control plane', tag: 'SaaS · main focus', year: 2026,
-        tint: '#4fd2ff', img: '/previews/llm-gateway.jpg', private: true,
+        tint: '#4fd2ff', img: '/previews/llm-gateway.webp', private: true,
         problem: 'Every app I build calls a model provider, and none of them shared routing, budgets or logs.',
         decision: 'A local control plane: one route endpoint, a budget check before every call, a log row after it, and an agent layer for policies and approvals. No hosted service, no billing.',
         outcome: 'Every agent I run goes through it. Spend and latency visible per model, per day.',
@@ -233,7 +233,7 @@ export const PROFILE = {
       },
       {
         id: 'focus', name: 'Focus', group: 'saas', kind: 'WIP-capped board', tag: 'SaaS · private build', year: 2026,
-        tint: '#4fd2ff', img: '/previews/focus.jpg', private: true,
+        tint: '#4fd2ff', img: '/previews/focus.webp', private: true,
         problem: 'I kept starting projects while the last three sat half-finished.',
         decision: 'A board with one capped lane: at most three active projects, enforced in the CLI, the API and the dashboard.',
         outcome: 'The tool I plan my own work in.',
@@ -242,7 +242,7 @@ export const PROFILE = {
       },
       {
         id: 'sabai', name: 'Sabai', group: 'saas', kind: 'Trip companion', tag: 'Product', year: 2026,
-        tint: '#eab04e', img: '/previews/sabai.jpg', private: true,
+        tint: '#eab04e', img: '/previews/sabai.webp', private: true,
         problem: 'A real Thailand trip meant bookings across five inboxes and no signal in half the places I was going.',
         decision: 'Offline-first: schedule, stays, flights, maps, budget and emergency info in one app, with OCR of the actual booking PDFs. No accounts, no sync server.',
         outcome: 'Used every day of the trip.',

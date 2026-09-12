@@ -892,11 +892,11 @@ const DEFAULT_BEATS = [
   /* 4 */ { name: 'How I Build', stop: 'build', cam: [7, 6, -45], look: [-14, 18, -95], up: [0, 1, 0], fov: 58, dur: 1.6, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null },
   // v16 (2026-09-12): five project stops, SaaS first. AeroCy and SmartCut ride
   // along as `also` rows on TEEPO and SHADIEZ instead of owning a hop each.
-  /* 5 */ { name: 'LLM Gateway', stop: 'project', id: 'llm-gateway', side: 'left', groupLabel: 'SaaS', cam: [4, 3, -115], look: [4, 3, -215], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/llm-gateway.jpg', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -115, 'left') },
-  /* 6 */ { name: 'Focus', stop: 'project', id: 'focus', side: 'right', cam: [-4, 3, -185], look: [-4, 3, -285], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/focus.jpg', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -185, 'right') },
-  /* 7 */ { name: 'Sabai', stop: 'project', id: 'sabai', side: 'left', cam: [4, 3, -255], look: [4, 3, -355], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/sabai.jpg', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -255, 'left') },
-  /* 8 */ { name: 'TEEPO', stop: 'project', id: 'teepo', also: 'aerocy', side: 'right', groupLabel: 'Landing pages', cam: [-4, 3, -325], look: [-4, 3, -425], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/teepo.jpg', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -325, 'right') },
-  /* 9 */ { name: 'SHADIEZ', stop: 'project', id: 'shadiez', also: 'smartcut', side: 'left', cam: [4, 3, -395], look: [4, 3, -495], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/shadiez.jpg', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -395, 'left') },
+  /* 5 */ { name: 'LLM Gateway', stop: 'project', id: 'llm-gateway', side: 'left', groupLabel: 'SaaS', cam: [4, 3, -115], look: [4, 3, -215], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/llm-gateway.webp', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -115, 'left') },
+  /* 6 */ { name: 'Focus', stop: 'project', id: 'focus', side: 'right', cam: [-4, 3, -185], look: [-4, 3, -285], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/focus.webp', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -185, 'right') },
+  /* 7 */ { name: 'Sabai', stop: 'project', id: 'sabai', side: 'left', cam: [4, 3, -255], look: [4, 3, -355], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/sabai.webp', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -255, 'left') },
+  /* 8 */ { name: 'TEEPO', stop: 'project', id: 'teepo', also: 'aerocy', side: 'right', groupLabel: 'Landing pages', cam: [-4, 3, -325], look: [-4, 3, -425], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/teepo.webp', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -325, 'right') },
+  /* 9 */ { name: 'SHADIEZ', stop: 'project', id: 'shadiez', also: 'smartcut', side: 'left', cam: [4, 3, -395], look: [4, 3, -495], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/shadiez.webp', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -395, 'left') },
   /* 10 */ { name: 'Contact', stop: 'contact', cam: [0, 49, -420], look: [1, 290, -420], up: [0, 0, -1], fov: 52, dur: 3, desc: '', img: '', link: '', panel: null },
 ];
 // Live indices into `beats` (not DEFAULT_BEATS) — Director Mode can reorder /
@@ -981,9 +981,17 @@ function load() {
           // The v2–v14 patch migrations were deleted on 2026-09-12: v14 already
           // re-adopted wholesale, so nothing they touched could reach v15, and
           // running them on old shapes could throw before this reset.
-          // Future shape changes: add `if (!(d.version >= 17)) { ... }` blocks
+          // Future shape changes: add `if (!(d.version >= 18)) { ... }` blocks
           // below this one, in ascending order.
           beats = structuredClone(DEFAULT_BEATS);
+          migrated = true;
+        }
+        if (!(d.version >= 17)) {
+          // v17 (2026-09-12): previews shipped as WebP; the JPGs are gone, so a
+          // v16 beat array still pointing at /previews/*.jpg would 404 its panel.
+          // Only the bundled paths are rewritten — a URL pasted in Director Mode is kept.
+          const PREVIEW_JPG = /^\/previews\/([a-z-]+)\.jpg$/;
+          for (const b of beats) for (const k of ['img', 'img2']) if (PREVIEW_JPG.test(b[k])) b[k] = b[k].replace(/\.jpg$/, '.webp');
           migrated = true;
         }
         beats.forEach(backfillBeat); // bring older saves up to the current schema
@@ -997,7 +1005,7 @@ function load() {
 }
 function save() {
   const g = {}; for (const k of GLOBAL_KEYS) g[k] = FX[k]; g.ease = txEaseName;
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 16 })); }
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 17 })); }
   catch (e) { console.warn('[save]', e); }   // private mode / quota: never let a failed write abort the boot
 }
 // push the global (saved) FX/UX/transition state into the live scene + DOM
@@ -1017,12 +1025,11 @@ function applyGlobals() {
   const hint = document.querySelector('#overlay .hint'); if (hint) hint.style.display = FX.uiHint ? '' : 'none';
   applyRootFont();
 }
-// Width-derived UI shrink for phones — a runtime-only multiplier layered UNDER
-// the saved uiScale (save() never sees it). Both writers (applyGlobals + the
-// U-panel slider) must route through applyRootFont or one silently drops it.
-let uiMobileMul = 1;
-function computeUiMul() { uiMobileMul = (IS_TOUCH && window.innerWidth < 640) ? 0.85 : 1; }
-function applyRootFont() { document.documentElement.style.fontSize = (16 * (FX.uiScale || 1) * uiMobileMul) + 'px'; }
+// Root font = 16px × the dev-only uiScale slider. There used to be a ×0.85
+// phone multiplier layered under it; it pushed every rem-sized label to 8–9px
+// and .82rem body copy to 11px on phones (2026-09-12 Lighthouse: 20% legible
+// text). Phone sizing now lives in style.css alone.
+function applyRootFont() { document.documentElement.style.fontSize = (16 * (FX.uiScale || 1)) + 'px'; }
 // Each project stop paints the void in its own brand hue (profile.js owns the
 // value); the contact beat gets the single warm ember accent; every other named
 // stop falls back to the cyan chapter tint; beats with no stop (Opening/Hero)
@@ -1041,7 +1048,6 @@ function applyProjectTints() {
     return null;                   // Opening / Hero
   });
 }
-computeUiMul();
 load();
 computeStopIndices();
 applyProjectTints();
@@ -2175,7 +2181,6 @@ function applyResize(full) {
   renderer.setSize(window.innerWidth, window.innerHeight);
   if (composer) composer.setSize(window.innerWidth, window.innerHeight);
   if (css3d) css3d.renderer.setSize(window.innerWidth, window.innerHeight);
-  computeUiMul(); applyRootFont();
   if (!full) return;
   if (bloom) bloom.setSize((window.innerWidth / bloomDiv) | 0, (window.innerHeight / bloomDiv) | 0);
   livingVoid.nebMat.uniforms.uA.value = window.innerWidth / window.innerHeight;
