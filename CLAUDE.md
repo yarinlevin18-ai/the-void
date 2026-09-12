@@ -164,9 +164,9 @@ hard-refresh if a change doesn't show.
 2. **Confirm the three proof numbers** in `profile.js` `proof[]` before launch.
 3. **X handle** — `links.x` is commented out pending confirmation.
 4. **SmartCut redeploy** — `smart-cut-gamma.vercel.app` returned 404 on 2026-09-08.
-5. **Lighthouse + phone pass on the Vercel preview** — local production build
-   passed on 2026-09-12 (mobile perf 89 / a11y 100, v14→v15 migration, 390×844
-   walk); repeat on the deployed preview and on a real phone before merging.
+5. **Real-phone pass** — deployed site, Lighthouse mobile 2026-09-12 (after
+   WebP + label fix): perf 84–88 / a11y 100 / best-practices 100 / SEO 100,
+   100 % legible text, 610 KiB total. Still to do on a physical phone.
 6. **Housekeeping:** decide whether the preserved
    branch `local-phase-b-d-2026-07` (sound module, brand recolor-on-approach)
    has anything worth porting — sound is otherwise **not** in v15.

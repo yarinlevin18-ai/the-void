@@ -192,8 +192,9 @@ Nine changes from a fresh walk-through of the live v15 flight:
 3. **X handle** — `links.x` is commented out pending confirmation with Yarin.
 4. **SmartCut redeploy** — `smart-cut-gamma.vercel.app` returned 404 on 2026-09-08.
 5. **Formal contrast pass** on the new DOM text blocks over the void / panels
-   (carried over from Phase E; `.muted` fixed 2026-09-12, rest still open). Lighthouse mobile on the local
-   production build, 2026-09-12: perf 89 / a11y 100 (main was 81 / 100).
+   (carried over from Phase E; `.muted` fixed 2026-09-12, rest still open). Lighthouse mobile on the
+   deployed site, 2026-09-12 after WebP + labels: perf 84–88 / a11y 100 /
+   best-practices 100 / SEO 100, 100 % legible text (was 82 / 100 / 96 / 100, 20 %).
 6. **Phase G leftovers:** capture video, custom domain, URL on CV/LinkedIn/GitHub.
 7. **Housekeeping:** decide on porting sound from `local-phase-b-d-2026-07`.
 8. Optional trust signal: one genuine SHADIEZ client line, or none.
