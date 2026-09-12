@@ -7,6 +7,11 @@ export const escAttr = (s) => esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39
 
 const eyebrow = (t) => `<div class="eyebrow">${esc(t)}</div>`;
 
+// 01 Hero — one line under the floating screens (the visitor's first words).
+export function renderHero(p) {
+  return `<p class="hero-line">${esc(p.hero.line)}</p>`;
+}
+
 export function renderIntro(p) {
   const lines = p.intro.lines.map((l, i) => `<p class="line" style="--i:${i}">${esc(l)}</p>`).join('');
   return `<div class="intro">${lines}<div class="context">${esc(p.intro.context)}</div></div>`;
@@ -44,20 +49,31 @@ export function renderBuild(p) {
     </div>`;
 }
 
-export function renderProject(x, side) {
+// 05 Project — outcome leads (the one line the eye lands on), problem and
+// decision follow as one sentence each. `also` is an optional second project
+// folded into this stop as a compact row (v16: five stops instead of seven).
+export function renderProject(x, side, also = null) {
   const live = x.url ? `<a class="pill" href="${escAttr(x.url)}" target="_blank" rel="noopener">Visit live ↗</a>` : '<span class="pill ghost">Private build</span>';
   const repo = x.repo ? `<a class="pill ghost" href="${escAttr(x.repo)}" target="_blank" rel="noopener">GitHub ↗</a>` : '';
   const privateRepo = (x.url && x.private && !x.repo) ? '<span class="pill ghost">Private repo</span>' : '';
+  const small = (href, label) => href ? `<a href="${escAttr(href)}" target="_blank" rel="noopener">${label} ↗</a>` : '';
+  const alsoRow = also ? `
+    <div class="also">
+      <span class="also-label">Also · ${esc(also.kind)}</span>
+      <b>${esc(also.name)}</b>
+      <span class="also-line">${esc(also.outcome)}</span>
+      <span class="also-links">${small(also.url, 'Visit live')}${small(also.repo, 'GitHub')}</span>
+    </div>` : '';
   return `<article class="project" data-side="${escAttr(side)}">
     ${eyebrow(`${x.kind} · ${x.tag}`)}
     <h2 class="title">${esc(x.name)}</h2>
+    <p class="outcome">${esc(x.outcome)}</p>
     <dl>
       <dt>Problem</dt><dd>${esc(x.problem)}</dd>
       <dt>Decision</dt><dd>${esc(x.decision)}</dd>
-      <dt>Outcome</dt><dd>${esc(x.outcome)}</dd>
     </dl>
     <div class="stack">${esc(x.stack)}</div>
-    <div class="links">${live}${repo}${privateRepo}</div>
+    <div class="links">${live}${repo}${privateRepo}</div>${alsoRow}
   </article>`;
 }
 
@@ -70,5 +86,6 @@ export function renderContact(p, year = new Date().getFullYear()) {
     <a class="mail" href="mailto:${escAttr(l.email)}" data-copy-email>${esc(l.email)}<small>click to copy</small></a>
     <div class="social">${social}</div>
     <div class="availability">${esc(p.contact.availability)}</div>
+    <a class="pill ghost restart" href="#top">Back to the start ↑</a>
     <footer class="foot">${esc(p.name)} · ${year}</footer>`;
 }

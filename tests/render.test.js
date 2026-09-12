@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { esc, renderIntro, renderCV, renderBuild, renderProject, renderContact } from '../src/render.js';
+import { esc, renderHero, renderIntro, renderCV, renderBuild, renderProject, renderContact } from '../src/render.js';
 import { PROFILE } from '../src/content/profile.js';
 
 test('esc escapes html', () => {
@@ -74,4 +74,32 @@ test('build lead card links GitHub when the lead repo is public, and rows must e
   assert.ok(!h.includes('private repo'));
   p.buildStop.rows = ['ghost'];
   assert.throws(() => renderBuild(p), /no featured project "ghost"/);
+});
+
+test('a project stop can fold in a second project as an Also row', () => {
+  const teepo = PROFILE.work.featured.find((x) => x.id === 'teepo');
+  const aerocy = PROFILE.work.featured.find((x) => x.id === 'aerocy');
+  const h = renderProject(teepo, 'right', aerocy);
+  assert.ok(h.includes('class="also"'));
+  assert.ok(h.includes(aerocy.name));
+  assert.ok(h.includes(aerocy.outcome));
+  assert.ok(h.includes(`href="${aerocy.url}"`));
+  assert.ok(!renderProject(teepo, 'right').includes('class="also"'), 'no row without a second project');
+});
+
+test('outcome leads the project block, above Problem and Decision', () => {
+  const h = renderProject(PROFILE.work.featured[0], 'left');
+  const teepo = PROFILE.work.featured[0];
+  assert.ok(h.indexOf(teepo.outcome) < h.indexOf('Problem'));
+  assert.ok(!h.includes('<dt>Outcome</dt>'));
+});
+
+test('hero renders the one-line positioning', () => {
+  const h = renderHero(PROFILE);
+  assert.ok(h.includes(PROFILE.hero.line.replace(/&/g, '&amp;')));
+  assert.equal(renderHero({ hero: { line: '<b>x' } }).includes('<b>x'), false);
+});
+
+test('contact offers a way back to the start', () => {
+  assert.ok(renderContact(PROFILE).includes('href="#top"'));
 });

@@ -506,6 +506,12 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
 .pill.ghost { background: transparent; border-color: rgba(159,216,255,.25); color: #9fc2e0; }
 .links { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: 1.1rem; }
 
+/* 01 Hero — one line under the floating screens, centred, bottom of the frame */
+.stop-hero { justify-content: flex-end; align-items: center; text-align: center; padding-bottom: 12vh; }
+.hero-line { font-family: var(--f-display); font-weight: 500; font-stretch: 90%; font-size: clamp(1.05rem, 2.2vw, 1.6rem); line-height: 1.3; color: #eaf4ff; max-width: 34ch; margin: 0;
+  opacity: 0; transform: translateY(10px); transition: opacity .5s ease .2s, transform .5s cubic-bezier(.22,1,.36,1) .2s; }
+.stop.in .hero-line { opacity: 1; transform: none; }
+
 /* 02 Intro — lines fade + rise, stagger 60ms. The whole effect is restraint. */
 .intro .line { font-family: var(--f-display); font-weight: 500; font-stretch: 90%; font-size: clamp(1.5rem, 4.2vw, 3.2rem); line-height: 1.15; letter-spacing: -0.01em; color: #eaf4ff; max-width: 26ch; margin: 0 0 .7em;
   opacity: 0; transform: translateY(12px); transition: opacity .45s ease, transform .45s cubic-bezier(.22,1,.36,1); transition-delay: calc(var(--i) * 60ms); }
@@ -545,10 +551,16 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
 .project { max-width: 34rem; opacity: 0; transform: translateY(14px); transition: opacity .45s ease .15s, transform .45s ease .15s; }
 .stop.in .project { opacity: 1; transform: none; }
 .project .title { font-family: var(--f-display); font-weight: 800; font-stretch: 78%; font-size: clamp(2.4rem, 8vw, 5.5rem); line-height: .9; letter-spacing: -0.02em; text-transform: uppercase; color: #eaf4ff; margin: 0 0 1rem; }
+.project .outcome { font-family: var(--f-display); font-weight: 500; font-stretch: 90%; font-size: clamp(1.1rem, 2.2vw, 1.55rem); line-height: 1.25; color: #eaf4ff; max-width: 30ch; margin: 0 0 1rem; }
 .project dl { margin: 0; display: grid; gap: .55rem; }
 .project dt { font-family: var(--f-mono); font-weight: 700; font-size: .66rem; letter-spacing: .14em; text-transform: uppercase; color: #4fd2ff; }
 .project dd { margin: 0 0 .2rem; font-size: .9rem; line-height: 1.5; color: #b8d4ea; max-width: 52ch; }
 .project .stack { margin-top: .8rem; }
+.project .also { display: grid; grid-template-columns: 1fr; gap: .15rem .8rem; margin-top: 1.4rem; padding-top: .9rem; border-top: 1px solid rgba(159,216,255,.16); font-size: .82rem; color: #9fc2e0; }
+.project .also-label { font-family: var(--f-mono); font-weight: 700; font-size: .62rem; letter-spacing: .14em; text-transform: uppercase; color: #4fd2ff; }
+.project .also b { color: #eaf4ff; font-weight: 600; }
+.project .also-links { display: flex; gap: .9rem; }
+@media (min-width: 720px) { .project .also { grid-template-columns: auto 1fr; } .project .also-label { grid-column: 1 / -1; } .project .also-links { justify-self: end; } }
 .group-label { position: absolute; top: 12vh; left: 6vw; }
 @media (min-width: 900px) {
   .stop-project { justify-content: safe center; }
@@ -565,7 +577,12 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
 .mail small { display: block; margin-top: .6rem; }
 .social { display: flex; gap: 1.4rem; font-size: .9rem; }
 .availability { margin-top: 1rem; }
-.foot { margin-top: 3rem; }
+.restart { margin-top: 1.6rem; align-self: flex-start; }
+.foot { margin-top: 2rem; }
+
+/* one focus language for every control in the stops (the bar has its own below) */
+.stop a:focus-visible, .stop button:focus-visible { outline: 2px solid #4fd2ff; outline-offset: 3px; border-radius: 4px; }
+.stop .pill:focus-visible { border-radius: 999px; }
 
 @media (prefers-reduced-motion: reduce) {
   .stop, .stop * { transition: none !important; transform: none !important; }
@@ -579,7 +596,7 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
   font-family: var(--f-mono); font-weight: 700; font-size: .66rem; letter-spacing: .12em; text-transform: uppercase; color: #9fc2e0;
   opacity: 0; transform: translateY(-10px); transition: opacity .5s ease, transform .5s ease; pointer-events: none; }
 #bar.show { opacity: 1; transform: none; pointer-events: auto; }
-#bar .bar-name { font-family: var(--f-display); font-weight: 700; font-stretch: 85%; font-size: .9rem; letter-spacing: 0; text-transform: none; color: #eaf4ff; margin-right: auto; }
+#bar .bar-name { font-family: var(--f-display); font-weight: 700; font-stretch: 85%; font-size: 1.05rem; letter-spacing: 0; text-transform: none; color: #eaf4ff; margin-right: auto; }
 #bar .bar-avail { display: none; align-items: center; gap: .45rem; margin-right: .6rem; }
 #bar .bar-avail i { width: 6px; height: 6px; border-radius: 50%; background: #3fc978; box-shadow: 0 0 8px #3fc978; }
 #bar .bar-link { display: inline-flex; font: inherit; color: inherit; background: none; border: 0; padding: .5rem .45rem; border-radius: 999px; cursor: pointer; }

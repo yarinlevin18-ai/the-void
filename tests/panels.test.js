@@ -8,12 +8,16 @@ const { initPanels } = await import('../src/panels.js');
 
 const BEATS = [
   { name: 'Opening' },
+  { name: 'Hero', stop: 'hero' },
   { name: 'Intro', stop: 'intro' },
   { name: 'CV', stop: 'cv' },
   { name: 'How I Build', stop: 'build' },
-  { name: 'TEEPO', stop: 'project', id: 'teepo', side: 'left', groupLabel: 'Landing pages' },
+  { name: 'TEEPO', stop: 'project', id: 'teepo', also: 'aerocy', side: 'left', groupLabel: 'Landing pages' },
   { name: 'Contact', stop: 'contact' },
 ];
+// index of each stop inside BEATS, by name — so reordering the fixture can't rot the test
+const I = Object.fromEntries(BEATS.map((b, i) => [b.stop || 'opening', i]));
+
 const mount = (beats = BEATS) => {
   const root = document.createElement('div');
   document.body.appendChild(root);
@@ -22,42 +26,44 @@ const mount = (beats = BEATS) => {
 
 test('mounts one hidden, inert section per beat that has a stop', () => {
   const { root, panels } = mount();
+  assert.ok(panels.el(I.hero).querySelector('.hero-line'), 'hero stop carries the positioning line');
   const secs = root.querySelectorAll('section.stop');
-  assert.equal(secs.length, 5);
+  assert.equal(secs.length, 6);
   assert.equal(panels.el(0), null);
   for (const s of secs) {
     assert.equal(s.getAttribute('aria-hidden'), 'true');
     assert.equal(s.inert, true);
     assert.ok(!s.classList.contains('in'));
   }
-  assert.equal(panels.el(4).id, 'stop-teepo');
-  assert.equal(panels.el(4).dataset.side, 'left');
-  assert.equal(panels.el(4).querySelector('.group-label').textContent, 'Landing pages');
-  assert.equal(panels.el(2).id, 'stop-2');
+  assert.equal(panels.el(I.project).id, 'stop-teepo');
+  assert.equal(panels.el(I.project).dataset.side, 'left');
+  assert.equal(panels.el(I.project).querySelector('.group-label').textContent, 'Landing pages');
+  assert.equal(panels.el(I.cv).id, `stop-${I.cv}`);
 });
 
 test('throws on an unknown stop type or a project id missing from the profile', () => {
   assert.throws(() => mount([{ stop: 'nope' }]), /unknown stop type "nope"/);
   assert.throws(() => mount([{ stop: 'project', id: 'ghost' }]), /no featured project with id "ghost"/);
+  assert.throws(() => mount([{ stop: 'project', id: 'teepo', also: 'ghost' }]), /id "ghost" \(also\)/);
 });
 
 test('show/hide toggle .in, aria-hidden and inert together', () => {
   const { panels } = mount();
-  panels.show(1);
-  const intro = panels.el(1);
+  panels.show(I.intro);
+  const intro = panels.el(I.intro);
   assert.ok(intro.classList.contains('in'));
   assert.equal(intro.getAttribute('aria-hidden'), 'false');
   assert.equal(intro.inert, false);
 
-  panels.show(4);   // moving on conceals the previous stop immediately
+  panels.show(I.project);   // moving on conceals the previous stop immediately
   assert.ok(!intro.classList.contains('in'));
   assert.equal(intro.getAttribute('aria-hidden'), 'true');
   assert.equal(intro.inert, true);
-  assert.equal(panels.el(4).inert, false);
+  assert.equal(panels.el(I.project).inert, false);
 
   panels.hide();
-  assert.equal(panels.el(4).inert, true);
-  assert.ok(!panels.el(4).classList.contains('in'));
+  assert.equal(panels.el(I.project).inert, true);
+  assert.ok(!panels.el(I.project).classList.contains('in'));
 
   panels.show(0);   // a beat without a stop is a no-op
   assert.equal(panels.el(0), null);
@@ -65,8 +71,8 @@ test('show/hide toggle .in, aria-hidden and inert together', () => {
 
 test('proof numbers resolve to their data-n on the build stop', () => {
   const { panels } = mount();
-  panels.show(3);
-  const nums = [...panels.el(3).querySelectorAll('.num[data-n]')];
+  panels.show(I.build);
+  const nums = [...panels.el(I.build).querySelectorAll('.num[data-n]')];
   assert.equal(nums.length, PROFILE.proof.length);
   for (const n of nums) assert.equal(n.textContent, n.dataset.n);
 });
@@ -74,15 +80,15 @@ test('proof numbers resolve to their data-n on the build stop', () => {
 test('Download CV calls window.print', () => {
   const { panels } = mount();
   let printed = 0; window.print = () => { printed++; };
-  panels.show(2);
-  click(panels.el(2).querySelector('[data-print-cv]'));
+  panels.show(I.cv);
+  click(panels.el(I.cv).querySelector('[data-print-cv]'));
   assert.equal(printed, 1);
 });
 
 test('copy email: swallows the mailto only when the clipboard write succeeds', async () => {
   const { panels } = mount();
-  panels.show(5);
-  const a = panels.el(5).querySelector('a.mail[data-copy-email]');
+  panels.show(I.contact);
+  const a = panels.el(I.contact).querySelector('a.mail[data-copy-email]');
   const small = a.querySelector('small');
   const original = small.textContent;
 

@@ -127,7 +127,30 @@ work moves to the front of the flight instead of being one chapter of it.
 
 ---
 
-## Open work (2026-09-08) — in priority order
+## Phase I — v16 feel pass ✅ (2026-09-12)
+Nine changes from a fresh walk-through of the live v15 flight:
+- [x] Hero carries one positioning line — the visitor no longer goes two stops
+      without learning who this is (`profile.hero.line`).
+- [x] Seven project hops → **five stops**; AeroCy and SmartCut fold into TEEPO
+      and SHADIEZ as `also` rows. The identical-hop rhythm was flattening.
+- [x] Intro trimmed 3 lines → 2, strongest claim first; fits one screen.
+- [x] Project blocks lead with **Outcome** at display size; Problem and
+      Decision are one sentence each.
+- [x] Panel screenshots brighter — the words moved off the image in v15, so the
+      old dim curve (.15–.58) was over-protecting; now .06–.56, pale shots
+      (TEEPO's cream dashboard) still dimmed hard so bloom stays safe.
+- [x] LLM Gateway leads the work; SaaS group before Landing pages.
+- [x] Contact availability line loses its trailing full stop.
+- [x] Bar name .9rem → 1.05rem — the only persistent "who is this".
+- [x] Loader minimum hold 2.0s → 1.3s, exit 800ms → 600ms (still gated on
+      `firstFrameDone`, so no black-frame pop).
+- [x] Plus: `#work`/`#about`/`#cv`/`#contact`/`#top` deep links, a "Back to the
+      start" link on Contact, and one focus-ring language across every stop.
+- [x] Save **version 16** (wholesale re-adopt). Tests 35 → 39.
+
+---
+
+## Open work (2026-09-12) — in priority order
 1. ~~Camera authoring for stops 2–11~~ ✅ 2026-09-12 — desktop shots baked
    into `DEFAULT_BEATS`; phones get a derived portrait pose per project stop
    (`applyPortraitPoses`). Re-tune in Director Mode → Copy config if needed.

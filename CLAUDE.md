@@ -1,16 +1,18 @@
 # CLAUDE.md — context for "The Void" portfolio
 
 Read this first. It captures the locked decisions and where everything lives so
-you can pick up the build with full context. Last synced to code: **v15 + review pass, 2026-09-12**.
+you can pick up the build with full context. Last synced to code: **v16, 2026-09-12**.
 
 ## What this is
 A 3D, scroll-driven portfolio for **Yarin Levin — AI-Native Builder**. The
 visitor flies through a dark "void" (a 900-node data network with living energy
 links, star parallax, volumetric nebula); sections are camera "beats" along a
-flight path. The **v15 flight restructure** (2026-09-08) puts the work first:
-13 stops from Hero straight into Intro → CV → How I Build → seven project
-stops (Landing pages, then SaaS) → Contact, each project stop pairing the
-existing WebGL image panel with a DOM text block from `profile.js`. The
+flight path. The **v16 flight** (2026-09-12) puts the work first: 11 stops from Hero
+straight into Intro → CV → How I Build → five project stops (SaaS first, then
+Landing pages) → Contact, each project stop pairing the existing WebGL image
+panel with a DOM text block from `profile.js`. v16 replaced v15's seven project
+hops: seven identical 1.35s hops flattened the rhythm, so AeroCy and SmartCut
+now ride along as compact `also` rows on the TEEPO and SHADIEZ stops. The
 dossier overlay, hub, waypoint rail and free-roam are gone — see
 `docs/superpowers/specs/2026-09-08-flight-restructure-design.md` for the full
 design. Audience: hiring teams (part-time student position) + clients.
@@ -60,6 +62,10 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   yield to a focused button or link inside a stop or the bar.
   `src/render.js` holds the pure `(data) => HTMLElement` renderers (intro, cv,
   build, project, contact) — no Three.js imports, node-tested.
+- **Deep links:** `#work` `#about` `#cv` `#contact` `#top` fly to that stop
+  (`HASH_STOPS` in `main.js`); a hash on first load lands there without the
+  flight. In-page anchors inside `#stops` are intercepted and routed through
+  `goTo`, so they work even where `history.replaceState` is unavailable.
 - **Fixed bar:** `src/bar.js` — name, availability dot, Work, About, Copy email.
   `initBar({ profile, onWork, onAbout, root })`; the target indices are derived
   live by `computeStopIndices()` (first `project` / first `intro` stop), not
@@ -73,19 +79,23 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
 ## The flight (DEFAULT_BEATS, `src/main.js`)
 0. **Opening** — wordmark decodes from particles (loader hands straight into it).
 1. **Hero** — the two live hero screens (Shadiez landing jpg + SmartCut CRM iframe;
-   static png on touch since 3D-transformed iframes blank on iOS).
-2. **Intro** — 2–3 first-person lines on directing AI end-to-end + location/availability.
+   static png on touch since 3D-transformed iframes blank on iOS), plus one
+   centred line (`profile.hero.line`) so the visitor knows who this is.
+2. **Intro** — 2 first-person lines (claim first, evidence second) + location/availability.
 3. **CV** — 5 rows, years · role/org · one line, from `profile.js` `cvStop`.
 4. **How I Build** — method (2–3 sentences), proof numbers count up once, repo
    block (LLM Gateway lead card + TEEPO/SHADIEZ compact rows).
-5. **TEEPO** — project stop, image left, Landing pages group label.
-6. **AeroCy** — project stop, image right.
-7. **SHADIEZ** — project stop, image left.
-8. **SmartCut** — project stop, image right.
-9. **LLM Gateway** — project stop, image left, SaaS group label.
-10. **Focus** — project stop, image right, private build (no live link).
-11. **Sabai** — project stop, image left.
-12. **Contact** — mailto at hero scale, GitHub · LinkedIn links, camera tilts up.
+5. **LLM Gateway** — project stop, image left, SaaS group label. The strongest
+   screen leads the work.
+6. **Focus** — project stop, image right, private build (no live link).
+7. **Sabai** — project stop, image left.
+8. **TEEPO** — project stop, image right, Landing pages group label, **also** AeroCy.
+9. **SHADIEZ** — project stop, image left, **also** SmartCut.
+10. **Contact** — mailto at hero scale, GitHub · LinkedIn, "Back to the start", camera tilts up.
+
+Project blocks lead with **Outcome** (display size, the line the eye lands on),
+then Problem and Decision as one sentence each. A beat's optional `also: '<id>'`
+folds a second featured project in as a compact row under the links.
 
 ## Code map
 | File | Lines | What |
@@ -107,9 +117,11 @@ Deps: `three` 0.169, `meshline`, `three.quarks`, `vite` 8. No React.
 
 ### Persistence / migrations
 Path + FX config persists in **localStorage** `voidConfig`, currently **save
-version 15**. The v15 migration (`main.js` ~1090) replaces the saved beat array
-wholesale with `DEFAULT_BEATS` (structure changed too much to patch) while
-keeping the visitor's global FX/speed/ease settings. Any future
+version 16**. Any save below 16 has its beat array replaced wholesale with
+`DEFAULT_BEATS` (the shape changed too much to patch) while the visitor's
+global FX/speed/ease settings are kept. The v2–v14 patch migrations were
+deleted on 2026-09-12: they only ever ran on beats the v14/v15 reset was about
+to discard. Any future
 `DEFAULT_BEATS` shape change needs its own migration step + version bump,
 because visitors carry old beat arrays. Use Director Mode → **Copy config** to
 export tuned `BEATS` and paste into `DEFAULT_BEATS`.
@@ -131,7 +143,7 @@ export tuned `BEATS` and paste into `DEFAULT_BEATS`.
 npm install
 npm run dev      # http://localhost:5173  (DEV_TOOLS on → E/B/T/U/Y/A work)
 npm run build    # dist/
-npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv (happy-dom for the DOM ones)
+npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv (happy-dom for the DOM ones), 39 passing
 ```
 `.claude/launch.json` has a `void-dev` config for the browser preview.
 Fully offline-capable: fonts are self-hosted, no external requests. HMR can be flaky —

@@ -63,9 +63,12 @@ test('every project id DEFAULT_BEATS hardcodes exists in the profile', () => {
   const src = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   const arr = src.slice(src.indexOf('const DEFAULT_BEATS = ['));
   const body = arr.slice(0, arr.indexOf('\n];'));
-  const ids = [...body.matchAll(/id: '([a-z-]+)'/g)].map((m) => m[1]);
-  assert.equal(ids.length, 7);
-  for (const id of ids) assert.ok(featured.map((p) => p.id).includes(id), id);
+  const ids = [...body.matchAll(/\bid: '([a-z-]+)'/g)].map((m) => m[1]);
+  const also = [...body.matchAll(/\balso: '([a-z-]+)'/g)].map((m) => m[1]);
+  assert.equal(ids.length, 5, 'five project stops');
+  assert.equal(also.length, 2, 'two folded-in projects');
+  assert.equal(new Set([...ids, ...also]).size, featured.length, 'every featured project is reachable in the flight');
+  for (const id of [...ids, ...also]) assert.ok(featured.map((p) => p.id).includes(id), id);
 });
 
 test('buildStop ids exist in featured and every featured preview file is on disk', () => {

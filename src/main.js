@@ -885,18 +885,18 @@ function applyPortraitPoses() {
 const VOID_FX = { panelDimFloor: 0, panelLightRange: 26 };   // shared by every stop that must not show a neighbouring panel
 const DEFAULT_BEATS = [
   /* 0 */ { name: 'Opening', cam: [-56, 2, 120], look: [-11, 59, 42], up: [0, 1, 0], fov: 25, dur: 1.4, desc: '', img: '', link: '', fx: { bloomStrength: 0.65 }, panel: null },
-  /* 1 */ { name: 'Hero', cam: [1, 53, 33], look: [192, -55, -56], up: [0, 1, 0], fov: 41, dur: 2.1, desc: '', img: '', link: '', panel: null },
+  /* 1 */ { name: 'Hero', stop: 'hero', cam: [1, 53, 33], look: [192, -55, -56], up: [0, 1, 0], fov: 41, dur: 2.1, desc: '', img: '', link: '', panel: null },
   /* 2 */ { name: 'Intro', stop: 'intro', ease: 'easeOut', cam: [6, 12, 5], look: [-30, 26, -55], up: [0, 1, 0], fov: 55, dur: 2.4, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null },
   /* 3 */ { name: 'CV', stop: 'cv', cam: [-8, 8, -21], look: [26, 20, -71], up: [0, 1, 0], fov: 60, dur: 1.6, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null },
   /* 4 */ { name: 'How I Build', stop: 'build', cam: [7, 6, -45], look: [-14, 18, -95], up: [0, 1, 0], fov: 58, dur: 1.6, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null },
-  /* 5 */ { name: 'TEEPO', stop: 'project', id: 'teepo', side: 'left', groupLabel: 'Landing pages', cam: [4, 3, -115], look: [4, 3, -215], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/teepo.jpg', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -115, 'left') },
-  /* 6 */ { name: 'AeroCy', stop: 'project', id: 'aerocy', side: 'right', cam: [-4, 3, -185], look: [-4, 3, -285], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/aerocy.jpg', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -185, 'right') },
-  /* 7 */ { name: 'SHADIEZ', stop: 'project', id: 'shadiez', side: 'left', cam: [4, 3, -255], look: [4, 3, -355], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/shadiez.jpg', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -255, 'left') },
-  /* 8 */ { name: 'SmartCut', stop: 'project', id: 'smartcut', side: 'right', cam: [-4, 3, -325], look: [-4, 3, -425], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/smartcut.jpg', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -325, 'right') },
-  /* 9 */ { name: 'LLM Gateway', stop: 'project', id: 'llm-gateway', side: 'left', groupLabel: 'SaaS', cam: [4, 3, -395], look: [4, 3, -495], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/llm-gateway.jpg', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -395, 'left') },
-  /* 10 */ { name: 'Focus', stop: 'project', id: 'focus', side: 'right', cam: [-4, 3, -465], look: [-4, 3, -565], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/focus.jpg', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -465, 'right') },
-  /* 11 */ { name: 'Sabai', stop: 'project', id: 'sabai', side: 'left', cam: [4, 3, -535], look: [4, 3, -635], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/sabai.jpg', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -535, 'left') },
-  /* 12 */ { name: 'Contact', stop: 'contact', cam: [0, 49, -560], look: [1, 290, -560], up: [0, 0, -1], fov: 52, dur: 3, desc: '', img: '', link: '', panel: null },
+  // v16 (2026-09-12): five project stops, SaaS first. AeroCy and SmartCut ride
+  // along as `also` rows on TEEPO and SHADIEZ instead of owning a hop each.
+  /* 5 */ { name: 'LLM Gateway', stop: 'project', id: 'llm-gateway', side: 'left', groupLabel: 'SaaS', cam: [4, 3, -115], look: [4, 3, -215], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/llm-gateway.jpg', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -115, 'left') },
+  /* 6 */ { name: 'Focus', stop: 'project', id: 'focus', side: 'right', cam: [-4, 3, -185], look: [-4, 3, -285], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/focus.jpg', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -185, 'right') },
+  /* 7 */ { name: 'Sabai', stop: 'project', id: 'sabai', side: 'left', cam: [4, 3, -255], look: [4, 3, -355], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/sabai.jpg', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -255, 'left') },
+  /* 8 */ { name: 'TEEPO', stop: 'project', id: 'teepo', also: 'aerocy', side: 'right', groupLabel: 'Landing pages', cam: [-4, 3, -325], look: [-4, 3, -425], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/teepo.jpg', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -325, 'right') },
+  /* 9 */ { name: 'SHADIEZ', stop: 'project', id: 'shadiez', also: 'smartcut', side: 'left', cam: [4, 3, -395], look: [4, 3, -495], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/shadiez.jpg', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -395, 'left') },
+  /* 10 */ { name: 'Contact', stop: 'contact', cam: [0, 49, -420], look: [1, 290, -420], up: [0, 0, -1], fov: 52, dur: 3, desc: '', img: '', link: '', panel: null },
 ];
 // Live indices into `beats` (not DEFAULT_BEATS) — Director Mode can reorder /
 // add / delete stops, so these are recomputed after load() and on every commit().
@@ -971,14 +971,15 @@ function load() {
         smooth = d.smooth ?? 0.5;
         if (d.g) { for (const k of GLOBAL_KEYS) if (d.g[k] != null) FX[k] = d.g[k]; if (d.g.ease) txEaseName = d.g.ease; } // restore global FX/UX/transition state
         let migrated = false;
-        if (!(d.version >= 15)) {
+        if (!(d.version >= 16)) {
+          // v16 (2026-09-12): five project stops, SaaS first, Hero stop line — same wholesale re-adopt.
           // v15 (2026-09-08): the flight restructure — 13 stops with DOM content
           // blocks, new order. The beat shape changed (stop/id/side), so re-adopt
           // DEFAULT_BEATS wholesale; the visitor's global FX / speed / ease stay.
           // The v2–v14 patch migrations were deleted on 2026-09-12: v14 already
           // re-adopted wholesale, so nothing they touched could reach v15, and
           // running them on old shapes could throw before this reset.
-          // Future shape changes: add `if (!(d.version >= 16)) { ... }` blocks
+          // Future shape changes: add `if (!(d.version >= 17)) { ... }` blocks
           // below this one, in ascending order.
           beats = structuredClone(DEFAULT_BEATS);
           migrated = true;
@@ -994,7 +995,7 @@ function load() {
 }
 function save() {
   const g = {}; for (const k of GLOBAL_KEYS) g[k] = FX[k]; g.ease = txEaseName;
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 15 })); }
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 16 })); }
   catch (e) { console.warn('[save]', e); }   // private mode / quota: never let a failed write abort the boot
 }
 // push the global (saved) FX/UX/transition state into the live scene + DOM
@@ -1033,6 +1034,7 @@ function applyProjectTints() {
       return x ? parseInt(x.tint.slice(1), 16) : null;
     }
     if (b.stop === 'contact') return 0xff9e7a;
+    if (b.stop === 'hero') return null;   // Hero keeps the chapter fallback like the Opening
     if (b.stop) return 0x4fd2ff;   // intro / cv / build
     return null;                   // Opening / Hero
   });
@@ -1152,7 +1154,10 @@ function drawPanelCanvas(b) {
     // no preview can hand bloom a giant über-threshold surface
     // lifted floor/cap (was .30-.66): previews were dimmed into black slabs —
     // the per-beat bloomStrength .5 keyframes are what actually protect bloom
-    const dim = clamp(0.15 + (meanLum(im) - 0.30) * 0.85, 0.15, 0.58);
+    // v16: the words sit beside the panel now, not on it, so DARK screenshots can
+    // stay bright (floor .15 → .06). Pale ones (TEEPO's cream dashboard) still get
+    // dimmed hard — at full brightness they blow out and hand bloom a white slab.
+    const dim = clamp(0.06 + (meanLum(im) - 0.28) * 0.95, 0.06, 0.56);
     ctx.fillStyle = `rgba(6,14,22,${dim.toFixed(2)})`; ctx.fillRect(x0, y0, w0, h0);
   };
   if (img && img2) {                       // twin-project beat: two full-bleed halves, hairline divider
@@ -2865,6 +2870,27 @@ try {
   console.error('[panels]', e);
   panels = { show() {}, hide() {}, el() { return null; } };
 }
+// hash deep links: #work #about #cv #contact #top → the matching stop. A hash on
+// first load jumps straight there (no flight); later changes fly. The hash is
+// cleared after use so the URL never pins a stale section.
+const HASH_STOPS = {
+  top: () => 0, work: () => WORK_INDEX, about: () => ABOUT_INDEX,
+  cv: () => beats.findIndex((b) => b.stop === 'cv'), contact: () => beats.findIndex((b) => b.stop === 'contact'),
+};
+function hashIndex() { const f = HASH_STOPS[location.hash.slice(1).toLowerCase()]; const i = f ? f() : -1; return i >= 0 ? i : -1; }
+// Tidying the URL is best-effort: some embedded browsers have no History API,
+// and a lingering hash is harmless (in-page links below don't depend on it).
+function clearHash() { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* no History API here */ } }
+function flyToStop(i) { if (i < 0) return false; lastNav = 0; goTo(i); return true; }
+window.addEventListener('hashchange', () => { flyToStop(hashIndex()); clearHash(); });
+{ const i = hashIndex(); if (i > 0 && !editMode) { index = i; progress = i / Math.max(1, lastIdx()); } if (i >= 0) clearHash(); }
+// in-page anchors (Contact's "Back to the start") fly instead of jumping, and
+// work even where clearHash can't run — no dependence on a hashchange firing
+document.querySelector('#stops')?.addEventListener('click', (e) => {
+  const a = e.target.closest?.('a[href^="#"]'); if (!a) return;
+  const f = HASH_STOPS[a.getAttribute('href').slice(1).toLowerCase()]; if (!f) return;
+  if (flyToStop(f())) { e.preventDefault(); clearHash(); }
+});
 bar = initBar({ profile: PROFILE, onWork: () => goTo(WORK_INDEX), onAbout: () => goTo(ABOUT_INDEX), root: document.querySelector('#bar') });
 
 // ---- Intro loader: the void wires itself up, then warps into the flight -----
@@ -2945,7 +2971,7 @@ bar = initBar({ profile: PROFILE, onWork: () => goTo(WORK_INDEX), onAbout: () =>
     }
   }
 
-  const dur = 2000; let t0 = null, scramT = 0;
+  const dur = 1300; let t0 = null, scramT = 0;   // v16: 2.0s → 1.3s minimum; still gated on firstFrameDone
   const ease = (x) => 1 - Math.pow(1 - x, 3);
   function step(ts) {
     if (t0 === null) t0 = ts;
@@ -2970,7 +2996,7 @@ bar = initBar({ profile: PROFILE, onWork: () => goTo(WORK_INDEX), onAbout: () =>
     if (overlay) overlay.classList.add('revealed');
     const doneAt = ts;
     (function out(ts2) {
-      const k = clamp((ts2 - doneAt) / 800, 0, 1);
+      const k = clamp((ts2 - doneAt) / 600, 0, 1);
       draw(1, RM ? 0 : k * k, ts2 / 1000);
       if (k < 1) requestAnimationFrame(out);
       else { ld.style.display = 'none'; window.removeEventListener('resize', fit); }
