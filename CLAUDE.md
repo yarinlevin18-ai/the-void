@@ -1,7 +1,7 @@
 # CLAUDE.md — context for "The Void" portfolio
 
 Read this first. It captures the locked decisions and where everything lives so
-you can pick up the build with full context. Last synced to code: **v15, 2026-09-08**.
+you can pick up the build with full context. Last synced to code: **v15 + review pass, 2026-09-12**.
 
 ## What this is
 A 3D, scroll-driven portfolio for **Yarin Levin — AI-Native Builder**. The
@@ -53,9 +53,11 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
 - **Inputs:** wheel · ↑/↓/Space · touch swipe (one section per swipe). Everything
   funnels through `goTo(i)` with a 300ms cooldown. No free-roam, no hotkeys
   legend — the fixed bar is the only navigation chrome for visitors.
-- **Stops:** `src/panels.js` builds one `<section class="stop">` per beat from
-  `profile.js` (hidden by default), shows/hides on arrival/departure, and runs
-  one reveal recipe per stop (≤600ms, disabled under reduced-motion).
+- **Stops:** `src/panels.js` (`initPanels({ beats, profile, root })`) builds one
+  `<section class="stop">` per beat from `profile.js` (hidden, `inert` +
+  `aria-hidden`), shows/hides on arrival/departure, and runs one reveal recipe
+  per stop (≤600ms, disabled under reduced-motion). Flight keys (Space/arrows)
+  yield to a focused button or link inside a stop or the bar.
   `src/render.js` holds the pure `(data) => HTMLElement` renderers (intro, cv,
   build, project, contact) — no Three.js imports, node-tested.
 - **Fixed bar:** `src/bar.js` — name, availability dot, Work, About, Copy email.
@@ -88,16 +90,16 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
 ## Code map
 | File | Lines | What |
 |---|---|---|
-| `src/main.js` | ~3,076 | Scene, network, nebula, flight, Director Mode, perf tiers, save/migrate |
-| `src/panels.js` | 79 | DOM stop layer: builds/shows/hides stops, reveal recipes |
+| `src/main.js` | ~3,071 | Scene, network, nebula, flight, Director Mode, perf tiers, save/migrate |
+| `src/panels.js` | 83 | DOM stop layer: builds/shows/hides stops (inert + aria-hidden), count-up, print/copy |
 | `src/render.js` | 74 | Pure HTML renderers (intro, cv, build, project, contact), node-tested |
-| `src/bar.js` | 38 | Fixed top bar: name, availability, Work, About, Copy email |
+| `src/bar.js` | 43 | Fixed top bar: name, availability, Work, About, Copy email |
 | `src/printcv.js` | 54 | Print-only CV (moved out of the old dossier.js) |
 | `src/content/profile.js` | 269 | **Single source of truth** for bio, CV, intro/method/proof, 7 featured + shipped/labs projects, links, status |
 | `src/text3d.js` | 193 | Extruded 3D text (Source Code Pro, dev-only) |
 | `src/cursor.js` | 57 | Magnetic cursor |
 | `src/style.css` | 596 | All styling incl. @media phone layout + print CV |
-| `index.html` | 378 | Shell, loader, editor panels, JSON-LD, noscript skim path |
+| `index.html` | 390 | Shell, loader, editor panels, JSON-LD, noscript skim path |
 | `public/previews/*.jpg` | | teepo · aerocy · shadiez · smartcut · llm-gateway · focus · sabai · kiaras-club |
 | `public/assets/hero/` | | Hero screens (SmartCut html + png, Shadiez jpg) |
 
@@ -129,7 +131,7 @@ export tuned `BEATS` and paste into `DEFAULT_BEATS`.
 npm install
 npm run dev      # http://localhost:5173  (DEV_TOOLS on → E/B/T/U/Y/A work)
 npm run build    # dist/
-npm test         # node --test tests/*.test.js — profile, render, bar
+npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv (happy-dom for the DOM ones)
 ```
 `.claude/launch.json` has a `void-dev` config for the browser preview.
 Fully offline-capable: fonts are self-hosted, no external requests. HMR can be flaky —
@@ -152,6 +154,10 @@ hard-refresh if a change doesn't show.
 - Keep it vanilla JS + Vite + Three.js. No React.
 - Nothing about Yarin is hard-coded outside `src/content/profile.js`.
 - Don't gold-plate Director Mode — it's dev-only and done.
+- `load()` migration blocks stay in ascending version order. `save()` and
+  `saveAssets()` swallow storage errors on purpose (private mode must still boot).
+- Gone for good (2026-09-12 review): the neon wave ribbon, `freeRoam`, the
+  `onTint`/`data-tint` hover channel. Don't reintroduce dead channels.
 - Every `DEFAULT_BEATS` change ships with a save migration + version bump.
 - Verify on an emulated phone (390×844, CPU throttle) before pushing — mobile
   perf has been the recurring regression.

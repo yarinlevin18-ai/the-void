@@ -117,6 +117,13 @@ work moves to the front of the flight instead of being one chapter of it.
       Previews added: aerocy, smartcut, llm-gateway, focus.
 - [x] Inputs unchanged: wheel / ↑↓ / Space / touch swipe, 300ms cooldown,
       `goTo(i)`; a tall stop scrolls natively.
+- [x] **Review pass 2026-09-12** (two read-only reviews of the merged code):
+      `save()` guarded (private-mode boot), flight keys yield to focused
+      controls, stops `inert` while hidden, migration blocks reordered
+      ascending, `load()` logs its fallback, dead wave ribbon / `freeRoam` /
+      `mesh3d` / `onTint` removed, bokeh focus portrait-aware, `.muted`
+      contrast ≥ 4.5:1, printcv escaping, copy-failure label fixed, Assets
+      font select relabelled. Tests 20 → 35 (happy-dom for panels/printcv/bar).
 
 ---
 
@@ -128,7 +135,7 @@ work moves to the front of the flight instead of being one chapter of it.
 3. **X handle** — `links.x` is commented out pending confirmation with Yarin.
 4. **SmartCut redeploy** — `smart-cut-gamma.vercel.app` returned 404 on 2026-09-08.
 5. **Formal contrast pass** on the new DOM text blocks over the void / panels
-   (carried over from Phase E, still open). Lighthouse mobile on the local
+   (carried over from Phase E; `.muted` fixed 2026-09-12, rest still open). Lighthouse mobile on the local
    production build, 2026-09-12: perf 89 / a11y 100 (main was 81 / 100).
 6. **Phase G leftovers:** capture video, custom domain, URL on CV/LinkedIn/GitHub.
 7. **Housekeeping:** decide on porting sound from `local-phase-b-d-2026-07`.
