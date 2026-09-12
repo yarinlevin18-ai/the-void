@@ -1706,14 +1706,14 @@ edRotate.addEventListener('click', () => setGizmoMode('rotate'));
 setGizmoMode('translate');
 
 // ---- Undo / redo history ----------------------------------------------------
-let history = [];
+let undoStack = [];   // NB: never name this `history` — it shadows window.history for the whole module
 let hPtr = -1;
 function snapshot() { return JSON.stringify({ beats, speed: speedMul, smooth }); }
 function pushHistory() {
-  history = history.slice(0, hPtr + 1);
-  history.push(snapshot());
-  hPtr = history.length - 1;
-  if (history.length > 100) { history.shift(); hPtr--; }
+  undoStack = undoStack.slice(0, hPtr + 1);
+  undoStack.push(snapshot());
+  hPtr = undoStack.length - 1;
+  if (undoStack.length > 100) { undoStack.shift(); hPtr--; }
 }
 function applySnapshot(str) {
   const d = JSON.parse(str);
@@ -1722,8 +1722,8 @@ function applySnapshot(str) {
   sel = clamp(sel, 0, beats.length - 1);
   rebuildDerived(); rebuildGizmos(); rebuildPanels(); refreshEditor(); save();
 }
-function undo() { if (hPtr > 0) { hPtr--; applySnapshot(history[hPtr]); flash('Undo'); } }
-function redo() { if (hPtr < history.length - 1) { hPtr++; applySnapshot(history[hPtr]); flash('Redo'); } }
+function undo() { if (hPtr > 0) { hPtr--; applySnapshot(undoStack[hPtr]); flash('Undo'); } }
+function redo() { if (hPtr < undoStack.length - 1) { hPtr++; applySnapshot(undoStack[hPtr]); flash('Redo'); } }
 function commit(msg) {
   beats.forEach(ensureBeatFX); applyProjectTints(); applyPortraitPoses(); computeStopIndices(); rebuildDerived(); rebuildGizmos(); rebuildPanels();
   // Director Mode can reorder / add / delete beats, so the DOM stop blocks are rebuilt with them —
@@ -2878,9 +2878,14 @@ const HASH_STOPS = {
   cv: () => beats.findIndex((b) => b.stop === 'cv'), contact: () => beats.findIndex((b) => b.stop === 'contact'),
 };
 function hashIndex() { const f = HASH_STOPS[location.hash.slice(1).toLowerCase()]; const i = f ? f() : -1; return i >= 0 ? i : -1; }
-// Tidying the URL is best-effort: some embedded browsers have no History API,
-// and a lingering hash is harmless (in-page links below don't depend on it).
-function clearHash() { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* no History API here */ } }
+// Explicitly window.history: a bare `history` here silently resolved to the
+// Director Mode undo array above for the whole of v16, so the URL never tidied.
+// Best-effort either way — a lingering hash is harmless, and the in-page links
+// below route through goTo rather than depending on a hashchange.
+function clearHash() {
+  try { window.history.replaceState(null, '', location.pathname + location.search); }
+  catch (e) { console.warn('[hash] could not tidy the URL', e); }
+}
 function flyToStop(i) { if (i < 0) return false; lastNav = 0; goTo(i); return true; }
 window.addEventListener('hashchange', () => { flyToStop(hashIndex()); clearHash(); });
 { const i = hashIndex(); if (i > 0 && !editMode) { index = i; progress = i / Math.max(1, lastIdx()); } if (i >= 0) clearHash(); }

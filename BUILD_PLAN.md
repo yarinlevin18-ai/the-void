@@ -147,6 +147,14 @@ Nine changes from a fresh walk-through of the live v15 flight:
 - [x] Plus: `#work`/`#about`/`#cv`/`#contact`/`#top` deep links, a "Back to the
       start" link on Contact, and one focus-ring language across every stop.
 - [x] Save **version 16** (wholesale re-adopt). Tests 35 → 39.
+- [x] **Hash-link fix (2026-09-12, found in real Chrome).** `clearHash()` never
+      ran: `let history = []` (the Director Mode undo stack) shadowed
+      `window.history` across the whole module, so `history.replaceState` was an
+      Array method call that threw straight into its own `catch`. Renamed to
+      `undoStack`, qualified the call as `window.history`, and added
+      `tests/globals.test.js` to fail on any module-scope shadowing of a browser
+      global. The flight half of the deep links was working all along; only the
+      URL tidy-up was broken. Tests 39 → 41.
 
 ---
 

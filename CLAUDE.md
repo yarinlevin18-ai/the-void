@@ -64,8 +64,10 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   build, project, contact) — no Three.js imports, node-tested.
 - **Deep links:** `#work` `#about` `#cv` `#contact` `#top` fly to that stop
   (`HASH_STOPS` in `main.js`); a hash on first load lands there without the
-  flight. In-page anchors inside `#stops` are intercepted and routed through
-  `goTo`, so they work even where `history.replaceState` is unavailable.
+  flight, and the URL is tidied afterwards with `window.history.replaceState`.
+  In-page anchors inside `#stops` (Contact's "Back to the start") are
+  intercepted and routed through `goTo`, so they never depend on a hashchange
+  firing.
 - **Fixed bar:** `src/bar.js` — name, availability dot, Work, About, Copy email.
   `initBar({ profile, onWork, onAbout, root })`; the target indices are derived
   live by `computeStopIndices()` (first `project` / first `intro` stop), not
@@ -143,7 +145,7 @@ export tuned `BEATS` and paste into `DEFAULT_BEATS`.
 npm install
 npm run dev      # http://localhost:5173  (DEV_TOOLS on → E/B/T/U/Y/A work)
 npm run build    # dist/
-npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv (happy-dom for the DOM ones), 39 passing
+npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals (happy-dom for the DOM ones), 41 passing
 ```
 `.claude/launch.json` has a `void-dev` config for the browser preview.
 Fully offline-capable: fonts are self-hosted, no external requests. HMR can be flaky —
@@ -168,6 +170,11 @@ hard-refresh if a change doesn't show.
 - Don't gold-plate Director Mode — it's dev-only and done.
 - `load()` migration blocks stay in ascending version order. `save()` and
   `saveAssets()` swallow storage errors on purpose (private mode must still boot).
+- **Never shadow a browser global at module scope.** `let history = []` (the
+  Director Mode undo stack, now `undoStack`) shadowed `window.history` for the
+  whole of `main.js` and silently broke `clearHash()` in every browser — the
+  `try/catch` ate the TypeError. `tests/globals.test.js` now fails the build on
+  any module-scope `history`/`location`/`document`/… binding.
 - Gone for good (2026-09-12 review): the neon wave ribbon, `freeRoam`, the
   `onTint`/`data-tint` hover channel. Don't reintroduce dead channels.
 - Every `DEFAULT_BEATS` change ships with a save migration + version bump.
