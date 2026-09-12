@@ -911,23 +911,55 @@ const makeHeroBeat = () => ({
 // v15 flight (2026-09-08): thirteen stops. The Opening and Hero cameras are the
 // authored v14 shots, kept verbatim. Everything after them is a *stop*: the DOM
 // content block (src/panels.js) carries the words, and — for the seven project
-// stops — a WebGL image panel sits on `side` opposite the text. The cameras for
-// stops 2–11 are provisional placeholders on a straight run down -Z; a later
-// task composes them in Director Mode.
-const P = (z, side) => mkPanel(side === 'left' ? -34 : 34, 4, z - 48, 70, 44);
+// stops — a WebGL image panel sits on `side` opposite the text.
+//
+// Composition rules the numbers below encode (authored 2026-09-08, task 10):
+//  · Project shots are fov 48 looking straight down -Z. On a 1440x900 desktop
+//    that puts the 28x17.6 panel at ~44% of the viewport width, centred in the
+//    half of the frame the DOM text block does NOT use (.stop-project puts the
+//    34rem text on the side opposite `side`). fitFov() widens the vertical fov
+//    to ~114° on a 390x844 phone, which preserves that width fraction, so the
+//    panel lands in the upper half with the text stacked underneath it.
+//  · The panel sits 45 units ahead of the camera, 12.1 to the side and 7.5 up
+//    from the view axis, yawed 15° back toward the lens.
+//  · Project stops are 70 units apart in z, so the NEXT panel is ~115 units off
+//    — past the hard-coded 90-unit "always lit" radius in animate(), where the
+//    beats' panelLightRange 26 / panelDimFloor 0 take it to fully transparent.
+//    That is also why Intro/CV/How-I-Build (which aim into empty void, slightly
+//    up) carry the same fx: the TEEPO panel is 115+ away and stays invisible.
+//  · z runs monotonically from Hero (33) to Contact (-560); Contact is verbatim.
+//  · Phones (aspect < 1): fitFov() would keep the panel at ~45% width and centre
+//    it behind the bottom-anchored text, so project stops carry a `portrait`
+//    override instead — camera slid across to the panel's x, aimed 19.5 units
+//    below its centre so the panel fills the top ~38% of the screen at ~80%
+//    width, with the DOM text block stacked under it. Same z, so the path and
+//    the hop rhythm don't change; rebuildDerived() swaps the poses on resize.
+const PANEL_DX = 12.1, PANEL_DY = 4, PANEL_DZ = 45;
+const P = (cx, cy, cz, side) => mkPanel(cx + (side === 'left' ? -PANEL_DX : PANEL_DX), cy + PANEL_DY, cz - PANEL_DZ, 28, 17.6, [0, side === 'left' ? 15 : -15, 0]);
+const PP = (cx, cy, cz, side) => {          // portrait pose for the panel P() places
+  const px = cx + (side === 'left' ? -PANEL_DX : PANEL_DX), py = cy + PANEL_DY;
+  return { cam: [px, py - 6, cz], look: [px, py - 19.5, cz - PANEL_DZ], fov: 80 };
+};
+// Derived, not authored: every project stop gets its portrait pose from its
+// desktop camera + side, so saved paths (which predate the field) and Director
+// Mode edits stay in step. Re-run after load() and in commit().
+function applyPortraitPoses() {
+  for (const b of beats) if (b.stop === 'project' && b.cam && b.side) b.portrait = PP(b.cam[0], b.cam[1], b.cam[2], b.side);
+}
+const VOID_FX = { panelDimFloor: 0, panelLightRange: 26 };   // shared by every stop that must not show a neighbouring panel
 const DEFAULT_BEATS = [
   /* 0 */ { name: 'Opening', cam: [-56, 2, 120], look: [-11, 59, 42], up: [0, 1, 0], fov: 25, dur: 1.4, desc: '', img: '', link: '', fx: { bloomStrength: 0.65 }, panel: null },
   /* 1 */ { name: 'Hero', cam: [1, 53, 33], look: [192, -55, -56], up: [0, 1, 0], fov: 41, dur: 2.1, desc: '', img: '', link: '', panel: null },
-  /* 2 */ { name: 'Intro', stop: 'intro', ease: 'easeOut', cam: [3, 8, -8], look: [-30, 20, -70], up: [0, 1, 0], fov: 55, dur: 2.4, desc: '', img: '', link: '', panel: null },
-  /* 3 */ { name: 'CV', stop: 'cv', cam: [-10, 14, -60], look: [35, -10, -130], up: [0, 1, 0], fov: 62, dur: 1.6, desc: '', img: '', link: '', panel: null },
-  /* 4 */ { name: 'How I Build', stop: 'build', cam: [9, 10, -69], look: [15, 4, -119], up: [0, 1, 0], fov: 70, dur: 1.6, desc: '', img: '', link: '', panel: null },
-  /* 5 */ { name: 'TEEPO', stop: 'project', id: 'teepo', side: 'left', groupLabel: 'Landing pages', cam: [0, 2, -130], look: [0, 2, -178], up: [0, 1, 0], fov: 70, dur: 1.35, desc: '', img: '/previews/teepo.jpg', link: '', panel: P(-130, 'left') },
-  /* 6 */ { name: 'AeroCy', stop: 'project', id: 'aerocy', side: 'right', cam: [0, 2, -180], look: [0, 2, -228], up: [0, 1, 0], fov: 70, dur: 1.35, desc: '', img: '/previews/aerocy.jpg', link: '', panel: P(-180, 'right') },
-  /* 7 */ { name: 'SHADIEZ', stop: 'project', id: 'shadiez', side: 'left', cam: [0, 2, -230], look: [0, 2, -278], up: [0, 1, 0], fov: 70, dur: 1.35, desc: '', img: '/previews/shadiez.jpg', link: '', panel: P(-230, 'left') },
-  /* 8 */ { name: 'SmartCut', stop: 'project', id: 'smartcut', side: 'right', cam: [0, 2, -280], look: [0, 2, -328], up: [0, 1, 0], fov: 70, dur: 1.35, desc: '', img: '/previews/smartcut.jpg', link: '', panel: P(-280, 'right') },
-  /* 9 */ { name: 'LLM Gateway', stop: 'project', id: 'llm-gateway', side: 'left', groupLabel: 'SaaS', cam: [0, 2, -330], look: [0, 2, -378], up: [0, 1, 0], fov: 70, dur: 1.35, desc: '', img: '/previews/llm-gateway.jpg', link: '', panel: P(-330, 'left') },
-  /* 10 */ { name: 'Focus', stop: 'project', id: 'focus', side: 'right', cam: [0, 2, -380], look: [0, 2, -428], up: [0, 1, 0], fov: 70, dur: 1.35, desc: '', img: '/previews/focus.jpg', link: '', panel: P(-380, 'right') },
-  /* 11 */ { name: 'Sabai', stop: 'project', id: 'sabai', side: 'left', cam: [0, 2, -430], look: [0, 2, -478], up: [0, 1, 0], fov: 70, dur: 1.35, desc: '', img: '/previews/sabai.jpg', link: '', panel: P(-430, 'left') },
+  /* 2 */ { name: 'Intro', stop: 'intro', ease: 'easeOut', cam: [6, 12, 5], look: [-30, 26, -55], up: [0, 1, 0], fov: 55, dur: 2.4, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null },
+  /* 3 */ { name: 'CV', stop: 'cv', cam: [-8, 8, -21], look: [26, 20, -71], up: [0, 1, 0], fov: 60, dur: 1.6, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null },
+  /* 4 */ { name: 'How I Build', stop: 'build', cam: [7, 6, -45], look: [-14, 18, -95], up: [0, 1, 0], fov: 58, dur: 1.6, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null },
+  /* 5 */ { name: 'TEEPO', stop: 'project', id: 'teepo', side: 'left', groupLabel: 'Landing pages', cam: [4, 3, -115], look: [4, 3, -215], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/teepo.jpg', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -115, 'left') },
+  /* 6 */ { name: 'AeroCy', stop: 'project', id: 'aerocy', side: 'right', cam: [-4, 3, -185], look: [-4, 3, -285], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/aerocy.jpg', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -185, 'right') },
+  /* 7 */ { name: 'SHADIEZ', stop: 'project', id: 'shadiez', side: 'left', cam: [4, 3, -255], look: [4, 3, -355], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/shadiez.jpg', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -255, 'left') },
+  /* 8 */ { name: 'SmartCut', stop: 'project', id: 'smartcut', side: 'right', cam: [-4, 3, -325], look: [-4, 3, -425], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/smartcut.jpg', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -325, 'right') },
+  /* 9 */ { name: 'LLM Gateway', stop: 'project', id: 'llm-gateway', side: 'left', groupLabel: 'SaaS', cam: [4, 3, -395], look: [4, 3, -495], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/llm-gateway.jpg', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -395, 'left') },
+  /* 10 */ { name: 'Focus', stop: 'project', id: 'focus', side: 'right', cam: [-4, 3, -465], look: [-4, 3, -565], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/focus.jpg', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -465, 'right') },
+  /* 11 */ { name: 'Sabai', stop: 'project', id: 'sabai', side: 'left', cam: [4, 3, -535], look: [4, 3, -635], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/sabai.jpg', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -535, 'left') },
   /* 12 */ { name: 'Contact', stop: 'contact', cam: [0, 49, -560], look: [1, 290, -560], up: [0, 0, -1], fov: 52, dur: 3, desc: '', img: '', link: '', panel: null },
 ];
 // Live indices into `beats` (not DEFAULT_BEATS) — Director Mode can reorder /
@@ -1156,6 +1188,7 @@ computeUiMul();
 load();
 computeStopIndices();
 applyProjectTints();
+applyPortraitPoses();
 beats.forEach(ensureBeatFX);   // ensure every beat (incl. defaults) carries a full FX keyframe set
 { // anchor the wave ribbon around the first project stop (now that beats exist)
   const _ai = Math.max(0, beats.findIndex((b) => b.stop === 'project'));
@@ -1174,13 +1207,23 @@ const beatQuats = [];
 const _dummy = new THREE.PerspectiveCamera();
 const _tv = new THREE.Vector3();
 let curve = null;    // smooth spline through the camera positions
+// Portrait poses: a beat may carry `portrait: { cam, look, fov }` (see PP()) that
+// replaces its desktop shot on tall screens. The accessors below are the only
+// place play mode reads a beat's pose; Director Mode edits the desktop fields.
+const isPortrait = () => camera.aspect < 1;
+const usesPortrait = (b) => !!(b && b.portrait && !editMode && isPortrait());
+const bCam = (b) => (usesPortrait(b) ? b.portrait.cam : b.cam);
+const bLook = (b) => (usesPortrait(b) ? b.portrait.look : b.look);
+const bFov = (b) => (usesPortrait(b) ? b.portrait.fov : (b?.fov ?? DEF_FOV));
+let _derivedPortrait = false;   // which pose set beatPos/beatQuats were built from
 function rebuildDerived() {
   beatPos.length = 0; beatQuats.length = 0;
+  _derivedPortrait = isPortrait() && !editMode;
   for (const b of beats) {
-    beatPos.push(new THREE.Vector3(...b.cam));
+    beatPos.push(new THREE.Vector3(...bCam(b)));
     _dummy.up.set(...b.up);
-    _dummy.position.set(...b.cam);
-    _dummy.lookAt(new THREE.Vector3(...b.look));
+    _dummy.position.set(...bCam(b));
+    _dummy.lookAt(new THREE.Vector3(...bLook(b)));
     beatQuats.push(_dummy.quaternion.clone());
   }
   // centripetal Catmull-Rom keeps the curve from overshooting wildly between shots
@@ -1829,7 +1872,7 @@ function applySnapshot(str) {
 function undo() { if (hPtr > 0) { hPtr--; applySnapshot(history[hPtr]); flash('Undo'); } }
 function redo() { if (hPtr < history.length - 1) { hPtr++; applySnapshot(history[hPtr]); flash('Redo'); } }
 function commit(msg) {
-  beats.forEach(ensureBeatFX); applyProjectTints(); computeStopIndices(); rebuildDerived(); rebuildGizmos(); rebuildPanels();
+  beats.forEach(ensureBeatFX); applyProjectTints(); applyPortraitPoses(); computeStopIndices(); rebuildDerived(); rebuildGizmos(); rebuildPanels();
   // Director Mode can reorder / add / delete beats, so the DOM stop blocks are rebuilt with them —
   // an unknown stop/id typed in the editor must not be able to break commit/undo/save.
   try {
@@ -2219,6 +2262,7 @@ if (tlTrack) {
 // ---- Mode toggle ------------------------------------------------------------
 function setEdit(on) {
   editMode = on;
+  if (isPortrait()) rebuildDerived();   // the editor always works on the desktop poses
   editor.hidden = !on;
   timelineEl.hidden = !on;
   if (fxEl) fxEl.hidden = on;        // hide the FX panel in Director Mode (no overlap with the editor)
@@ -2264,6 +2308,7 @@ window.addEventListener('keydown', (e) => {
 function applyResize(full) {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
+  if ((isPortrait() && !editMode) !== _derivedPortrait) rebuildDerived();   // rotate → swap desktop/portrait poses
   if (full) {
     // pixel ratio BEFORE setSize — the ratio only reaches the drawing buffer on
     // the next setSize, and the composer keeps its own copy that must match
@@ -2783,8 +2828,10 @@ function animate() {
       camera.rotateZ(Math.sin(t * 0.19 + 0.7) * FX.breathRoll * _breath * 0.01745);
     }
     // per-shot field-of-view (zoom), interpolated across the segment, + transition punch
-    const fa = beats[i0]?.fov ?? DEF_FOV, fb = beats[i1]?.fov ?? DEF_FOV;
-    const nf = fitFov(fa + (fb - fa) * f + FX.fovPunch * activePunch);   // portrait screens widen to keep the composed framing
+    const fa = bFov(beats[i0]), fb = bFov(beats[i1]);
+    const raw = fa + (fb - fa) * f + FX.fovPunch * activePunch;
+    // portrait screens widen to keep the composed framing — unless the shot has its own portrait pose
+    const nf = (usesPortrait(beats[i0]) || usesPortrait(beats[i1])) ? raw : fitFov(raw);
     if (Math.abs(camera.fov - nf) > 0.01) { camera.fov = nf; camera.updateProjectionMatrix(); }
   }
 
@@ -2823,7 +2870,7 @@ function animate() {
   {                                          // per-chapter color world
     let bi = 0, bd = Infinity;
     for (let i = 0; i < beats.length; i++) {
-      const c = beats[i].cam;
+      const c = bCam(beats[i]);
       const dx = camera.position.x - c[0], dy = camera.position.y - c[1], dz = camera.position.z - c[2];
       const d = dx * dx + dy * dy + dz * dz;
       if (d < bd) { bd = d; bi = i; }
@@ -2836,7 +2883,7 @@ function animate() {
   if (panels && bar) {                       // stop content: reveal on arrival, hide while moving / in editor
     if (editMode || freeRoam) { panels.hide(); setBar(false); }
     else {
-      const c = beats[index].cam;
+      const c = bCam(beats[index]);
       const dx = camera.position.x - c[0], dy = camera.position.y - c[1], dz = camera.position.z - c[2];
       const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
       if (!tween && dist < 26) panels.show(index);   // Opening/Hero have no stop → panels no-ops
