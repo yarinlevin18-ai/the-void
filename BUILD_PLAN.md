@@ -196,14 +196,25 @@ Nine changes from a fresh walk-through of the live v15 flight:
    (`applyPortraitPoses`). Re-tune in Director Mode → Copy config if needed.
 2. **Confirm the three proof numbers** in `profile.js` `proof[]` before launch.
 3. **X handle** — `links.x` is commented out pending confirmation with Yarin.
-4. **SmartCut redeploy** — `smart-cut-gamma.vercel.app` returned 404 on 2026-09-08.
+4. **SmartCut redeploy** — `smart-cut-gamma.vercel.app` still 404 on
+   2026-09-13; the entry now carries `url: '', offline: true` so the SHADIEZ
+   "also" row shows only GitHub and the noscript path links the repo. Restore
+   the URL and drop `offline` once it's back.
 5. ~~**Formal contrast pass**~~ ✅ 2026-09-13, see Phase E. Lighthouse mobile on the
    deployed site, 2026-09-12 after WebP + labels: perf 84–88 / a11y 100 /
    best-practices 100 / SEO 100, 100 % legible text (was 82 / 100 / 96 / 100, 20 %).
-6. **Phase G leftovers:** capture video, custom domain, URL on CV/LinkedIn/GitHub.
+6. **Phase G leftovers:** ~~OG card~~ ✅ 2026-09-13 (re-captured from the
+   v16 opening: Bricolage wordmark + "AI-Native Builder", 1200×630, 44 KB).
+   Still Yarin's: custom domain (then update `canonical`/`og:url`/JSON-LD in
+   `index.html` and `links.site`), URL on LinkedIn/GitHub profiles (the print
+   CV already carries it), optional capture video.
 7. ~~**Housekeeping:** decide on porting sound~~ ✅ 2026-09-13 — dropped;
    see Phase D. Sound commit kept as tag `archive/phase-b-d-sound-2026-07`.
 8. Optional trust signal: one genuine SHADIEZ client line, or none.
+
+9. ~~**Desktop walk-through**~~ ✅ 2026-09-13 on the dev build at 1440×900 as
+   a fresh visitor (storage cleared): all 11 stops render, panels + text blocks
+   correct, no console errors from shipped code, production build clean.
 
 ## Risks / watch-items
 - **Save migrations** — every `DEFAULT_BEATS` change needs a version bump +

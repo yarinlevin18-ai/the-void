@@ -54,7 +54,11 @@ test('ids are unique and the ids render.js hardcodes exist', () => {
 
 test('public entries have live url and repo; every img matches its id', () => {
   for (const p of featured) {
-    if (!p.private) { assert.match(p.url, /^https:\/\//, `${p.id} url`); assert.match(p.repo, /^https:\/\/github\.com\//, `${p.id} repo`); }
+    if (!p.private) {
+      // `offline: true` marks a public build whose deployment is down; it ships without a live link
+      if (p.offline) assert.equal(p.url, '', `${p.id} offline url`); else assert.match(p.url, /^https:\/\//, `${p.id} url`);
+      assert.match(p.repo, /^https:\/\/github\.com\//, `${p.id} repo`);
+    }
     assert.equal(p.img, `/previews/${p.id}.webp`, `${p.id} img`);
   }
 });

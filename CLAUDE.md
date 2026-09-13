@@ -163,12 +163,17 @@ hard-refresh if a change doesn't show.
    portrait pose per project stop (`applyPortraitPoses` in `main.js`).
 2. **Confirm the three proof numbers** in `profile.js` `proof[]` before launch.
 3. **X handle** — `links.x` is commented out pending confirmation.
-4. **SmartCut redeploy** — `smart-cut-gamma.vercel.app` returned 404 on 2026-09-08.
+4. **SmartCut redeploy** — `smart-cut-gamma.vercel.app` returned 404 on
+   2026-09-08 (still on 09-13). Shipped as `url: '', offline: true` in
+   `profile.js` (no live link, GitHub only); restore the URL and drop `offline`
+   once redeployed. `tests/profile.test.js` knows the flag.
 5. **Real-phone pass** — deployed site (contrast audit done 2026-09-13, all
    visitor text ≥ 4.5:1 on the void), Lighthouse mobile 2026-09-12 (after
    WebP + label fix): perf 84–88 / a11y 100 / best-practices 100 / SEO 100,
    100 % legible text, 610 KiB total. Still to do on a physical phone.
-6. ~~Housekeeping~~ done 2026-09-13: sound is **dropped** for good. The old
+6. **Custom domain** — Yarin's call; when set, update `canonical` / `og:url`
+   / JSON-LD in `index.html` and `links.site`. OG card re-captured 2026-09-13.
+7. ~~Housekeeping~~ done 2026-09-13: sound is **dropped** for good. The old
    Web Audio commit survives only as tag `archive/phase-b-d-sound-2026-07`;
    the stale branches were deleted. Don't reintroduce it.
 

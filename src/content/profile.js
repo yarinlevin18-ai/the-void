@@ -219,7 +219,7 @@ export const PROFILE = {
         decision: 'Self-hosted slot booking on Supabase with an approval workflow and customer self-service.',
         outcome: 'The studio dropped Wix Bookings and stopped rescheduling by phone.',
         stack: 'Next.js 14 · TypeScript · Supabase · Tailwind',
-        url: 'https://smart-cut-gamma.vercel.app', // ⏳ deployment returned 404 on 2026-09-08 — redeploy before launch
+        url: '', offline: true, // ⏳ smart-cut-gamma.vercel.app 404s (2026-09-08, still 2026-09-13); restore the URL and drop `offline` once redeployed
         repo: 'https://github.com/yarinlevin18-ai/smartcut',
       },
       {
