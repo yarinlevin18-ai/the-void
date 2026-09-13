@@ -118,7 +118,7 @@ folds a second featured project in as a compact row under the links.
 | `src/style.css` | 613 | All styling incl. @media phone layout + print CV |
 | `index.html` | 390 | Shell, loader, editor panels, JSON-LD, noscript skim path |
 | `public/previews/*.webp` | | teepo · aerocy · shadiez · smartcut · llm-gateway · focus · sabai · kiaras-club (q82, 1400–1600 px wide; the panel canvas is 1024) |
-| `public/assets/hero/` | | Hero screens (SmartCut html + png, Shadiez jpg) |
+| `public/assets/hero/` | | Hero screens (SmartCut html + png, Shadiez webp) |
 
 Deps: `three` 0.169, `meshline`, `three.quarks`, `vite` 8. No React.
 
