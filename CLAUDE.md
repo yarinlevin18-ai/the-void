@@ -164,12 +164,13 @@ hard-refresh if a change doesn't show.
 2. **Confirm the three proof numbers** in `profile.js` `proof[]` before launch.
 3. **X handle** — `links.x` is commented out pending confirmation.
 4. **SmartCut redeploy** — `smart-cut-gamma.vercel.app` returned 404 on 2026-09-08.
-5. **Real-phone pass** — deployed site, Lighthouse mobile 2026-09-12 (after
+5. **Real-phone pass** — deployed site (contrast audit done 2026-09-13, all
+   visitor text ≥ 4.5:1 on the void), Lighthouse mobile 2026-09-12 (after
    WebP + label fix): perf 84–88 / a11y 100 / best-practices 100 / SEO 100,
    100 % legible text, 610 KiB total. Still to do on a physical phone.
-6. **Housekeeping:** decide whether the preserved
-   branch `local-phase-b-d-2026-07` (sound module, brand recolor-on-approach)
-   has anything worth porting — sound is otherwise **not** in v15.
+6. ~~Housekeeping~~ done 2026-09-13: sound is **dropped** for good. The old
+   Web Audio commit survives only as tag `archive/phase-b-d-sound-2026-07`;
+   the stale branches were deleted. Don't reintroduce it.
 
 ## Conventions / guardrails
 - Keep it vanilla JS + Vite + Three.js. No React.

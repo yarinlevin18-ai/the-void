@@ -58,11 +58,13 @@
 - [x] Connecting lines → the data network (`buildNetwork()`), link traffic with
       per-link cycles, rare node flares, idle camera breath.
 
-## Phase D — Sound ⏸ NOT SHIPPED
-- [ ] Ambient hum + approach whoosh, muted by default, persisted toggle.
-- A working Web Audio implementation exists on branch `local-phase-b-d-2026-07`
-  (commit `7b59fdd`) against an older `main.js`; porting it is optional and
-  not blocking. Decide, don't drift.
+## Phase D — Sound ✖ DROPPED (2026-09-13)
+- Decision: no sound in the shipped site. It would add a permission prompt
+  and payload for little gain, and v15 cut it on purpose.
+- The old Web Audio implementation (ambient hum + approach whoosh, muted by
+  default) is kept only as tag `archive/phase-b-d-sound-2026-07` (commit
+  `7b59fdd`, against a pre-v15 `main.js`). Both stale branches that pointed
+  at it (`local-phase-b-d-2026-07`, `claude/zealous-solomon-7c9f45`) were deleted.
 
 ## Phase E — Accessibility & fallback ✅ (partial by design)
 - [x] `prefers-reduced-motion`: signs of life off, nebula cheapened, CSS blur
@@ -72,8 +74,12 @@
 - [x] Keyboard: sections, dossier tabs, focus trap, focus-visible rings,
       waypoint aria-labels + aria-current, canvas role/label.
 - [x] Director Mode + dev panels hidden in prod (`DEV_TOOLS`), legend strips dev rows.
-- [ ] Formal contrast audit of captions over bright panels (TEEPO cream) — the
-      dim floor was tuned by eye (.15–.58); worth one pass with a checker.
+- [x] Formal contrast audit ✅ 2026-09-13 — every visitor-facing text rule in
+      `style.css` + the bar computed against the void `#06141c` (text never
+      sits over panel imagery in v16). 36 rules pass; two failed and were
+      fixed: `#overlay .hint` #5b768f → #68859e (3.9 → 4.8:1) and the resting
+      `.hero-screen .cap` #4d6a82 → #67849b (3.3 → 4.8:1). Dev-only panels
+      excluded (some `#5b768f` hints there would fail; never shown to visitors).
 
 ## Phase F — Performance pass ✅
 - [x] Payload: dead assets removed (~5MB), hero png → 156KB jpg, fallback-serif
@@ -191,12 +197,12 @@ Nine changes from a fresh walk-through of the live v15 flight:
 2. **Confirm the three proof numbers** in `profile.js` `proof[]` before launch.
 3. **X handle** — `links.x` is commented out pending confirmation with Yarin.
 4. **SmartCut redeploy** — `smart-cut-gamma.vercel.app` returned 404 on 2026-09-08.
-5. **Formal contrast pass** on the new DOM text blocks over the void / panels
-   (carried over from Phase E; `.muted` fixed 2026-09-12, rest still open). Lighthouse mobile on the
+5. ~~**Formal contrast pass**~~ ✅ 2026-09-13, see Phase E. Lighthouse mobile on the
    deployed site, 2026-09-12 after WebP + labels: perf 84–88 / a11y 100 /
    best-practices 100 / SEO 100, 100 % legible text (was 82 / 100 / 96 / 100, 20 %).
 6. **Phase G leftovers:** capture video, custom domain, URL on CV/LinkedIn/GitHub.
-7. **Housekeeping:** decide on porting sound from `local-phase-b-d-2026-07`.
+7. ~~**Housekeeping:** decide on porting sound~~ ✅ 2026-09-13 — dropped;
+   see Phase D. Sound commit kept as tag `archive/phase-b-d-sound-2026-07`.
 8. Optional trust signal: one genuine SHADIEZ client line, or none.
 
 ## Risks / watch-items

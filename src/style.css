@@ -108,7 +108,7 @@ html, body {
   filter: blur(2px); transform: skewX(-12deg); mix-blend-mode: screen; animation: heroSweep 6.5s ease-in-out infinite;
 }
 @keyframes heroSweep { 0% { left: -45%; } 55%, 100% { left: 115%; } }
-.hero-screen .cap { margin-top: .85rem; text-align: center; font-family: var(--f); font-size: .62rem; letter-spacing: .28em; text-transform: uppercase; color: #4d6a82; transition: color .8s ease; }
+.hero-screen .cap { margin-top: .85rem; text-align: center; font-family: var(--f); font-size: .62rem; letter-spacing: .28em; text-transform: uppercase; color: #67849b; transition: color .8s ease; }   /* was #4d6a82 ≈ 3.3:1 on the void — now ≥4.5:1 */
 .hero-screen.wet .frame { box-shadow: 0 64px 120px -36px rgba(0,0,0,.9), 0 0 100px -10px rgba(100,190,255,.55); }
 .hero-screen.wet .glass::before { animation-duration: 3.4s; }
 .hero-screen.wet .cap { color: #cfeaff; }
@@ -133,7 +133,7 @@ html, body {
   font-size: 0.75rem;
   letter-spacing: 0.32em;
   text-transform: uppercase;
-  color: #5b768f;
+  color: #68859e;   /* was #5b768f ≈ 3.9:1 on the void — now ≥4.5:1 */
   opacity: 0; transition: opacity .8s ease .45s;
 }
 
