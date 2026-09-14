@@ -55,7 +55,9 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   with a deliberate rhythm (Hero 2.1s breath · Hero→Intro 2.4s exhale · CV/How
   I Build 1.6s · project hops 1.35s · finale 3s held). `fitFov()` widens
   vertical FOV on portrait screens so composed shots don't crop. Quaternion-
-  slerp orientation, finale looks straight up.
+  slerp orientation, finale looks straight up. The path never flies through a
+  panel: `rebuildAvoid()` adds a perpendicular arc to any hop whose straight
+  line would cross a panel mesh (2026-09-14).
 - **Inputs:** wheel · ↑/↓/Space · touch swipe (one section per swipe). Everything
   funnels through `goTo(i)` with a 300ms cooldown. No free-roam, no hotkeys
   legend — the fixed bar is the only navigation chrome for visitors.

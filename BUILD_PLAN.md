@@ -229,6 +229,11 @@ Spec: `docs/superpowers/specs/2026-09-14-contact-door-and-loader-design.md`.
 - Cursor: the magnetic dot/ring is gone; the native pointer is back with a
   short cyan light tail (`src/cursor.js`, 2D canvas at z-index 2, off on
   coarse pointers and reduced motion). The liquid-cursor raycast went with it.
+- Flight path avoidance (`rebuildAvoid` in main.js): for each hop, any panel
+  mesh the straight segment would cross gets a perpendicular sin(π·f) bulge
+  sized to clear it (half-size + 9 margin); the project hops now sidestep 17
+  units away from their panels instead of flying through them. Dev builds log
+  the per-hop bulges (`[avoid]`). Recomputed on every beat / panel rebuild.
 - Tests 50 passing; save version unchanged (18).
 
 ## Open work (2026-09-12) — in priority order

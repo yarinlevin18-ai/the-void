@@ -1147,6 +1147,7 @@ const bCam = (b) => (usesPortrait(b) ? b.portrait.cam : b.cam);
 const bLook = (b) => (usesPortrait(b) ? b.portrait.look : b.look);
 const bFov = (b) => (usesPortrait(b) ? b.portrait.fov : (b?.fov ?? DEF_FOV));
 let _derivedPortrait = false;   // which pose set beatPos/beatQuats were built from
+let panelsBuilt = false;   // rebuildAvoid needs the panel meshes, which are created after the first rebuildDerived()
 function rebuildDerived() {
   beatPos.length = 0; beatQuats.length = 0;
   _derivedPortrait = isPortrait() && !editMode;
@@ -1161,6 +1162,7 @@ function rebuildDerived() {
   curve = beatPos.length >= 2
     ? new THREE.CatmullRomCurve3(beatPos.map((v) => v.clone()), false, 'centripetal')
     : null;
+  if (panelsBuilt) rebuildAvoid();   // panels are built later at startup; rebuildPanels() re-runs it
 }
 rebuildDerived();
 
@@ -1173,7 +1175,44 @@ function pathPoint(t, out) {
   const i1 = clamp(i0 + 1, 0, last);
   out.lerpVectors(beatPos[i0], beatPos[i1], seg - i0);
   if (curve && smooth > 0) { curve.getPoint(clamp(t, 0, 1), _tv); out.lerp(_tv, smooth); }
+  if (avoid[i0]) out.addScaledVector(avoid[i0], Math.sin(Math.PI * (seg - i0)));   // detour around a panel that sits on the hop (rebuildAvoid)
   return out;
+}
+
+// ---- Path avoidance (2026-09-14): the camera never flies through a panel ----
+//  Every project panel sits 45 ahead and 12 beside its camera but is 28 wide,
+//  and the next camera is 70 ahead with x flipped — so a straight hop used to
+//  pass ~7 units inside the panel. For each hop, find any panel mesh the
+//  straight segment comes closer to than its half-size + margin, and store a
+//  sideways bulge (perpendicular to the hop) that pathPoint applies as a
+//  sin(π·f) arc, sized so the camera clears the panel where it would have
+//  crossed it. Recomputed whenever beats or panels change.
+const avoid = [];
+const _va = new THREE.Vector3(), _vb = new THREE.Vector3(), _vc = new THREE.Vector3(), _vd = new THREE.Vector3();
+function rebuildAvoid() {
+  avoid.length = 0;
+  const MARGIN = 9, vols = [];
+  for (const m of [...panelMeshes, ...extraPanelMeshes]) if (m && m.geometry?.parameters) {
+    const g = m.geometry.parameters; vols.push({ c: m.position, r: Math.max(g.width, g.height) / 2 });
+  }
+  for (let i = 0; i + 1 < beatPos.length; i++) {
+    const A = beatPos[i], B = beatPos[i + 1], push = new THREE.Vector3();
+    _vd.subVectors(B, A); const L2 = _vd.lengthSq() || 1;
+    let best = 0;
+    for (const v of vols) {
+      const f = clamp(_vc.subVectors(v.c, A).dot(_vd) / L2, 0, 1);
+      if (f <= 0.02 || f >= 0.98) continue;                    // a panel beside a stop is the composed shot, not a fly-through
+      _va.copy(A).addScaledVector(_vd, f);                      // closest point on the hop
+      _vb.subVectors(_va, v.c); _vb.addScaledVector(_vd, -_vb.dot(_vd) / L2);   // perpendicular to the hop
+      const d = _vb.length(), need = v.r + MARGIN - d;
+      if (need <= 0) continue;
+      if (d < 1e-3) _vb.set(Math.sign(A.x - v.c.x) || 1, 0, 0); else _vb.divideScalar(d);
+      const amp = need / Math.max(0.35, Math.sin(Math.PI * f));  // the arc peaks mid-hop; size it for the crossing point
+      if (amp > best) { best = amp; push.copy(_vb).multiplyScalar(amp); }
+    }
+    avoid.push(best > 0 ? push : null);
+  }
+  if (DEV_TOOLS) console.debug('[avoid] hop bulges:', avoid.map((v, i) => v ? `${i}→${i + 1}: ${v.length().toFixed(1)} (${v.x.toFixed(1)},${v.y.toFixed(1)},${v.z.toFixed(1)})` : null).filter(Boolean).join(' · ') || 'none');
 }
 
 // ---- Content panels (one optional panel per section) ------------------------
@@ -1288,6 +1327,7 @@ function rebuildPanels() {
   // otherwise defers it to the first frame the panel enters the frustum, which
   // is exactly when a flight toward it starts (a visible hitch on phones)
   for (const m of [...panelMeshes, ...extraPanelMeshes]) if (m && m.material.map) renderer.initTexture(m.material.map);
+  panelsBuilt = true; rebuildAvoid();
 }
 // cheap in-place update for live slider/typing edits (avoids full rebuild churn)
 function updatePanel(i) {
