@@ -78,9 +78,8 @@ there once and moves both.
 </article>
 ```
 
-- Name and role come from `profile.name` and a new `profile.role`
-  ("AI-native developer") — `hi.status` already carries the term; `role` is
-  the single-word source so the card, JSON-LD and noscript agree. Email,
+- Name and role come from `profile.name` and the existing `profile.title`
+  ("AI-native developer"), the same string the JSON-LD and noscript carry. Email,
   phone, links from `profile.links`; the `tel:` href is the phone with
   spaces/dashes stripped and the leading 0 replaced by `+972`. X joins the
   social row automatically when `links.x` is uncommented.
@@ -136,7 +135,7 @@ there once and moves both.
 - No `DEFAULT_BEATS` shape change → save version stays **18**.
 - `tests/render.test.js`: card rows (name, role, mail, tel, social,
   footer), the `tel:` href normalisation, no `href="#top"`, escaping.
-- `tests/profile.test.js`: `profile.role` exists; `contact.line` gone.
+- `tests/profile.test.js`: `profile.title` exists; `contact.line` gone.
 - `tests/assets.test.js` (new): `public/assets/loader/void-loop.mp4` and
   `.webp` exist and the mp4 is ≤ 2.5 MB.
 - `tests/panels.test.js`: copy-email still wired on the card.
