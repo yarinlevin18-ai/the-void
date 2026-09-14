@@ -659,6 +659,16 @@ function buildNetwork() {
   }
   const DRIFT_GLSL = `vec3 drifted(vec3 b, vec3 A, vec3 F, vec3 P, float t, float on){
     return b + on * vec3(A.x*sin(t*F.x+P.x), A.y*sin(t*F.y+P.y), A.z*sin(t*F.z+P.z)); }`;
+  // The contact door: vertices near the door axis (a line through uDoorC along
+  // uDoorAx) are pushed radially outward as uDoor rises 0→1. Soft edge at R;
+  // nothing beyond R moves. `d` (distance to the axis) is handed back so the
+  // link fragment can thin strands inside the door instead of stretching them.
+  const DOOR_R = 34.0;
+  const DOOR_GLSL = `uniform float uDoor; uniform vec3 uDoorC,uDoorAx;
+    vec3 doorPush(vec3 p, out float d){
+      vec3 r=p-uDoorC; vec3 perp=r-uDoorAx*dot(r,uDoorAx); d=length(perp);
+      float w=uDoor*smoothstep(${DOOR_R.toFixed(1)},0.0,d);
+      return p+(perp/max(d,0.001))*w*${(DOOR_R * 1.3).toFixed(1)}; }`;
   const pgeo = new THREE.BufferGeometry();
   pgeo.setAttribute('position', new THREE.BufferAttribute(base, 3));
   pgeo.setAttribute('aAmp', new THREE.BufferAttribute(amp, 3));
@@ -669,13 +679,14 @@ function buildNetwork() {
   pgeo.setAttribute('aColor', new THREE.BufferAttribute(aColor, 3));
   const pmat = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-    uniforms: { uTime: { value: 0 }, uSize: { value: 3.2 }, uTwinkle: { value: 1 }, uWarp: { value: 0 }, uDrift: { value: 1 }, uFlare: { value: 1 }, uPtN: { value: new THREE.Vector2(9, 9) }, uVel: { value: 0 }, uTint: { value: new THREE.Color(0x4fd2ff) }, uTintAmt: { value: 0 } },
+    uniforms: { uTime: { value: 0 }, uSize: { value: 3.2 }, uTwinkle: { value: 1 }, uWarp: { value: 0 }, uDrift: { value: 1 }, uFlare: { value: 1 }, uPtN: { value: new THREE.Vector2(9, 9) }, uVel: { value: 0 }, uTint: { value: new THREE.Color(0x4fd2ff) }, uTintAmt: { value: 0 }, uDoor: { value: 0 }, uDoorC: { value: new THREE.Vector3() }, uDoorAx: { value: new THREE.Vector3(0, 1, 0) } },
     vertexShader: `attribute vec3 aAmp,aFre,aPha,aColor; attribute float aPhase,aScale;
       uniform float uTime,uSize,uTwinkle,uWarp,uDrift,uVel,uFlare; uniform vec2 uPtN;
       varying vec3 vC; varying float vA;
       ${DRIFT_GLSL}
+      ${DOOR_GLSL}
       void main(){
-        vec3 p=drifted(position,aAmp,aFre,aPha,uTime,uDrift);
+        float dd; vec3 p=doorPush(drifted(position,aAmp,aFre,aPha,uTime,uDrift),dd);
         float tw=mix(0.85, 0.55+0.45*sin(uTime*1.6+aPhase), uTwinkle);
         float fl=pow(max(0.0,sin(uTime*0.55+aPhase*3.1)),36.0)*uFlare;     // rare brief flare — one node catching light every few seconds
         tw+=fl*0.9;
@@ -728,18 +739,19 @@ function buildNetwork() {
   lgeo.setAttribute('aLColor', new THREE.BufferAttribute(lCol, 3));
   const lmat = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-    uniforms: { uTime: { value: 0 }, uDrift: { value: 1 }, uWarp: { value: 0 }, uPulse: { value: 1 }, uTint: { value: new THREE.Color(0x4fd2ff) }, uTintAmt: { value: 0 } },
+    uniforms: { uTime: { value: 0 }, uDrift: { value: 1 }, uWarp: { value: 0 }, uPulse: { value: 1 }, uTint: { value: new THREE.Color(0x4fd2ff) }, uTintAmt: { value: 0 }, uDoor: { value: 0 }, uDoorC: { value: new THREE.Vector3() }, uDoorAx: { value: new THREE.Vector3(0, 1, 0) } },
     vertexShader: `attribute vec3 aAmp,aFre,aPha,aLColor; attribute float aT,aLPhase;
-      uniform float uTime,uDrift; varying float vT,vP,vFade; varying vec3 vC;
+      uniform float uTime,uDrift; varying float vT,vP,vFade,vD; varying vec3 vC;
       ${DRIFT_GLSL}
+      ${DOOR_GLSL}
       void main(){
-        vec3 p=drifted(position,aAmp,aFre,aPha,uTime,uDrift);
+        float dd; vec3 p=doorPush(drifted(position,aAmp,aFre,aPha,uTime,uDrift),dd); vD=dd;
         vec4 mv=modelViewMatrix*vec4(p,1.0); float depth=-mv.z;
         vFade=smoothstep(20.0,50.0,depth)*smoothstep(900.0,480.0,depth);
         vT=aT; vP=aLPhase; vC=aLColor;
         gl_Position=projectionMatrix*mv; }`,
-    fragmentShader: `varying float vT,vP,vFade; varying vec3 vC;
-      uniform float uTime,uWarp,uTintAmt,uPulse; uniform vec3 uTint;
+    fragmentShader: `varying float vT,vP,vFade,vD; varying vec3 vC;
+      uniform float uTime,uWarp,uTintAmt,uPulse,uDoor; uniform vec3 uTint;
       void main(){
         float life=0.08+0.15*sin(uTime*0.35+vP*6.2831);                    // slow form/dissolve (restraint: lines support, never shout)
         // Traffic, not a metronome. Every link used to run a packet at the same
@@ -754,7 +766,7 @@ function buildNetwork() {
         float dir=step(0.5,fract(roll*7.0));                               // half of them travel B->A
         float head=fract(cyc); head=mix(head,1.0-head,dir);
         float pulse=fire*smoothstep(0.035,0.0,abs(vT-head))*uPulse;        // bright spark travelling the link
-        float a=clamp(life+pulse*1.15,0.0,1.0)*vFade*(1.0+uWarp*0.8);
+        float a=clamp(life+pulse*1.15,0.0,1.0)*vFade*(1.0+uWarp*0.8)*(1.0-uDoor*smoothstep(${DOOR_R.toFixed(1)},${(DOOR_R * 0.4).toFixed(1)},vD));
         vec3 col=mix(vC,uTint,uTintAmt)+pulse*vec3(0.55,0.75,0.9);
         gl_FragColor=vec4(col,a); }`,
   });
@@ -772,7 +784,12 @@ function buildNetwork() {
   }
   const setTint = (hex, amt) => { pmat.uniforms.uTint.value.set(hex); pmat.uniforms.uTintAmt.value = amt; lmat.uniforms.uTint.value.set(hex); lmat.uniforms.uTintAmt.value = amt; };
   const setWarp = (v) => { pmat.uniforms.uWarp.value = v; lmat.uniforms.uWarp.value = v; };
-  return { N, L, nodes, lines, pgeo, lgeo, pmat, lmat, update, setTint, setWarp, base, amp, fre, pha, aColor };
+  const setDoor = (v, c, ax) => {
+    pmat.uniforms.uDoor.value = v; lmat.uniforms.uDoor.value = v;
+    if (c) { pmat.uniforms.uDoorC.value.copy(c); lmat.uniforms.uDoorC.value.copy(c); }
+    if (ax) { pmat.uniforms.uDoorAx.value.copy(ax); lmat.uniforms.uDoorAx.value.copy(ax); }
+  };
+  return { N, L, nodes, lines, pgeo, lgeo, pmat, lmat, update, setTint, setWarp, setDoor, base, amp, fre, pha, aColor };
 }
 
 // ---- Cursor links (ENVIRONMENT.md Layer 3) — the network reaches toward the
@@ -918,6 +935,15 @@ let beats = [];
 let speedMul = 1;    // global flight-speed multiplier (scales per-shot durations)
 let smooth = 0.5;    // 0 = straight segments, 1 = fully curved (spline) path
 let tween = null;    // active section→section transition { from, to, t, dur }
+// The contact door (spec 2026-09-14): opens 1.1s easeOut once the flight into
+// Contact is 70% through, closes 0.6s easeIn on leaving. Reduced motion snaps.
+const door = { v: 0, from: 0, to: 0, t: 0, dur: 1 };
+let doorPreview = 0;   // dev B-panel slider only — never persisted
+const _doorC = new THREE.Vector3(), _doorAx = new THREE.Vector3();
+function setDoorTarget(to) {
+  if (to === door.to) return;
+  door.from = door.v; door.to = to; door.t = 0; door.dur = to ? 1.1 : 0.6;
+}
 let _breath = 0;     // 0..1 idle-sway weight — fades out during a flight, back in on arrival
 let firstFrameDone = false; // set after the first composed render; the intro loader waits on it
 let loaderDone = false;     // stops reveal only after the loader lifts — a deep-link arrival must be seen, not pre-played behind it
@@ -1030,7 +1056,6 @@ function applyGlobals() {
   livingVoid.nebMat.uniforms.uSpd.value = FX.nebSpd;
   livingVoid.nebMat.uniforms.uWarp.value = FX.nebWarp;
   livingVoid.nebMat.uniforms.uHue.value = FX.nebHue;
-  livingVoid.nebMat.uniforms.uEmber.value = FX.nebEmber;
   livingVoid.nebMat.uniforms.uGlow.value = FX.nebGlow;
   livingVoid.spots.visible = FX.glowSpots;
   transitionEase = EASINGS[txEaseName] || easeInOut;
@@ -2383,6 +2408,7 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
     ['nebwarp', () => FX.nebWarp, (v) => { FX.nebWarp = v; livingVoid.nebMat.uniforms.uWarp.value = v; }, f2],
     ['nebhue', () => FX.nebHue, (v) => { FX.nebHue = v; livingVoid.nebMat.uniforms.uHue.value = v; }, f2],
     ['nebember', () => FX.nebEmber, (v) => { FX.nebEmber = v; livingVoid.nebMat.uniforms.uEmber.value = v; }, f2],
+    ['door', () => doorPreview, (v) => { doorPreview = v; }, f2],
     ['nebglow', () => FX.nebGlow, (v) => { FX.nebGlow = v; livingVoid.nebMat.uniforms.uGlow.value = v; }, f2],
     ['vignette', () => FX.vignette, (v) => { FX.vignette = v; }, f2],
     ['grain', () => FX.grain, (v) => { FX.grain = v; }, f3],
@@ -2752,6 +2778,26 @@ function animate() {
       else if (tween || dist > 70) panels.hide();
       setBar(progress > 0.02);                       // the bar arrives once the flight leaves the wordmark
     }
+  }
+
+  {                                          // the contact door
+    const b = beats[index];
+    const atContact = !editMode && b?.stop === 'contact';
+    const flightK = tween ? tween.t / tween.dur : 1;
+    setDoorTarget(atContact && loaderDone && flightK >= 0.7 ? 1 : 0);
+    door.t += dt;
+    const k = clamp(door.t / door.dur, 0, 1);
+    door.v = PREFERS_REDUCED ? door.to : door.from + (door.to - door.from) * (door.to ? EASINGS.easeOut(k) : k * k);
+    const dv = Math.max(door.v, doorPreview);
+    if (b && (atContact || dv > 0)) {
+      const c = bCam(b), lk = usesPortrait(b) ? b.portrait.look : b.look;
+      _doorAx.set(lk[0] - c[0], lk[1] - c[1], lk[2] - c[2]).normalize();
+      _doorC.set(c[0], c[1], c[2]).addScaledVector(_doorAx, 60);
+    }
+    if (network) network.setDoor(dv, _doorC, _doorAx);
+    livingVoid.nebMat.uniforms.uEmber.value = FX.nebEmber + (0.5 - FX.nebEmber) * dv;
+    const sec = panels?.el(index);
+    if (sec && atContact) sec.classList.toggle('open', dv >= 0.75);
   }
 
   // panels: billboard to face the camera, and light up as the camera arrives
