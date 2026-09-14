@@ -3006,7 +3006,8 @@ try { renderer.compile(scene, camera); } catch (e) { console.warn('[precompile]'
 animate();
 initCursorTrail();   // native pointer + a short cyan light tail (skipped on coarse pointers / reduced motion)
 // ---- The v15 DOM layer: one content block per stop + the fixed bar ----------
-mountPrintCV(PROFILE);
+const BUILT = typeof __BUILT__ !== 'undefined' ? __BUILT__ : null;   // vite.config.js `define` — the build date
+mountPrintCV(PROFILE, BUILT);
 // a bad saved beat (unknown stop/id from an older config) must never blank the site
 try {
   panels = initPanels({ beats, profile: PROFILE, root: document.querySelector('#stops') });

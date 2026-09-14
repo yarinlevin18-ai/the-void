@@ -100,7 +100,8 @@ export const telHref = (s) => {
 };
 
 // 10 Contact — the card the door hands over. Rows carry --i for the stagger.
-export function renderContact(p) {
+// `built` = { label: '14 Sep 2026', iso: '2026-09-14' } from Vite's __BUILT__ (injected, so this stays pure).
+export function renderContact(p, built = null) {
   const l = p.links;
   const social = [['GitHub', l.github], ['LinkedIn', l.linkedin], ['X', l.x]].filter(([, h]) => h)
     .map(([n, h]) => `<a href="${escAttr(h)}" target="_blank" rel="noopener">${n}</a>`).join('');
@@ -112,5 +113,6 @@ export function renderContact(p) {
       ${tel ? `<a class="card-row tel" style="--i:2" href="${escAttr(tel)}">${esc(l.phone)}</a>` : ''}
       <div class="card-row social" style="--i:3">${social}</div>
       <footer class="card-row card-foot" style="--i:4">${esc(p.contact.availability)}</footer>
+      ${built && built.label ? `<div class="card-row card-built" style="--i:5">Updated <time datetime="${escAttr(built.iso || '')}">${esc(built.label)}</time></div>` : ''}
     </article>`;
 }

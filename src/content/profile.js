@@ -113,7 +113,7 @@ export const PROFILE = {
     linkedin: 'https://www.linkedin.com/in/yarin-levin-78a783247/',
     github: 'https://github.com/yarinlevin18-ai',
     // x: 'https://x.com/yarinlevin18',   // ⏳ confirm handle with Yarin, then uncomment
-    site: 'https://the-void-khaki-pi.vercel.app',
+    site: 'https://yarinlevin.com',
   },
 
   cv: {

@@ -35,3 +35,9 @@ test('link fields in the header are escaped', () => {
   assert.ok(!/<[a-z]/i.test(contact), contact);
   for (const raw of ['a&lt;b@x.test', '&lt;1&gt;', '&lt;l&gt;', '&lt;g&gt;', '&lt;s&gt;']) assert.ok(contact.includes(raw), raw);
 });
+
+test('print CV carries the build stamp when one is passed', () => {
+  document.getElementById('print-cv')?.remove();
+  mountPrintCV(PROFILE, { label: '14 Sep 2026', iso: '2026-09-14' });
+  assert.ok(document.getElementById('print-cv').textContent.includes('Updated 14 Sep 2026'));
+});

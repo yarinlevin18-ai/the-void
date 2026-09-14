@@ -93,7 +93,7 @@
 - [x] Production build clean; editor stripped for visitors.
 - [x] Vercel, repo connected, **push to main deploys** (2026-08-30).
 - [x] `<title>`/meta/OG/canonical/theme-color; `public/og.jpg`.
-- [ ] Custom domain (still on `the-void-khaki-pi.vercel.app`).
+- [x] Custom domain: yarinlevin.com via Vercel (2026-09-14) — code/SEO files switched, old host redirects; Yarin completes the purchase in the dashboard. Build stamp on the card / print CV.
 - [ ] 30–60s capture for CV / LinkedIn — with the dossier in shot.
 - [ ] Live URL onto CV PDF + LinkedIn + GitHub profile.
 

@@ -125,3 +125,11 @@ test('telHref normalises an Israeli local number', () => {
   assert.equal(telHref('+972 54 802 9820'), 'tel:+972548029820');
   assert.equal(telHref(''), '');
 });
+
+test('contact card carries the build stamp when one is injected', () => {
+  const built = { label: '14 Sep 2026', iso: '2026-09-14' };
+  const h = renderContact(PROFILE, built);
+  assert.ok(h.includes('class="card-row card-built"'));
+  assert.ok(h.includes('<time datetime="2026-09-14">14 Sep 2026</time>'));
+  assert.ok(!renderContact(PROFILE).includes('card-built'), 'no stamp without a build');
+});

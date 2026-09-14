@@ -3,7 +3,7 @@
 // shows #print-cv, so the PDF can never drift from the web version.
 import { esc } from './render.js';
 
-export function mountPrintCV(p) {
+export function mountPrintCV(p, built = null) {
   if (document.getElementById('print-cv')) return;
   const el = document.createElement('div');
   el.id = 'print-cv';
@@ -36,7 +36,7 @@ export function mountPrintCV(p) {
       <h1>${esc(p.name)}</h1>
       <div class="pcv-sub">${esc(p.title)} · ${esc(p.status.seeking)} · ${esc(p.status.availability)}</div>
       <div class="pcv-contact">
-        ${esc(p.links.email)} · ${esc(p.links.phone)} · ${esc(p.links.linkedin.replace('https://www.', ''))} · ${esc(p.links.github.replace('https://', ''))} · ${esc(p.links.site.replace('https://', ''))}
+        ${esc(p.links.email)} · ${esc(p.links.phone)} · ${esc(p.links.linkedin.replace('https://www.', ''))} · ${esc(p.links.github.replace('https://', ''))} · ${esc(p.links.site.replace('https://', ''))}${built && built.label ? ' · Updated ' + esc(built.label) : ''}
       </div>
     </header>
     <p class="pcv-profile">${esc(p.bio.short)}</p>

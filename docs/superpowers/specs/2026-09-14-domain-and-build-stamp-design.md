@@ -70,9 +70,8 @@ have other hosts and are untouched:
   (keeps happy-dom tests and any non-Vite runtime working).
 - `src/printcv.js`: `mountPrintCV(p, built)` appends `Updated 14 Sep 2026`
   to the contact line; `main.js` passes the same object.
-- `index.html` noscript: a `<span id="built"></span>` after the contact
-  paragraph, and a one-line module script in `main.js` startup fills it. With
-  scripting off it stays empty (acceptable for the skim path).
+- The noscript skim path gets no stamp: its markup lives inside `<noscript>`,
+  so it is never in the DOM while scripts run and never fillable without them.
 - Tests: `renderContact(PROFILE, { label: '14 Sep 2026', iso: '2026-09-14' })`
   includes the row and the `datetime`; without `built` no row;
   `mountPrintCV(PROFILE, built)` includes the label. Total 52.

@@ -21,7 +21,9 @@ waypoint rail and free-roam are gone — see
 `docs/superpowers/specs/2026-09-08-flight-restructure-design.md` for that
 design. Audience: hiring teams (part-time student position) + clients.
 
-**Live:** https://the-void-khaki-pi.vercel.app — Vercel project `the-void`,
+**Live:** https://yarinlevin.com (canonical since 2026-09-14; the old
+`the-void-khaki-pi.vercel.app` host 308-redirects there via `vercel.json`) —
+Vercel project `the-void`,
 repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
 `build.sh` bootstrap deploy is gone).
 
@@ -177,7 +179,7 @@ export tuned `BEATS` and paste into `DEFAULT_BEATS`.
 npm install
 npm run dev      # http://localhost:5173  (DEV_TOOLS on → E/B/T/U/Y/A work)
 npm run build    # dist/
-npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash, save, assets (happy-dom for the DOM ones), 50 passing
+npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash, save, assets, domain (happy-dom for the DOM ones), 54 passing
 ```
 `.claude/launch.json` has a `void-dev` config for the browser preview.
 Fully offline-capable: fonts are self-hosted, no external requests. HMR can be flaky —
@@ -199,8 +201,13 @@ hard-refresh if a change doesn't show.
    visitor text ≥ 4.5:1 on the void), Lighthouse mobile 2026-09-12 (after
    WebP + label fix): perf 84–88 / a11y 100 / best-practices 100 / SEO 100,
    100 % legible text, 610 KiB total. Still to do on a physical phone.
-6. **Custom domain** — Yarin's call; when set, update `canonical` / `og:url`
-   / JSON-LD in `index.html` and `links.site`. OG card re-captured 2026-09-13.
+6. ~~Custom domain~~ decided 2026-09-14: **yarinlevin.com**, bought through
+   Vercel (Settings → Domains; `www` redirects to the apex). Code, canonical,
+   OG, JSON-LD, robots, sitemap and `links.site` already point there;
+   `tests/domain.test.js` keeps the old host out. Spec:
+   `docs/superpowers/specs/2026-09-14-domain-and-build-stamp-design.md`.
+   The site shows a build stamp (`__BUILT__` from `vite.config.js`) on the
+   contact card and the print CV.
 7. ~~Housekeeping~~ done 2026-09-13: sound is **dropped** for good. The old
    Web Audio commit survives only as tag `archive/phase-b-d-sound-2026-07`;
    the stale branches were deleted. Don't reintroduce it.

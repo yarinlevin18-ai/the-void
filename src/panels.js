@@ -32,7 +32,7 @@ export function initPanels({ beats, profile, root }) {
       sec.innerHTML = renderProject(x, b.side || 'left', also);
       sec.dataset.side = b.side || 'left';
       if (b.groupLabel) sec.insertAdjacentHTML('afterbegin', `<div class="group-label">${esc(b.groupLabel)}</div>`);
-    } else if (b.stop === 'contact') sec.innerHTML = renderContact(profile);
+    } else if (b.stop === 'contact') sec.innerHTML = renderContact(profile, typeof __BUILT__ !== 'undefined' ? __BUILT__ : null);   // build stamp from vite.config.js
     else throw new Error(`panels: unknown stop type "${b.stop}"`);
     root.appendChild(sec);
     return sec;
