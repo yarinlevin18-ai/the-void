@@ -2890,6 +2890,7 @@ function animate() {
     else {
       let a = clamp(1 - (camera.position.distanceTo(m.position) - 90) / curFX.panelLightRange, 0, 1); // near = lit
       if (extra) a *= clamp(1 - Math.abs(_pIdx - m.userData.i), 0, 1);   // a `panels[]` cluster belongs to one stop: fade with it, never bleed into the neighbours
+      else a *= clamp(2 - 2 * Math.abs(_pIdx - i), 0, 1);   // a stop's own panel: full from halfway through the hop in, fully off at any neighbour (the next stop's panel, 115 units on, used to ghost through at ≈ 4 %)
       m.material.opacity = curFX.panelDimFloor + (1 - curFX.panelDimFloor) * a;
       m.scale.setScalar(0.92 + 0.08 * a);
     }
