@@ -497,22 +497,15 @@ const openingFX = (() => {
     zc.copy(rt).cross(uu); basis.makeBasis(rt, uu, zc); group.quaternion.setFromRotationMatrix(basis);
     group.position.copy(C).addScaledVector(ff, dist);
   }
-  const whisper = document.querySelector('#whisper'), overlaySub = document.querySelector('#overlay .sub');
-  let _typed = false;
-  function typeWhisper() {
-    if (!whisper || _typed) return; _typed = true;
-    const LINE = 'welcome to my world.', body = LINE.slice(0, -1); let i = 0; whisper.style.opacity = '1';
-    (function tw() { whisper.textContent = LINE.slice(0, i); i++; if (i <= LINE.length) setTimeout(tw, 42); else whisper.innerHTML = body + '<span class="dot">.</span>'; })();
-  }
-  function clearWhisper() { if (whisper) { whisper.style.opacity = '0'; whisper.innerHTML = ''; } _typed = false; }
+  const overlaySub = document.querySelector('#overlay .sub');
   let phase = 'off', t0 = 0, exitT0 = 0;
   const ease = (k) => 1 - Math.pow(1 - k, 3);
   function update(active, t) {
     if (!built) return;
-    if (active && phase === 'off') { place(); for (let i = 0; i < N * 3; i++) { posA[i] = startA[i]; vel[i] = 0; } phase = 'form'; t0 = t; clearWhisper(); }
-    if (!active && (phase === 'form' || phase === 'idle')) { phase = 'exit'; exitT0 = t; clearWhisper(); }
+    if (active && phase === 'off') { place(); for (let i = 0; i < N * 3; i++) { posA[i] = startA[i]; vel[i] = 0; } phase = 'form'; t0 = t; }
+    if (!active && (phase === 'form' || phase === 'idle')) { phase = 'exit'; exitT0 = t; }
     group.visible = phase !== 'off';
-    if (overlaySub) overlaySub.style.display = phase !== 'off' ? 'none' : '';   // the whisper replaces the tagline on the Opening
+    if (overlaySub) overlaySub.style.display = phase !== 'off' ? 'none' : '';   // the particle wordmark owns the Opening; the DOM tagline would sit on top of it
     if (mat) { mat.size = FX.openSize || 1.1; mat.color.set(FX.openColor || '#9fd8ff'); mat.opacity = FX.openGlow ?? 0.7; }   // live FX
     group.scale.setScalar(FX.openFit || 0.3);
     if (phase === 'off') return;
@@ -520,7 +513,7 @@ const openingFX = (() => {
     if (phase === 'form') {
       const k = RM ? 1 : Math.min((t - t0) / (FX.openForm || 2.6), 1), e = ease(k);
       for (let i = 0; i < N * 3; i++) posA[i] = startA[i] + (targ[i] - startA[i]) * e;
-      if (k >= 1) { phase = 'idle'; typeWhisper(); }
+      if (k >= 1) { phase = 'idle'; }
     } else if (phase === 'exit') {
       const ek = (t - exitT0) / 1.5;
       if (!RM) for (let i = 0; i < N; i++) { const ix = i * 3;
