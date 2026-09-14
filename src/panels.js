@@ -2,7 +2,7 @@
 // initPanels mounts one hidden <section class="stop"> per beat (beat.stop names
 // the renderer). show(i)/hide() toggle .in; CSS owns the reveal recipe, JS only
 // owns the two things CSS can't: the proof count-up and the print/copy buttons.
-import { renderHero, renderIntro, renderCV, renderBuild, renderProject, renderContact, esc } from './render.js';
+import { renderHi, renderAbout, renderTimeline, renderBuild, renderProject, renderContact, esc } from './render.js';
 import { copyLabel, failLabel } from './bar.js';
 
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -17,9 +17,12 @@ export function initPanels({ beats, profile, root }) {
     sec.setAttribute('aria-hidden', 'true');
     sec.inert = true;   // hidden stops are never focusable, even mid-fade
     sec.setAttribute('aria-label', b.name || b.stop);
-    if (b.stop === 'hero') sec.innerHTML = renderHero(profile);
-    else if (b.stop === 'intro') sec.innerHTML = renderIntro(profile);
-    else if (b.stop === 'cv') sec.innerHTML = renderCV(profile);
+    if (b.stop === 'hi') { sec.innerHTML = renderHi(profile); sec.dataset.side = 'left'; }
+    else if (b.stop === 'about') {
+      sec.innerHTML = renderAbout(profile); sec.dataset.side = 'right';
+      sec.setAttribute('aria-label', [profile.about.eyebrow, ...profile.about.photos.map((x) => x.caption)].join(' · '));
+    }
+    else if (b.stop === 'timeline') sec.innerHTML = renderTimeline(profile);
     else if (b.stop === 'build') sec.innerHTML = renderBuild(profile);
     else if (b.stop === 'project') {
       const x = profile.work.featured.find((p) => p.id === b.id);

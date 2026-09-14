@@ -8,9 +8,9 @@ const { initPanels } = await import('../src/panels.js');
 
 const BEATS = [
   { name: 'Opening' },
-  { name: 'Hero', stop: 'hero' },
-  { name: 'Intro', stop: 'intro' },
-  { name: 'CV', stop: 'cv' },
+  { name: 'Hi', stop: 'hi' },
+  { name: 'About', stop: 'about' },
+  { name: 'Timeline', stop: 'timeline', screens: true },
   { name: 'How I Build', stop: 'build' },
   { name: 'TEEPO', stop: 'project', id: 'teepo', also: 'aerocy', side: 'left', groupLabel: 'Landing pages' },
   { name: 'Contact', stop: 'contact' },
@@ -26,7 +26,10 @@ const mount = (beats = BEATS) => {
 
 test('mounts one hidden, inert section per beat that has a stop', () => {
   const { root, panels } = mount();
-  assert.ok(panels.el(I.hero).querySelector('.hero-line'), 'hero stop carries the positioning line');
+  assert.ok(panels.el(I.hi).querySelector('.greeting'), 'hi stop carries the greeting');
+  assert.equal(panels.el(I.hi).dataset.side, 'left');
+  assert.equal(panels.el(I.about).dataset.side, 'right');
+  assert.equal(panels.el(I.about).getAttribute('aria-label'), 'About · On stage · The room · After the talk');
   const secs = root.querySelectorAll('section.stop');
   assert.equal(secs.length, 6);
   assert.equal(panels.el(0), null);
@@ -38,7 +41,7 @@ test('mounts one hidden, inert section per beat that has a stop', () => {
   assert.equal(panels.el(I.project).id, 'stop-teepo');
   assert.equal(panels.el(I.project).dataset.side, 'left');
   assert.equal(panels.el(I.project).querySelector('.group-label').textContent, 'Landing pages');
-  assert.equal(panels.el(I.cv).id, `stop-${I.cv}`);
+  assert.equal(panels.el(I.timeline).id, `stop-${I.timeline}`);
 });
 
 test('throws on an unknown stop type or a project id missing from the profile', () => {
@@ -49,16 +52,16 @@ test('throws on an unknown stop type or a project id missing from the profile', 
 
 test('show/hide toggle .in, aria-hidden and inert together', () => {
   const { panels } = mount();
-  panels.show(I.intro);
-  const intro = panels.el(I.intro);
-  assert.ok(intro.classList.contains('in'));
-  assert.equal(intro.getAttribute('aria-hidden'), 'false');
-  assert.equal(intro.inert, false);
+  panels.show(I.about);
+  const about = panels.el(I.about);
+  assert.ok(about.classList.contains('in'));
+  assert.equal(about.getAttribute('aria-hidden'), 'false');
+  assert.equal(about.inert, false);
 
   panels.show(I.project);   // moving on conceals the previous stop immediately
-  assert.ok(!intro.classList.contains('in'));
-  assert.equal(intro.getAttribute('aria-hidden'), 'true');
-  assert.equal(intro.inert, true);
+  assert.ok(!about.classList.contains('in'));
+  assert.equal(about.getAttribute('aria-hidden'), 'true');
+  assert.equal(about.inert, true);
   assert.equal(panels.el(I.project).inert, false);
 
   panels.hide();
@@ -80,8 +83,8 @@ test('proof numbers resolve to their data-n on the build stop', () => {
 test('Download CV calls window.print', () => {
   const { panels } = mount();
   let printed = 0; window.print = () => { printed++; };
-  panels.show(I.cv);
-  click(panels.el(I.cv).querySelector('[data-print-cv]'));
+  panels.show(I.timeline);
+  click(panels.el(I.timeline).querySelector('[data-print-cv]'));
   assert.equal(printed, 1);
 });
 
