@@ -5,9 +5,22 @@ import { PROFILE } from '../src/content/profile.js';
 
 const featured = PROFILE.work.featured;
 
-test('intro has 2–3 lines and a context line', () => {
-  assert.ok(PROFILE.intro.lines.length >= 2 && PROFILE.intro.lines.length <= 3);
-  assert.ok(PROFILE.intro.context.length > 0);
+test('hi, about and timeline carry the person chapter', () => {
+  assert.ok(PROFILE.hi.greeting.startsWith('Hi, I’m'));
+  assert.ok(PROFILE.hi.status.includes('AI-native developer'));
+  assert.equal(PROFILE.hi.lines.length, 2);
+  assert.equal(PROFILE.about.paragraphs.length, 3);
+  assert.equal(PROFILE.about.photos.length, 3);
+  assert.ok(PROFILE.timeline.rows.length >= 5);
+  for (const r of PROFILE.timeline.rows) { assert.ok(r.when); assert.ok(r.what); assert.ok(r.line); }
+  assert.equal(PROFILE.hero, undefined); assert.equal(PROFILE.intro, undefined); assert.equal(PROFILE.cvStop, undefined);
+});
+
+test('every person-chapter photo path exists under public/', () => {
+  for (const p of [PROFILE.hi.portrait, ...PROFILE.about.photos.map((x) => x.src)]) {
+    assert.match(p, /^\/assets\/me\/.+\.webp$/, p);
+    assert.ok(existsSync(new URL(`../public${p}`, import.meta.url)), p);
+  }
 });
 
 test('method and proof are present, proof has exactly 3 numbers', () => {
@@ -39,11 +52,6 @@ test('contact block', () => {
   assert.ok(PROFILE.contact.line);
   assert.ok(PROFILE.contact.availability);
   if (PROFILE.links.x) assert.match(PROFILE.links.x, /^https:\/\//);
-});
-
-test('cv rows for the CV stop: 5 entries', () => {
-  assert.equal(PROFILE.cvStop.length, 5);
-  for (const r of PROFILE.cvStop) { assert.ok(r.years); assert.ok(r.role); assert.ok(r.line); }
 });
 
 test('ids are unique and the ids render.js hardcodes exist', () => {

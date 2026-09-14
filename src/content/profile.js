@@ -20,8 +20,8 @@ export const PROFILE = {
       'the US. B.A. student at Ben-Gurion University, looking for a part-time ' +
       'student position.',
     full:
-      'I came to development the long way. Four years in the IDF’s Rescue & ' +
-      'Training Division — deputy company commander, operations officer through ' +
+      'I came to development the long way. Four years in the IDF’s Search and ' +
+      'Rescue — deputy company commander, operations officer through ' +
       'Operation Guardian of Walls — then a year giving 35+ talks across the US ' +
       'and Panama to audiences of 10 to 700. Both jobs taught the same thing: ' +
       'own the outcome, communicate clearly, stay calm when it’s loud.\n\n' +
@@ -45,18 +45,44 @@ export const PROFILE = {
     responseTime: 'I reply fast.',
   },
 
-  // v16 — stop 01 "Hero": the one line under the floating screens, so the
-  // visitor knows who this is before the Intro.
-  hero: { line: 'AI-native developer. Every build directed end-to-end with Claude Code, from spec to production.' },
-
-  // stop 02 "Intro". First person, facts only, no self-adjectives. Two lines:
-  // the strongest claim first, the evidence second (v16 trim — it was three).
-  intro: {
+  // stop 01 "Hi" — portrait panel left, greeting right. (2026-09-14 person chapter)
+  hi: {
+    greeting: 'Hi, I’m Yarin Levin.',
+    status: 'AI-native developer · B.A. student at Ben-Gurion · open to work',
     lines: [
-      'I write the spec, direct Claude Code through the build, and ship it myself. That is the whole job, and I do it for clients and for my own products.',
-      'Since April 2026: two client sites live, one of them paid, a Hebrew-RTL study platform I run my own semester in, and an LLM gateway every agent I use goes through.',
+      'This is my CV as a landing page. Scroll to fly through it.',
+      'Who I am, what I built, and how to reach me.',
     ],
-    context: 'Israel · available now for a part-time student position',
+    portrait: '/assets/me/portrait.webp',
+  },
+  // stop 02 "About" — three speaking photos right, story left. Captions feed the noscript path only.
+  about: {
+    eyebrow: 'About',
+    title: 'Command, then a stage, then code.',
+    paragraphs: [
+      'Four years in the IDF’s Search and Rescue, finishing as deputy company commander. During Guardian of Walls I led the battalion into emergency deployment.',
+      'Then a year on stage for FIDF and Faces of October Seventh: 35 lectures across the US and Panama, rooms of 10 to 700.',
+      'In April 2026 I started building for the web, self-taught, with AI from day one. Both earlier jobs taught the same thing I build with now: own the outcome and say it clearly.',
+    ],
+    photos: [
+      { src: '/assets/me/speaking-1.webp', caption: 'On stage' },
+      { src: '/assets/me/speaking-2.webp', caption: 'The room' },
+      { src: '/assets/me/speaking-3.webp', caption: 'After the talk' },
+    ],
+  },
+  // stop 03 "Timeline" — dated rows on a rail; the two hero screens float beside it.
+  // ⏳ months are Yarin's guesses to confirm; the shape does not change.
+  timeline: {
+    eyebrow: 'Coding experience',
+    title: 'Since April 2026.',
+    rows: [
+      { when: 'Apr 2026', what: 'First builds', line: 'Self-taught with Claude Code from the first line; the labs start here.' },
+      { when: 'May 2026', what: 'SHADIEZ', line: 'Paid client site, in production.' },
+      { when: 'Jun 2026', what: 'AeroCy', line: 'The company’s live bilingual site, shipped in days.' },
+      { when: 'Jul 2026', what: 'TEEPO', line: 'Hebrew-RTL study platform, live with real auth.' },
+      { when: 'Aug 2026', what: 'LLM Gateway', line: 'The control plane every agent I run goes through.' },
+      { when: 'Now', what: '17 built, 7 live', line: 'One or two client projects a quarter, alongside a part-time position.' },
+    ],
   },
 
   // stop 04 "How I Build"
@@ -75,16 +101,6 @@ export const PROFILE = {
   ],
   // stop 04 repo block: which featured ids get the lead card and the two compact rows
   buildStop: { lead: 'llm-gateway', rows: ['teepo', 'shadiez'] },
-
-  // stop 03 "CV" — 5 rows, years left, role + one line right. Fits one screen.
-  // cv.* below is the canonical record; cvStop is the edited five-row cut for the CV stop.
-  cvStop: [
-    { years: '2026 –', role: 'Freelance AI-native developer', line: 'Client sites and my own products, every build directed end-to-end with Claude Code.' },
-    { years: '2023 – 24', role: 'Public speaker · FIDF / Faces of October Seventh', line: '35+ lectures across the US and Panama, audiences of 10 to 700.' },
-    { years: '2023', role: 'Warehouse project manager · Paloma Dead Sea', line: 'Inventory, quality and process control; managed staff and external storage sites.' },
-    { years: '2018 – 22', role: 'IDF · Rescue & Training Division', line: 'Deputy company commander; led the battalion into emergency deployment during Guardian of Walls.' },
-    { years: '– 2028', role: 'B.A. Politics & Government + Entrepreneurship · BGU', line: 'Ben-Gurion University of the Negev, in progress.' },
-  ],
 
   // stop 12 "Contact"
   contact: {
@@ -147,7 +163,7 @@ export const PROFILE = {
       },
     ],
     service: {
-      org: 'IDF — Rescue & Training Division (Home Front Command)',
+      org: 'IDF — Search and Rescue (Home Front Command)',
       period: '2018 – 2022',
       lines: [
         'Deputy Company Commander (trainees) · Operational Operations Officer · Platoon Leader · Class Commander.',
