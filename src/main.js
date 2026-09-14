@@ -506,7 +506,14 @@ const openingFX = (() => {
     if (!active && (phase === 'form' || phase === 'idle')) { phase = 'exit'; exitT0 = t; }
     group.visible = phase !== 'off';
     if (overlaySub) overlaySub.style.display = phase !== 'off' ? 'none' : '';   // the particle wordmark owns the Opening; the DOM tagline would sit on top of it
-    if (mat) { mat.size = FX.openSize || 1.1; mat.color.set(FX.openColor || '#9fd8ff'); mat.opacity = FX.openGlow ?? 0.7; }   // live FX
+    // Portrait: fitFov() widens the Opening's 25° shot to ~75°, so the mark
+    // shrinks on screen while the points keep their pixel size — 12× the
+    // density, and additive + bloom fuse it into a bar. Scale size and glow by
+    // the FOV ratio (size only) so the mark reads the same at every aspect.
+    const bf = beats[0]?.fov ?? DEF_FOV;
+    const kFov = Math.min(1, Math.tan(bf * Math.PI / 360) / Math.max(1e-3, Math.tan(camera.fov * Math.PI / 360)));
+    const glow = FX.openGlow ?? 0.7;   // size alone restores desktop density; scaling glow too dims it by the cube
+    if (mat) { mat.size = (FX.openSize || 1.1) * kFov; mat.color.set(FX.openColor || '#9fd8ff'); mat.opacity = glow; }   // live FX
     group.scale.setScalar(FX.openFit || 0.3);
     if (phase === 'off') return;
     const RM = PREFERS_REDUCED;
@@ -520,7 +527,7 @@ const openingFX = (() => {
         vel[ix] += posA[ix] * 0.006; vel[ix + 1] += posA[ix + 1] * 0.006; vel[ix + 2] += 1.5 + Math.random() * 0.7;
         vel[ix] *= 0.985; vel[ix + 1] *= 0.985; vel[ix + 2] *= 0.99;
         posA[ix] += vel[ix]; posA[ix + 1] += vel[ix + 1]; posA[ix + 2] += vel[ix + 2]; }
-      if (mat) mat.opacity = Math.max(0, (FX.openGlow ?? 0.7) * (1 - ek));
+      if (mat) mat.opacity = Math.max(0, glow * (1 - ek));
       if (ek >= 1) { phase = 'off'; group.visible = false; }
     } else {                                            // idle: spring home + cursor shatter
       const dist = camera.position.distanceTo(group.position);
