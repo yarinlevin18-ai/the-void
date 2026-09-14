@@ -210,6 +210,17 @@ never lights up from the neighbouring cameras; hero screens stay off on
 portrait viewports so the timeline rows stay readable.
 Open: timeline months, photo captions, real photos.
 
+## Phase L — Contact door + loader loop ✅ (2026-09-14)
+Spec: `docs/superpowers/specs/2026-09-14-contact-door-and-loader-design.md`.
+- Card renderer (name · role · mail · tel · socials · availability); "Back to
+  the start" and the year footer dropped; the in-page anchor intercept removed.
+- Door: `uDoor/uDoorC/uDoorAx` on the node + link shaders (radial push, R = 34,
+  links thin inside), 1.1 s easeOut open at 70 % of the flight, 0.6 s close,
+  ember 0.06 → 0.5, `open` class on the section at 0.75. Dev slider `door`.
+- Loader: Higgsfield (Seedance 2.5) void loop under the constellation canvas
+  (opacity .5), poster-first, reduced motion = poster only.
+- Tests 50 passing; save version unchanged (18).
+
 ## Open work (2026-09-12) — in priority order
 1. ~~Camera authoring for stops 2–11~~ ✅ 2026-09-12 — desktop shots baked
    into `DEFAULT_BEATS`; phones get a derived portrait pose per project stop

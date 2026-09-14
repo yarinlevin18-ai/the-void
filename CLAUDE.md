@@ -1,7 +1,7 @@
 # CLAUDE.md — context for "The Void" portfolio
 
 Read this first. It captures the locked decisions and where everything lives so
-you can pick up the build with full context. Last synced to code: **v18, 2026-09-14**.
+you can pick up the build with full context. Last synced to code: **v18 + contact door / loader loop, 2026-09-14**.
 
 ## What this is
 A 3D, scroll-driven portfolio for **Yarin Levin — AI-native developer**. The
@@ -76,10 +76,9 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   prototype-free so `#__proto__` can't throw).
   A hash on first load lands there without the flight and the stop reveals
   only once the loader lifts (`loaderDone`); a handled hash is tidied with
-  `window.history.replaceState`, an unrecognised one is left alone. In-page
-  anchors inside `#stops` (Contact's "Back to the start") are intercepted and
-  routed through `goTo`; a modified click (⌘/Ctrl/Shift/middle) is left to the
-  browser. With scripting off, a `<noscript><style>` in `<head>` hides the fixed
+  `window.history.replaceState`, an unrecognised one is left alone. There are
+  no in-page anchors inside `#stops` any more (the Contact card has no "Back
+  to the start"). With scripting off, a `<noscript><style>` in `<head>` hides the fixed
   3D chrome so the skim path at the end of `<body>` is readable.
 - **Fixed bar:** `src/bar.js` — name, availability dot, Work, About, Copy email.
   `initBar({ profile, onWork, onAbout, root })`; the target indices are derived
@@ -109,7 +108,15 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
 7. **Sabai** — project stop, image left.
 8. **TEEPO** — project stop, image right, Landing pages group label, **also** AeroCy.
 9. **SHADIEZ** — project stop, image left, **also** SmartCut.
-10. **Contact** — mailto at hero scale, GitHub · LinkedIn, "Back to the start", camera tilts up.
+10. **Contact** — the door (2026-09-14): the network parts around the look
+    axis (vertex-shader push, `uDoor`, R = 34), the nebula ember warms, and a
+    contact card (name, role, mail, tel, GitHub · LinkedIn, availability)
+    fades in once the door is ¾ open. No "Back to the start". Camera tilts up.
+
+**Loader:** a 6–8 s Higgsfield loop of the void
+(`public/assets/loader/void-loop.mp4`, ≤ 2.5 MB, poster webp) plays under the
+constellation canvas (opacity .5); poster only under reduced motion. Spec:
+`docs/superpowers/specs/2026-09-14-contact-door-and-loader-design.md`.
 
 Project blocks lead with **Outcome** (display size, the line the eye lands on),
 then Problem and Decision as one sentence each. A beat's optional `also: '<id>'`
@@ -168,7 +175,7 @@ export tuned `BEATS` and paste into `DEFAULT_BEATS`.
 npm install
 npm run dev      # http://localhost:5173  (DEV_TOOLS on → E/B/T/U/Y/A work)
 npm run build    # dist/
-npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash, save (happy-dom for the DOM ones), 47 passing
+npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash, save, assets (happy-dom for the DOM ones), 50 passing
 ```
 `.claude/launch.json` has a `void-dev` config for the browser preview.
 Fully offline-capable: fonts are self-hosted, no external requests. HMR can be flaky —

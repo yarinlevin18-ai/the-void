@@ -2982,6 +2982,17 @@ bar = initBar({ profile: PROFILE, onWork: () => goTo(WORK_INDEX), onAbout: () =>
   const markEl = document.querySelector('#ld-mark'), ticksEl = document.querySelector('#ld-ticks');
   const cv = document.querySelector('#ld-canvas'), overlay = document.querySelector('#overlay');
   const RM = PREFERS_REDUCED;
+  // the Higgsfield void loop under the constellation: poster paints at once, the
+  // video fades in when it can play; refused autoplay just leaves the poster.
+  const loop = document.querySelector('#ld-loop');
+  if (loop) {
+    if (RM) { try { loop.pause(); } catch {} loop.remove(); }
+    else {
+      const on = () => loop.classList.add('on');
+      if (loop.readyState >= 3) on(); else loop.addEventListener('canplay', on, { once: true });
+      loop.play?.().catch(() => {});
+    }
+  }
 
   // the wordmark: one <i> per slot, scrambling until progress reaches it
   const WORD = 'YARIN LEVIN', SCRAM = '#*+=-<>/|01[]{}';
@@ -3075,7 +3086,7 @@ bar = initBar({ profile: PROFILE, onWork: () => goTo(WORK_INDEX), onAbout: () =>
       const k = clamp((ts2 - doneAt) / 600, 0, 1);
       draw(1, RM ? 0 : k * k, ts2 / 1000);
       if (k < 1) requestAnimationFrame(out);
-      else { ld.style.display = 'none'; window.removeEventListener('resize', fit); }
+      else { ld.style.display = 'none'; window.removeEventListener('resize', fit); try { loop?.pause(); } catch {} }   // never keep decoding behind the scene
     })(ts);
   }
   requestAnimationFrame(step);
