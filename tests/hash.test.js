@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { resolveHash, HASH_KEYS } from '../src/hash.js';
 
 const beats = [
-  { name: 'Opening' }, { name: 'Hero', stop: 'hero' }, { name: 'Intro', stop: 'intro' },
-  { name: 'CV', stop: 'cv' }, { name: 'Build', stop: 'build' },
+  { name: 'Opening' }, { name: 'Hi', stop: 'hi' }, { name: 'About', stop: 'about' },
+  { name: 'Timeline', stop: 'timeline' }, { name: 'Build', stop: 'build' },
   { name: 'LLM', stop: 'project' }, { name: 'Contact', stop: 'contact' },
 ];
 const ctx = { beats, workIndex: 5, aboutIndex: 2 };

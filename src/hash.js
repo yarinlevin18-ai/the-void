@@ -9,7 +9,7 @@ const TABLE = Object.assign(Object.create(null), {
   top: () => 0,
   work: (c) => c.workIndex,
   about: (c) => c.aboutIndex,
-  cv: (c) => c.beats.findIndex((b) => b.stop === 'cv'),
+  cv: (c) => c.beats.findIndex((b) => b.stop === 'timeline'),
   contact: (c) => c.beats.findIndex((b) => b.stop === 'contact'),
 });
 
