@@ -1,20 +1,24 @@
 # CLAUDE.md — context for "The Void" portfolio
 
 Read this first. It captures the locked decisions and where everything lives so
-you can pick up the build with full context. Last synced to code: **v16, 2026-09-12**.
+you can pick up the build with full context. Last synced to code: **v18, 2026-09-14**.
 
 ## What this is
 A 3D, scroll-driven portfolio for **Yarin Levin — AI-native developer**. The
 visitor flies through a dark "void" (a 900-node data network with living energy
 links, star parallax, volumetric nebula); sections are camera "beats" along a
-flight path. The **v16 flight** (2026-09-12) puts the work first: 11 stops from Hero
-straight into Intro → CV → How I Build → five project stops (SaaS first, then
-Landing pages) → Contact, each project stop pairing the existing WebGL image
-panel with a DOM text block from `profile.js`. v16 replaced v15's seven project
-hops: seven identical 1.35s hops flattened the rhythm, so AeroCy and SmartCut
-now ride along as compact `also` rows on the TEEPO and SHADIEZ stops. The
-dossier overlay, hub, waypoint rail and free-roam are gone — see
-`docs/superpowers/specs/2026-09-08-flight-restructure-design.md` for the full
+flight path. The **v18 flight** (2026-09-14) puts the person first: Hi → About
+→ Timeline → How I Build → five project stops (SaaS first, then Landing pages)
+→ Contact, each project stop pairing the existing WebGL image panel with a DOM
+text block from `profile.js`. v18 replaced the Hero/Intro/CV stops with Hi
+(portrait panel + greeting), About (three speaking-photo panels + story) and
+Timeline (dated rows on a rail, the two old hero screens floating beside it) —
+see `docs/superpowers/specs/2026-09-14-person-chapter-design.md` for the full
+design. v16 (2026-09-12) had already replaced v15's seven project hops: seven
+identical 1.35s hops flattened the rhythm, so AeroCy and SmartCut ride along as
+compact `also` rows on the TEEPO and SHADIEZ stops. The dossier overlay, hub,
+waypoint rail and free-roam are gone — see
+`docs/superpowers/specs/2026-09-08-flight-restructure-design.md` for that
 design. Audience: hiring teams (part-time student position) + clients.
 
 **Live:** https://the-void-khaki-pi.vercel.app — Vercel project `the-void`,
@@ -59,12 +63,17 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   `<section class="stop">` per beat from `profile.js` (hidden, `inert` +
   `aria-hidden`), shows/hides on arrival/departure, and runs one reveal recipe
   per stop (≤600ms, disabled under reduced-motion). Flight keys (Space/arrows)
-  yield to a focused button or link inside a stop or the bar.
-  `src/render.js` holds the pure `(data) => HTMLElement` renderers (intro, cv,
-  build, project, contact) — no Three.js imports, node-tested.
-- **Deep links:** `#work` `#about` `#cv` `#contact` `#top` fly to that stop.
-  `src/hash.js` owns the table (`resolveHash(raw, { beats, workIndex,
-  aboutIndex })`, pure, node-tested, prototype-free so `#__proto__` can't throw).
+  yield to a focused button or link inside a stop or the bar. A beat may carry
+  a `panels[]` array (extra WebGL image meshes beyond its single `panel`, e.g.
+  About's three photos) and a `screens: true` flag (the CSS3D hero-screen
+  layer now anchors to whichever beat carries it, not to a stop named
+  `hero`). `src/render.js` holds the pure `(data) => HTMLElement` renderers
+  (hi, about, timeline, build, project, contact) — no Three.js imports,
+  node-tested.
+- **Deep links:** `#work` `#about` `#cv` `#contact` `#top` fly to that stop
+  (`#about` → About, `#cv` → Timeline). `src/hash.js` owns the table
+  (`resolveHash(raw, { beats, workIndex, aboutIndex })`, pure, node-tested,
+  prototype-free so `#__proto__` can't throw).
   A hash on first load lands there without the flight and the stop reveals
   only once the loader lifts (`loaderDone`); a handled hash is tidied with
   `window.history.replaceState`, an unrecognised one is left alone. In-page
@@ -84,11 +93,14 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
 
 ## The flight (DEFAULT_BEATS, `src/main.js`)
 0. **Opening** — wordmark decodes from particles (loader hands straight into it).
-1. **Hero** — the two live hero screens (Shadiez landing jpg + SmartCut CRM iframe;
-   static png on touch since 3D-transformed iframes blank on iOS), plus one
-   centred line (`profile.hero.line`) so the visitor knows who this is.
-2. **Intro** — 2 first-person lines (claim first, evidence second) + location/availability.
-3. **CV** — 5 rows, years · role/org · one line, from `profile.js` `cvStop`.
+1. **Hi** — portrait as a WebGL panel angled into the void (left), greeting +
+   status + two lines beside it (`profile.js` `hi`).
+2. **About** — three speaking photos as panels at different depths (right),
+   the story (command → stage → code) opposite (`profile.js` `about`).
+3. **Timeline** — dated rows on a glowing rail (`profile.js` `timeline`), the
+   two old hero screens (Shadiez landing jpg + SmartCut CRM iframe; static png
+   on touch since 3D-transformed iframes blank on iOS) floating beside it —
+   carries `screens: true`, the "Download CV" pill.
 4. **How I Build** — method (2–3 sentences), proof numbers count up once, repo
    block (LLM Gateway lead card + TEEPO/SHADIEZ compact rows).
 5. **LLM Gateway** — project stop, image left, SaaS group label. The strongest
@@ -108,7 +120,7 @@ folds a second featured project in as a compact row under the links.
 |---|---|---|
 | `src/main.js` | ~3,023 | Scene, network, nebula, flight, Director Mode, perf tiers, save/migrate |
 | `src/panels.js` | 83 | DOM stop layer: builds/shows/hides stops (inert + aria-hidden), count-up, print/copy |
-| `src/render.js` | 74 | Pure HTML renderers (intro, cv, build, project, contact), node-tested |
+| `src/render.js` | 74 | Pure HTML renderers (hi, about, timeline, build, project, contact), node-tested |
 | `src/bar.js` | 43 | Fixed top bar: name, availability, Work, About, Copy email |
 | `src/hash.js` | 28 | Deep-link resolver: fragment/anchor → stop index, prototype-free, node-tested |
 | `src/printcv.js` | 54 | Print-only CV (moved out of the old dossier.js) |
@@ -119,16 +131,20 @@ folds a second featured project in as a compact row under the links.
 | `index.html` | 390 | Shell, loader, editor panels, JSON-LD, noscript skim path |
 | `public/previews/*.webp` | | teepo · aerocy · shadiez · smartcut · llm-gateway · focus · sabai · kiaras-club (q82, 1400–1600 px wide; the panel canvas is 1024) |
 | `public/assets/hero/` | | Hero screens (SmartCut html + png, Shadiez webp) |
+| `public/assets/me/` | | portrait + 3 speaking photos (placeholders until Yarin's files land) |
 
 Deps: `three` 0.169, `meshline`, `three.quarks`, `vite` 8. No React.
 
 ### Persistence / migrations
 Path + FX config persists in **localStorage** `voidConfig`, currently **save
-version 17**. Any save below 16 has its beat array replaced wholesale with
+version 18**. Any save below 16 has its beat array replaced wholesale with
 `DEFAULT_BEATS` (the shape changed too much to patch) while the visitor's
 global FX/speed/ease settings are kept; v17 (2026-09-12) then rewrites
 `/previews/*.jpg` → `.webp` in whatever beat array survived (the JPGs are
-gone), leaving any URL pasted in Director Mode alone. The v2–v14 patch migrations were
+gone), leaving any URL pasted in Director Mode alone; v18 (2026-09-14) — Hi /
+About / Timeline replace Hero / Intro / CV, beats gain `panels[]` and
+`screens` — wholesale re-adopts `DEFAULT_BEATS` again (any save `< 18`), same
+global-settings carve-out. The v2–v14 patch migrations were
 deleted on 2026-09-12: they only ever ran on beats the v14/v15 reset was about
 to discard. Any future
 `DEFAULT_BEATS` shape change needs its own migration step + version bump,

@@ -197,6 +197,14 @@ TEEPO's "real users" and SmartCut's "dropped Wix" claims retired; SmartCut is
 "a booking CRM designed for a grooming studio". Counters 17 / 7 / 1 confirmed.
 Guard test blocks the retired phrases. Method stop untouched. Tests 47 → 48.
 
+## Phase K — Person chapter ✅ (2026-09-14)
+Spec: `docs/superpowers/specs/2026-09-14-person-chapter-design.md`. Hi (portrait
+panel + greeting), About (three speaking-photo panels at different depths +
+story), Timeline (dated rows on a rail + the two hero screens) replace Hero /
+Intro / CV. Beats gain `panels[]` and `screens`; save v18 re-adopts wholesale.
+Photos are placeholders in `public/assets/me/` until Yarin's files land.
+Open: timeline months, photo captions, real photos.
+
 ## Open work (2026-09-12) — in priority order
 1. ~~Camera authoring for stops 2–11~~ ✅ 2026-09-12 — desktop shots baked
    into `DEFAULT_BEATS`; phones get a derived portrait pose per project stop
@@ -222,6 +230,8 @@ Guard test blocks the retired phrases. Method stop untouched. Tests 47 → 48.
 9. ~~**Desktop walk-through**~~ ✅ 2026-09-13 on the dev build at 1440×900 as
    a fresh visitor (storage cleared): all 11 stops render, panels + text blocks
    correct, no console errors from shipped code, production build clean.
+10. **Person chapter holds:** real photos into `public/assets/me/`, timeline
+    months, photo captions. See Phase K.
 
 ## Risks / watch-items
 - **Save migrations** — every `DEFAULT_BEATS` change needs a version bump +
