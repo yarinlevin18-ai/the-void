@@ -2337,7 +2337,7 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
 // ---- FX control panel (toggle with B) — live-edits every effect -------------
 (() => {
   if (!fxEl || !DEV_TOOLS) return;          // preview-only build: no FX panel for visitors
-  fxEl.hidden = false;                       // dev: show it by default as before
+  fxEl.hidden = true;                        // dev: closed by default (2026-09-14) — press B to open; it was covering every dev screenshot
   const f4 = (v) => v.toFixed(4), f3 = (v) => v.toFixed(3), f2 = (v) => v.toFixed(2), f0 = (v) => String(Math.round(v));
   const secEl = document.querySelector('#fx-sec');
   const focusIdx = () => clamp(editMode ? sel : index, 0, Math.max(0, beats.length - 1));
