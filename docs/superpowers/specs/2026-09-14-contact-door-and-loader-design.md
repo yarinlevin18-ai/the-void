@@ -74,7 +74,6 @@ there once and moves both.
   <a class="card-row mail" href="mailto:…" data-copy-email>…<small>click to copy</small></a>
   <a class="card-row tel" href="tel:+972548029820">054-8029820</a>
   <div class="card-row social"><a …>GitHub</a><a …>LinkedIn</a></div>
-  <footer class="card-foot">Taking on one or two projects this quarter, …</footer>
 </article>
 ```
 
@@ -83,8 +82,8 @@ there once and moves both.
   phone, links from `profile.links`; the `tel:` href is the phone with
   spaces/dashes stripped and the leading 0 replaced by `+972`. X joins the
   social row automatically when `links.x` is uncommented.
-- `profile.contact.line` is removed (the eyebrow says it);
-  `profile.contact.availability` stays as the card footer.
+- `profile.contact` is removed entirely (the eyebrow says it; the
+  availability footer was dropped on 2026-09-14 after review).
 - **Removed**: the "Back to the start" pill, the year footer, and the
   in-page-anchor intercept in `main.js` that routed `href="#top"` clicks
   through `goTo` (the card has no in-page anchors). `#top` as a deep link is

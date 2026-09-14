@@ -1277,7 +1277,11 @@ function drawPanelCanvas(b) {
     // v16: the words sit beside the panel now, not on it, so DARK screenshots can
     // stay bright (floor .15 → .06). Pale ones (TEEPO's cream dashboard) still get
     // dimmed hard — at full brightness they blow out and hand bloom a white slab.
-    const dim = clamp(0.06 + (meanLum(im) - 0.28) * 0.95, 0.06, 0.56);
+    // 2026-09-14: dark/mid screenshots barely dimmed (.03 floor) so they read
+    // on arrival; pale ones (TEEPO, lum ≈ .9) cap at .35, which keeps them
+    // under the .75 bloom threshold project stops run (animate()) — above it
+    // bloom paints a blurred copy of the panel over itself.
+    const dim = clamp(0.03 + (meanLum(im) - 0.3) * 0.6, 0.03, 0.35);
     ctx.fillStyle = `rgba(6,14,22,${dim.toFixed(2)})`; ctx.fillRect(x0, y0, w0, h0);
   };
   if (img && img2) {                       // twin-project beat: two full-bleed halves, hairline divider
@@ -2904,8 +2908,13 @@ function animate() {
   if (bokeh && bokeh.uniforms && bokeh.uniforms.focus) {   // lock focus onto the NEAREST section
     if (editMode) _focusV.copy(controls.target);
     else {
-      const [bi] = nearestBeat(bLook), lk = bLook(beats[bi]);   // portrait poses count on phones
-      _focusV.set(lk[0], lk[1], lk[2]);   // smooth rack-focus to the closest one
+      // nearest by CAMERA pose, not look point: project looks sit 100 units out,
+      // so at TEEPO the nearest look was Sabai's and focus landed on Sabai's panel
+      const [bi] = nearestBeat(bCam), nb = beats[bi];   // portrait poses count on phones
+      // a stop with a panel focuses ON the panel (45 units out) — the look point
+      // sits 100 units out, which left every project screenshot at full blur
+      const pp = nb?.panel?.pos || nb?.panels?.[0]?.pos, lk = pp || bLook(nb);
+      _focusV.set(lk[0], lk[1], lk[2]);   // rack focus to the closest one
     }
     bokeh.uniforms.focus.value = Math.max(1, camera.position.distanceTo(_focusV));
     bokeh.uniforms.maxblur.value = curFX.dofBlur;        // per-section blur (keyframed)
@@ -2938,7 +2947,14 @@ function animate() {
   voidWarp *= 0.94; if (voidWarp < 0.001) voidWarp = 0;
   livingVoid.setWarp(voidWarp);
   if (network) network.setWarp(voidWarp);    // nodes swell + links flare on the burst
-  if (bloom) bloom.strength = curFX.bloomStrength + voidWarp * 0.5;   // gentler transition flare (restraint pass)
+  // project stops lift bloom's threshold .22 → .75: a bright screenshot (TEEPO's
+  // cream dashboard at ≈ .45 after its dim) sat above .22, so bloom painted a
+  // blurred copy of the whole panel over itself — that WAS the "blurry panel".
+  // Nodes (≈ 1.0) still glow. Loop-side so DEFAULT_BEATS / save version stay put.
+  if (bloom) {
+    bloom.threshold = !editMode && beats[index]?.stop === 'project' ? 0.75 : 0.22;
+    bloom.strength = curFX.bloomStrength + voidWarp * 0.5;   // gentler transition flare (restraint pass)
+  }
   if (bokeh) bokeh.enabled = !(editMode);   // DOF only in play; bloom stays on in all modes
   _cVel += (_cVelRaw - _cVel) * 0.12; _cVelRaw *= 0.90;   // smoothed cursor velocity drives the FX
   camera.updateMatrixWorld();

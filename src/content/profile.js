@@ -102,11 +102,6 @@ export const PROFILE = {
   // stop 04 repo block: which featured ids get the lead card and the two compact rows
   buildStop: { lead: 'llm-gateway', rows: ['teepo', 'shadiez'] },
 
-  // stop 12 "Contact"
-  contact: {
-    availability: 'Taking on one or two projects this quarter, alongside a part-time student position',   // no full stop: Doto renders it as a stray dot
-  },
-
   links: {
     email: 'yarinlevin18@gmail.com',
     phone: '054-8029820', // Yarin approved publishing (site + PDF), 2026-08-29

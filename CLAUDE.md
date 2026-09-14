@@ -50,7 +50,12 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   extruded 3D wordmark (`text3d.js`), dev-only, font load gated. No external
   requests.
 - **Panels are pure image artifacts** — full-bleed screenshot(s), hairline frame,
-  no text or CTA baked in. A DOM text block (`src/panels.js` + `src/render.js`)
+  no text or CTA baked in. They must read sharp and bright on arrival
+  (2026-09-14): the DOF pass racks focus onto the stop's panel (not the look
+  point 100 units out; nearest beat by camera pose, not look point), the
+  adaptive dim is .03–.35, and project stops lift the bloom threshold .22 → .75
+  in the render loop — otherwise bloom paints a blurred copy of any bright
+  screenshot over itself, which read as "the panels are blurry". A DOM text block (`src/panels.js` + `src/render.js`)
   sits on the opposite side and owns the words; one focal point and one CTA
   per screen. Beats with no imagery have no panel.
 - **Flight:** 13 stops (see below), section-snapping. Per-shot FOV + duration
@@ -114,8 +119,9 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
 9. **SHADIEZ** — project stop, image left, **also** SmartCut.
 10. **Contact** — the door (2026-09-14): the network parts around the look
     axis (vertex-shader push, `uDoor`, R = 34), the nebula ember warms, and a
-    contact card (name, role, mail, tel, GitHub · LinkedIn, availability)
-    fades in once the door is ¾ open. No "Back to the start". Camera tilts up.
+    contact card (name, role, mail, tel, GitHub · LinkedIn, build stamp)
+    fades in once the door is ¾ open. No "Back to the start", no availability
+    line (dropped 2026-09-14; `profile.contact` is gone). Camera tilts up.
 
 **Loader:** a 6–8 s Higgsfield loop of the void
 (`public/assets/loader/void-loop.mp4`, ≤ 2.5 MB, poster webp) plays under the

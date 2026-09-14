@@ -54,10 +54,10 @@ test('project: public repo gets a repo link, private build gets the label and no
   assert.ok(hg.includes('Private repo'));
 });
 
-test('contact renders mailto, availability and text links', () => {
+test('contact renders mailto and text links', () => {
   const h = renderContact(PROFILE);
   assert.ok(h.includes('href="mailto:' + PROFILE.links.email + '"'));
-  assert.ok(h.includes(PROFILE.contact.availability));
+  assert.ok(!h.includes('card-foot'), 'no availability footer');
   assert.ok(h.includes('>GitHub<') && h.includes('>LinkedIn<'));
   assert.equal(h.includes('>X<'), !!PROFILE.links.x);
 });
@@ -104,7 +104,7 @@ test('outcome leads the project block, above Problem and Decision', () => {
   assert.ok(!h.includes('<dt>Outcome</dt>'));
 });
 
-test('contact renders a card: name, role, mail, tel, socials, availability', () => {
+test('contact renders a card: name, role, mail, tel, socials', () => {
   const h = renderContact(PROFILE);
   assert.ok(h.includes('class="card"'));
   assert.ok(h.includes(`<h2 class="card-name">${PROFILE.name}</h2>`));
@@ -115,7 +115,6 @@ test('contact renders a card: name, role, mail, tel, socials, availability', () 
   assert.ok(h.includes(`>${PROFILE.links.phone}<`), 'the visible phone keeps its local format');
   assert.ok(h.includes('>GitHub<') && h.includes('>LinkedIn<'));
   assert.equal(h.includes('>X<'), !!PROFILE.links.x);
-  assert.ok(h.includes(PROFILE.contact.availability));
   assert.ok(!h.includes('href="#top"'), 'no in-page anchor: the door is the ending');
   assert.ok(!h.includes('class="foot"'), 'no year footer');
 });

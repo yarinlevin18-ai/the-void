@@ -576,7 +576,7 @@ html, body {
 .card .social { display: flex; justify-content: center; gap: 1.6rem; font-size: .95rem; }
 
 .card-built { padding-top: .55rem; padding-bottom: .85rem; }
-.card-foot, .card-built { font-family: var(--f-mono); font-weight: 700; font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: #68859e; line-height: 1.5; }
+.card-built { font-family: var(--f-mono); font-weight: 700; font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: #68859e; line-height: 1.5; }
 
 /* one focus language for every control in the stops (the bar has its own below) */
 .stop a:focus-visible, .stop button:focus-visible { outline: 2px solid #4fd2ff; outline-offset: 3px; border-radius: 4px; }

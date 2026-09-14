@@ -112,7 +112,6 @@ export function renderContact(p, built = null) {
       <a class="card-row mail" style="--i:1" href="mailto:${escAttr(l.email)}" data-copy-email>${esc(l.email)}<small>click to copy</small></a>
       ${tel ? `<a class="card-row tel" style="--i:2" href="${escAttr(tel)}">${esc(l.phone)}</a>` : ''}
       <div class="card-row social" style="--i:3">${social}</div>
-      <footer class="card-row card-foot" style="--i:4">${esc(p.contact.availability)}</footer>
-      ${built && built.label ? `<div class="card-row card-built" style="--i:5">Updated <time datetime="${escAttr(built.iso || '')}">${esc(built.label)}</time></div>` : ''}
+      ${built && built.label ? `<div class="card-row card-built" style="--i:4">Updated <time datetime="${escAttr(built.iso || '')}">${esc(built.label)}</time></div>` : ''}
     </article>`;
 }
