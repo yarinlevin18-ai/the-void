@@ -81,3 +81,24 @@ test('buildStop ids exist in featured and every featured preview file is on disk
   for (const r of PROFILE.buildStop.rows) assert.ok(ids.includes(r), r);
   for (const p of featured) assert.ok(existsSync(new URL(`../public${p.img}`, import.meta.url)), p.img);
 });
+
+// Claims that were retired in the 2026-09-14 wording rework. They must not
+// come back anywhere a visitor or crawler can read them.
+const RETIRED = ['ai-native builder', 'real users', 'with users', 'dropped wix', 'stopped rescheduling', 'one user', 'not a demo'];
+
+function strings(value, out = []) {
+  if (typeof value === 'string') out.push(value);
+  else if (Array.isArray(value)) value.forEach((v) => strings(v, out));
+  else if (value && typeof value === 'object') Object.values(value).forEach((v) => strings(v, out));
+  return out;
+}
+
+test('retired claims do not appear in the profile or index.html', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').toLowerCase();
+  const all = strings(PROFILE).map((s) => s.toLowerCase());
+  for (const phrase of RETIRED) {
+    const hit = all.find((s) => s.includes(phrase));
+    assert.equal(hit, undefined, `profile contains "${phrase}": ${hit}`);
+    assert.ok(!html.includes(phrase), `index.html contains "${phrase}"`);
+  }
+});
