@@ -935,6 +935,15 @@ let beats = [];
 let speedMul = 1;    // global flight-speed multiplier (scales per-shot durations)
 let smooth = 0.5;    // 0 = straight segments, 1 = fully curved (spline) path
 let tween = null;    // active section→section transition { from, to, t, dur }
+// The contact door (spec 2026-09-14): opens 1.1s easeOut once the flight into
+// Contact is 70% through, closes 0.6s easeIn on leaving. Reduced motion snaps.
+const door = { v: 0, from: 0, to: 0, t: 0, dur: 1 };
+let doorPreview = 0;   // dev B-panel slider only — never persisted
+const _doorC = new THREE.Vector3(), _doorAx = new THREE.Vector3();
+function setDoorTarget(to) {
+  if (to === door.to) return;
+  door.from = door.v; door.to = to; door.t = 0; door.dur = to ? 1.1 : 0.6;
+}
 let _breath = 0;     // 0..1 idle-sway weight — fades out during a flight, back in on arrival
 let firstFrameDone = false; // set after the first composed render; the intro loader waits on it
 let loaderDone = false;     // stops reveal only after the loader lifts — a deep-link arrival must be seen, not pre-played behind it
@@ -1047,7 +1056,6 @@ function applyGlobals() {
   livingVoid.nebMat.uniforms.uSpd.value = FX.nebSpd;
   livingVoid.nebMat.uniforms.uWarp.value = FX.nebWarp;
   livingVoid.nebMat.uniforms.uHue.value = FX.nebHue;
-  livingVoid.nebMat.uniforms.uEmber.value = FX.nebEmber;
   livingVoid.nebMat.uniforms.uGlow.value = FX.nebGlow;
   livingVoid.spots.visible = FX.glowSpots;
   transitionEase = EASINGS[txEaseName] || easeInOut;
@@ -2400,6 +2408,7 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
     ['nebwarp', () => FX.nebWarp, (v) => { FX.nebWarp = v; livingVoid.nebMat.uniforms.uWarp.value = v; }, f2],
     ['nebhue', () => FX.nebHue, (v) => { FX.nebHue = v; livingVoid.nebMat.uniforms.uHue.value = v; }, f2],
     ['nebember', () => FX.nebEmber, (v) => { FX.nebEmber = v; livingVoid.nebMat.uniforms.uEmber.value = v; }, f2],
+    ['door', () => doorPreview, (v) => { doorPreview = v; }, f2],
     ['nebglow', () => FX.nebGlow, (v) => { FX.nebGlow = v; livingVoid.nebMat.uniforms.uGlow.value = v; }, f2],
     ['vignette', () => FX.vignette, (v) => { FX.vignette = v; }, f2],
     ['grain', () => FX.grain, (v) => { FX.grain = v; }, f3],
@@ -2769,6 +2778,26 @@ function animate() {
       else if (tween || dist > 70) panels.hide();
       setBar(progress > 0.02);                       // the bar arrives once the flight leaves the wordmark
     }
+  }
+
+  {                                          // the contact door
+    const b = beats[index];
+    const atContact = !editMode && b?.stop === 'contact';
+    const flightK = tween ? tween.t / tween.dur : 1;
+    setDoorTarget(atContact && loaderDone && flightK >= 0.7 ? 1 : 0);
+    door.t += dt;
+    const k = clamp(door.t / door.dur, 0, 1);
+    door.v = PREFERS_REDUCED ? door.to : door.from + (door.to - door.from) * (door.to ? EASINGS.easeOut(k) : k * k);
+    const dv = Math.max(door.v, doorPreview);
+    if (b && (atContact || dv > 0)) {
+      const c = bCam(b), lk = usesPortrait(b) ? b.portrait.look : b.look;
+      _doorAx.set(lk[0] - c[0], lk[1] - c[1], lk[2] - c[2]).normalize();
+      _doorC.set(c[0], c[1], c[2]).addScaledVector(_doorAx, 60);
+    }
+    if (network) network.setDoor(dv, _doorC, _doorAx);
+    livingVoid.nebMat.uniforms.uEmber.value = FX.nebEmber + (0.5 - FX.nebEmber) * dv;
+    const sec = panels?.el(index);
+    if (sec && atContact) sec.classList.toggle('open', dv >= 0.75);
   }
 
   // panels: billboard to face the camera, and light up as the camera arrives
