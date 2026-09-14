@@ -92,15 +92,25 @@ export function renderProject(x, side, also = null) {
   </article>`;
 }
 
-export function renderContact(p, year = new Date().getFullYear()) {
+// tel: href — digits only, local 0 → +972. Empty in → empty out (no dead link).
+export const telHref = (s) => {
+  const d = String(s || '').replace(/\D/g, '');
+  if (!d) return '';
+  return 'tel:+' + (d.startsWith('972') ? d : d.replace(/^0/, '972'));
+};
+
+// 10 Contact — the card the door hands over. Rows carry --i for the stagger.
+export function renderContact(p) {
   const l = p.links;
   const social = [['GitHub', l.github], ['LinkedIn', l.linkedin], ['X', l.x]].filter(([, h]) => h)
     .map(([n, h]) => `<a href="${escAttr(h)}" target="_blank" rel="noopener">${n}</a>`).join('');
+  const tel = telHref(l.phone);
   return `${eyebrow('Let’s build something')}
-    <p class="contact-line">${esc(p.contact.line)}</p>
-    <a class="mail" href="mailto:${escAttr(l.email)}" data-copy-email>${esc(l.email)}<small>click to copy</small></a>
-    <div class="social">${social}</div>
-    <div class="availability">${esc(p.contact.availability)}</div>
-    <a class="pill ghost restart" href="#top">Back to the start ↑</a>
-    <footer class="foot">${esc(p.name)} · ${year}</footer>`;
+    <article class="card" aria-label="Contact card">
+      <header class="card-row card-head" style="--i:0"><h2 class="card-name">${esc(p.name)}</h2><p class="card-role">${esc(p.title)}</p></header>
+      <a class="card-row mail" style="--i:1" href="mailto:${escAttr(l.email)}" data-copy-email>${esc(l.email)}<small>click to copy</small></a>
+      ${tel ? `<a class="card-row tel" style="--i:2" href="${escAttr(tel)}">${esc(l.phone)}</a>` : ''}
+      <div class="card-row social" style="--i:3">${social}</div>
+      <footer class="card-row card-foot" style="--i:4">${esc(p.contact.availability)}</footer>
+    </article>`;
 }

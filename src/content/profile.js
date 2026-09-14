@@ -104,7 +104,6 @@ export const PROFILE = {
 
   // stop 12 "Contact"
   contact: {
-    line: 'Building something? Write to me.',
     availability: 'Taking on one or two projects this quarter, alongside a part-time student position',   // no full stop: Doto renders it as a stray dot
   },
 

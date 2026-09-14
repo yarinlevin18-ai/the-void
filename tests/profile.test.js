@@ -49,7 +49,8 @@ test('repo links only on public repos; private builds flagged', () => {
 });
 
 test('contact block', () => {
-  assert.ok(PROFILE.contact.line);
+  assert.equal(PROFILE.contact.line, undefined, 'the card eyebrow says it; contact.line is gone');
+  assert.ok(PROFILE.title, 'the card role');
   assert.ok(PROFILE.contact.availability);
   if (PROFILE.links.x) assert.match(PROFILE.links.x, /^https:\/\//);
 });

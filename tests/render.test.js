@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { esc, renderHi, renderAbout, renderTimeline, renderBuild, renderProject, renderContact } from '../src/render.js';
+import { esc, renderHi, renderAbout, renderTimeline, renderBuild, renderProject, renderContact, telHref } from '../src/render.js';
 import { PROFILE } from '../src/content/profile.js';
 
 test('esc escapes html', () => {
@@ -74,7 +74,6 @@ test('renderers escape hostile text and attributes', () => {
 test('renderers expose the DOM hooks panels.js binds to', () => {
   assert.ok(renderTimeline(PROFILE).includes('data-print-cv'));
   assert.ok(renderContact(PROFILE).includes('data-copy-email'));
-  assert.ok(renderContact(PROFILE, 2031).includes('2031'));
 });
 
 test('build lead card links GitHub when the lead repo is public, and rows must exist', () => {
@@ -105,6 +104,24 @@ test('outcome leads the project block, above Problem and Decision', () => {
   assert.ok(!h.includes('<dt>Outcome</dt>'));
 });
 
-test('contact offers a way back to the start', () => {
-  assert.ok(renderContact(PROFILE).includes('href="#top"'));
+test('contact renders a card: name, role, mail, tel, socials, availability', () => {
+  const h = renderContact(PROFILE);
+  assert.ok(h.includes('class="card"'));
+  assert.ok(h.includes(`<h2 class="card-name">${PROFILE.name}</h2>`));
+  assert.ok(h.includes(`<p class="card-role">${PROFILE.title}</p>`));
+  assert.ok(h.includes(`href="mailto:${PROFILE.links.email}"`));
+  assert.ok(h.includes('data-copy-email'));
+  assert.ok(h.includes('href="tel:+972548029820"'), 'tel href drops the leading 0 and dashes');
+  assert.ok(h.includes(`>${PROFILE.links.phone}<`), 'the visible phone keeps its local format');
+  assert.ok(h.includes('>GitHub<') && h.includes('>LinkedIn<'));
+  assert.equal(h.includes('>X<'), !!PROFILE.links.x);
+  assert.ok(h.includes(PROFILE.contact.availability));
+  assert.ok(!h.includes('href="#top"'), 'no in-page anchor: the door is the ending');
+  assert.ok(!h.includes('class="foot"'), 'no year footer');
+});
+
+test('telHref normalises an Israeli local number', () => {
+  assert.equal(telHref('054-8029820'), 'tel:+972548029820');
+  assert.equal(telHref('+972 54 802 9820'), 'tel:+972548029820');
+  assert.equal(telHref(''), '');
 });
