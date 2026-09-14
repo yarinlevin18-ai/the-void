@@ -2906,8 +2906,8 @@ const hashCtx = () => ({ beats, workIndex: WORK_INDEX, aboutIndex: ABOUT_INDEX }
 function hashIndex() { return resolveHash(location.hash, hashCtx()); }
 // Explicitly window.history: a bare `history` here silently resolved to the
 // Director Mode undo array above for the whole of v16, so the URL never tidied.
-// Best-effort either way — a lingering hash is harmless, and the in-page links
-// below route through goTo rather than depending on a hashchange.
+// Best-effort either way — a lingering hash is harmless, and the hashchange
+// listener below routes through goTo.
 function clearHash() {
   try { window.history.replaceState(null, '', location.pathname + location.search); }
   catch (e) { console.warn('[hash] could not tidy the URL', e); }
@@ -2921,14 +2921,6 @@ try {
   if (i > 0 && !editMode) { index = i; progress = i / Math.max(1, lastIdx()); }
   if (i >= 0) clearHash();
 } catch (e) { console.warn('[hash] ignored', e); }
-// in-page anchors (Contact's "Back to the start") fly instead of jumping, and
-// work even where clearHash can't run — no dependence on a hashchange firing.
-// A modified click (new tab / window) is the visitor's call: leave it to the browser.
-document.querySelector('#stops')?.addEventListener('click', (e) => {
-  if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.defaultPrevented) return;
-  const a = e.target.closest?.('a[href^="#"]'); if (!a) return;
-  if (flyToStop(resolveHash(a.getAttribute('href'), hashCtx()))) { e.preventDefault(); clearHash(); }
-});
 bar = initBar({ profile: PROFILE, onWork: () => goTo(WORK_INDEX), onAbout: () => goTo(ABOUT_INDEX), root: document.querySelector('#bar') });
 
 // ---- Intro loader: the void wires itself up, then warps into the flight -----

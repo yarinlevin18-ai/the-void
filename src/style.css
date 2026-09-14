@@ -496,11 +496,11 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
 .stop.in { opacity: 1; visibility: visible; pointer-events: none; transition: opacity .4s ease; }
 .stop.in > * { pointer-events: auto; }
 .stop a { color: #7fe0ff; text-decoration: none; }
-.eyebrow, .stack, .context, .cv-years, .group-label, .availability, .foot, .proof-item span, .repo .links, .mail small {
+.eyebrow, .stack, .context, .cv-years, .group-label, .proof-item span, .repo .links, .mail small {
   font-family: var(--f-mono); font-weight: 700; font-size: 0.75rem; letter-spacing: 0.14em; text-transform: uppercase; color: #4fd2ff;
 }
 .eyebrow { margin-bottom: 1rem; }
-.stack, .context, .availability, .foot { color: #7fa8c8; }
+.stack, .context { color: #7fa8c8; }
 .pill { display: inline-flex; align-items: center; gap: .5rem; padding: .55rem 1rem; border-radius: 999px; border: 1px solid rgba(79,210,255,.55); background: rgba(79,210,255,.08); color: #eaf4ff; font: inherit; font-size: .8rem; cursor: pointer; }
 .pill:hover { background: rgba(79,210,255,.18); border-color: #4fd2ff; }
 .pill.ghost { background: transparent; border-color: rgba(159,216,255,.25); color: #9fc2e0; }
@@ -577,17 +577,28 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
   .stop-project[data-side="right"] .project { margin-right: auto; margin-left: 0; }
 }
 
-/* 12 Contact — email scales in, hero scale */
-.contact-line { font-family: var(--f-display); font-weight: 500; font-stretch: 90%; font-size: clamp(1.4rem, 3.6vw, 2.6rem); color: #eaf4ff; margin: 0 0 .6rem; }
-.mail { display: block; font-family: var(--f-display); font-weight: 800; font-stretch: 78%; font-size: clamp(1.6rem, 6.4vw, 5.2rem); line-height: 1; color: #eaf4ff; overflow-wrap: anywhere; margin: .4rem 0 1.4rem;
-  opacity: 0; transform: scale(.96); transition: opacity .5s ease, transform .5s cubic-bezier(.22,1,.36,1); }
-.stop.in .mail { opacity: 1; transform: none; }
-.mail:hover { color: #4fd2ff; }
-.mail small { display: block; margin-top: .6rem; }
-.social { display: flex; gap: 1.4rem; font-size: .9rem; }
-.availability { margin-top: 1rem; }
-.restart { margin-top: 1.6rem; align-self: flex-start; }
-.foot { margin-top: 2rem; }
+/* 10 Contact — the door hands over a card. `.open` is set by main.js once the
+   door tween passes 0.75; the rows then rise with a 60ms stagger. */
+.stop-contact { justify-content: safe center; align-items: center; text-align: center; }
+.card {
+  width: 100%; max-width: 30rem; border: 1px solid rgba(79,210,255,.28); border-radius: 10px;
+  background: rgba(6,20,28,.55); color: #eaf4ff; overflow: hidden;
+  opacity: 0; transform: scale(.96); transition: opacity .5s ease, transform .5s cubic-bezier(.22,1,.36,1);
+}
+@media (hover: hover) and (pointer: fine) { .card { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); } }
+.stop-contact.in.open .card { opacity: 1; transform: none; }
+.card-row { display: block; padding: 1rem 1.4rem; border-top: 1px solid rgba(79,210,255,.16); opacity: 0; transform: translateY(8px);
+  transition: opacity .4s ease, transform .4s cubic-bezier(.22,1,.36,1); transition-delay: calc(var(--i) * 60ms + 120ms); }
+.stop-contact.in.open .card-row { opacity: 1; transform: none; }
+.card-head { border-top: 0; padding-top: 1.4rem; }
+.card-name { font-family: var(--f-display); font-weight: 800; font-stretch: 78%; font-size: clamp(1.6rem, 4.4vw, 2.4rem); line-height: 1; letter-spacing: -0.02em; margin: 0 0 .35rem; color: #eaf4ff; }
+.card-role { margin: 0; font-family: var(--f-mono); font-weight: 700; font-size: .75rem; letter-spacing: .14em; text-transform: uppercase; color: #4fd2ff; }
+.card .mail { font-family: var(--f-display); font-weight: 700; font-stretch: 84%; font-size: clamp(1.25rem, 3.2vw, 1.9rem); line-height: 1.1; color: #eaf4ff; overflow-wrap: anywhere; }
+.card .mail:hover { color: #4fd2ff; }
+.card .mail small { display: block; margin-top: .45rem; font-family: var(--f-mono); font-weight: 700; font-size: .75rem; letter-spacing: .14em; text-transform: uppercase; color: #68859e; }
+.card .tel { font-family: var(--f-body); font-size: 1rem; color: #eaf4ff; }
+.card .social { display: flex; justify-content: center; gap: 1.6rem; font-size: .95rem; }
+.card-foot { font-family: var(--f-mono); font-weight: 700; font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: #68859e; line-height: 1.5; }
 
 /* one focus language for every control in the stops (the bar has its own below) */
 .stop a:focus-visible, .stop button:focus-visible { outline: 2px solid #4fd2ff; outline-offset: 3px; border-radius: 4px; }
