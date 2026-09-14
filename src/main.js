@@ -12,7 +12,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { createText3D, defaultText } from './text3d.js';
-import { initMagneticCursor } from './cursor.js';
+import { initCursorTrail } from './cursor.js';
 import { PROFILE } from './content/profile.js';
 import { initPanels } from './panels.js';
 import { initBar } from './bar.js';
@@ -47,7 +47,7 @@ const FX = {
   lightning: false, glowSpots: false,                                          // OFF by default (restraint pass) — the network is the one busy layer
   lightInt: 1, lightReach: 280, lightRate: 3, glowBright: 1, glowFlick: 1, cursorDrive: 0.6,   // lightning + glow + cursor-reactivity controls
   waterStr: 0.18, waterRad: 0.018, waterAtt: 0.992, waterDisp: 0.22, waterSheen: 1.0,         // water swipe (APPROVED tuning — see water.md)
-  openFit: 0.3, openSize: 1.05, openGlow: 0.36, openForm: 2.6, openShatterR: 5, openPush: 1.7, openSpring: 0.028, openColor: '#9fd8ff',   // Frame 1 opening particles (glow 0.36 — additive overlap + bloom saturate fast; 0.55 still fused the letterforms)
+  openFit: 0.3, openSize: 1.05, openGlow: 0.36, openForm: 1.2, openShatterR: 5, openPush: 1.7, openSpring: 0.028, openColor: '#9fd8ff',   // Frame 1 opening particles (glow 0.36 — additive overlap + bloom saturate fast; 0.55 still fused the letterforms)
 };
 const fxEl = document.querySelector('#fxpanel');
 // FX keyframes: these params live PER BEAT (beat.fx) and are interpolated across
@@ -104,7 +104,6 @@ let _lastBeatIdx = 0, voidWarp = 0;                // warp burst on chapter chan
 let _flash = 0, _nextFlash = 2.5;                  // nebula lightning strikes
 let _cVel = 0, _cVelRaw = 0, _flickCD = 0, _pPX = null, _pPY = null;   // smoothed cursor velocity
 const _cN = new THREE.Vector2(9, 9), _cWorld = new THREE.Vector3();    // pointer NDC + world-ray scratch
-const _ray = new THREE.Raycaster();                                   // cursor → section hit-test (liquid cursor)
 const _pc = new THREE.Vector3();                                      // panel-corner projection (water rect)
 const _wUV = new THREE.Vector2(-9, -9);                               // pointer in 0..1 uv (water sim drop)
 const PREFERS_REDUCED = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -452,7 +451,10 @@ const heroCluster = (() => {
 const openingFX = (() => {
   const group = new THREE.Group(); group.visible = false; scene.add(group);
   const GLYPH = 0.17;                                  // glyph px → local (rebuild-fixed; live params read from FX)
-  let built = false, N = 0, posA, startA, targ, vel, geo, mat, pts;
+  let built = false, N = 0, posA, startA, targ, vel, geo, mat, pts, extX = 1;
+  let matchRect = null, fitScale = null;   // the loader hands us its wordmark's screen rect: the particle name sits exactly there, at that size
+  const basePos = new THREE.Vector3(), matchOff = new THREE.Vector3(); let growT0 = -1;   // after the loader lifts the name grows from the loader size into the hero size (GROW s)
+  const GROW = 1.2;
   function buildText() {
     try {
       const c = document.createElement('canvas'), W = 1100, H = 320; c.width = W; c.height = H;
@@ -479,6 +481,7 @@ const openingFX = (() => {
         startA[i * 3] = Math.cos(a) * r; startA[i * 3 + 1] = (Math.random() - 0.5) * 260; startA[i * 3 + 2] = -160 - Math.random() * 260;
         posA[i * 3] = startA[i * 3]; posA[i * 3 + 1] = startA[i * 3 + 1]; posA[i * 3 + 2] = startA[i * 3 + 2];
       }
+      let x0 = Infinity, x1 = -Infinity; for (let i = 0; i < N; i++) { x0 = Math.min(x0, targ[i * 3]); x1 = Math.max(x1, targ[i * 3]); } extX = Math.max(1, x1 - x0);
       geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(posA, 3));
       mat = new THREE.PointsMaterial({ size: FX.openSize, color: new THREE.Color(FX.openColor), transparent: true, opacity: FX.openGlow, blending: THREE.AdditiveBlending, depthWrite: false });
       pts = new THREE.Points(geo, mat); pts.frustumCulled = false; group.add(pts);
@@ -496,6 +499,29 @@ const openingFX = (() => {
     rt.copy(ff).cross(uu).normalize(); uu.copy(rt).cross(ff).normalize();
     zc.copy(rt).cross(uu); basis.makeBasis(rt, uu, zc); group.quaternion.setFromRotationMatrix(basis);
     group.position.copy(C).addScaledVector(ff, dist);
+    basePos.copy(group.position); matchOff.set(0, 0, 0);
+    applyMatch(dist);
+  }
+  // Place and size the particle name over the loader wordmark's rect, in the
+  // Opening beat's own frame (not the live camera: mouse parallax and breath
+  // would jitter it). fitScale then replaces FX.openFit for the whole Opening,
+  // so the DOM mark crossfades into particles that are already in its place and
+  // the name rides the flight out from there.
+  function applyMatch(dist) {
+    if (!matchRect || !built) return;
+    const b = beats[0]; if (!b) return;
+    const W = window.innerWidth, H = window.innerHeight;
+    const fov = fitFov(b.fov ?? DEF_FOV);
+    const halfH = Math.tan(fov * Math.PI / 360) * dist, halfW = halfH * (W / H);
+    const nx = ((matchRect.left + matchRect.width / 2) / W) * 2 - 1, ny = 1 - ((matchRect.top + matchRect.height / 2) / H) * 2;
+    matchOff.set(0, 0, 0).addScaledVector(rt, nx * halfW).addScaledVector(uu, ny * halfH);
+    group.position.copy(basePos).add(matchOff);
+    fitScale = (matchRect.width * 2 * halfW) / (W * extX);
+  }
+  function matchTo(rect) {
+    if (!rect || !rect.width) return;
+    matchRect = { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+    if (phase !== 'off') { place(); }             // already placed → re-place with the match applied
   }
   const overlaySub = document.querySelector('#overlay .sub');
   let phase = 'off', t0 = 0, exitT0 = 0;
@@ -513,8 +539,15 @@ const openingFX = (() => {
     const bf = beats[0]?.fov ?? DEF_FOV;
     const kFov = Math.min(1, Math.tan(bf * Math.PI / 360) / Math.max(1e-3, Math.tan(camera.fov * Math.PI / 360)));
     const glow = FX.openGlow ?? 0.7;   // size alone restores desktop density; scaling glow too dims it by the cube
-    if (mat) { mat.size = (FX.openSize || 1.1) * kFov; mat.color.set(FX.openColor || '#9fd8ff'); mat.opacity = glow; }   // live FX
-    group.scale.setScalar(FX.openFit || 0.3);
+    // once the loader has lifted, ease from the loader-matched size/place into the hero size at the look point
+    if (fitScale !== null && loaderDone && growT0 < 0) growT0 = t;
+    const gk = growT0 < 0 ? 0 : ease(Math.min(1, (t - growT0) / GROW));
+    const hero = FX.openFit || 0.3;
+    const F = fitScale === null ? hero : fitScale + (hero - fitScale) * gk;
+    if (fitScale !== null && phase !== 'off') group.position.copy(basePos).addScaledVector(matchOff, 1 - gk);
+    const kSize = kFov * Math.min(1.5, F / (FX.openFit || 0.3));   // density also follows the matched scale
+    if (mat) { mat.size = (FX.openSize || 1.1) * kSize; mat.color.set(FX.openColor || '#9fd8ff'); mat.opacity = glow; }   // live FX
+    group.scale.setScalar(F);
     if (phase === 'off') return;
     const RM = PREFERS_REDUCED;
     if (phase === 'form') {
@@ -532,7 +565,6 @@ const openingFX = (() => {
     } else {                                            // idle: spring home + cursor shatter
       const dist = camera.position.distanceTo(group.position);
       const halfH = Math.tan((camera.fov * Math.PI / 180) / 2) * dist, halfW = halfH * camera.aspect;
-      const F = FX.openFit || 0.3;
       const mwx = RM ? 1e6 : (_cN.x * halfW) / F, mwy = RM ? 1e6 : (_cN.y * halfH) / F;
       const R = FX.openShatterR || 5, R2 = R * R, push = FX.openPush ?? 1.7, spring = FX.openSpring || 0.028, damp = 0.9;
       for (let i = 0; i < N; i++) { const ix = i * 3;
@@ -544,7 +576,10 @@ const openingFX = (() => {
     }
     if (geo) geo.attributes.position.needsUpdate = true;
   }
-  return { update };
+  // The loader holds at 99% until the name has formed, so the hand-off is a
+  // crossfade between two identical marks, never a half-built cloud.
+  const formed = () => !built || phase === 'idle' || phase === 'exit' || editMode || index !== 0;
+  return { update, matchTo, formed };
 })();
 
 // ---- Placeable extruded 3D text (the site's one typeface) -------------------
@@ -2816,11 +2851,6 @@ function animate() {
     }
   }
   fxMaybeSync();                              // FX panel mirrors the focused section's keyframe
-  if (!editMode) {              // liquid cursor only while hovering a lit section panel
-    _ray.setFromCamera(_cN, camera);
-    const hit = _ray.intersectObjects(panelMeshes.filter(Boolean), false);
-    document.body.classList.toggle('cursor-liquid', hit.length > 0 && hit[0].object.material.opacity > 0.4);
-  } else { document.body.classList.remove('cursor-liquid'); }
 
   hudBeat.textContent = editMode ? 'Director mode' : (beats[index]?.name ?? '');
   hudProgress.textContent = (editMode ? (sel + 1) : (index + 1)) + ' / ' + beats.length;
@@ -2934,7 +2964,7 @@ function animate() {
 // (panels, warp states) otherwise hit exactly when the first flight starts.
 try { renderer.compile(scene, camera); } catch (e) { console.warn('[precompile]', e); }
 animate();
-initMagneticCursor();
+initCursorTrail();   // native pointer + a short cyan light tail (skipped on coarse pointers / reduced motion)
 // ---- The v15 DOM layer: one content block per stop + the fixed bar ----------
 mountPrintCV(PROFILE);
 // a bad saved beat (unknown stop/id from an older config) must never blank the site
@@ -3058,19 +3088,20 @@ bar = initBar({ profile: PROFILE, onWork: () => goTo(WORK_INDEX), onAbout: () =>
     }
   }
 
-  const dur = 1300; let t0 = null, scramT = 0;   // v16: 2.0s → 1.3s minimum; still gated on firstFrameDone
+  const dur = 1300; let t0 = null, scramT = 0, matched = false;   // v16: 2.0s → 1.3s minimum; still gated on firstFrameDone
   const ease = (x) => 1 - Math.pow(1 - x, 3);
   function step(ts) {
     if (t0 === null) t0 = ts;
     // hold at 99 until the scene has actually rendered a frame — the reveal
     // must never cross-fade into a black canvas on a slow device
     const raw = clamp((ts - t0) / dur, 0, 1);
-    const p = ease(Math.min(raw, firstFrameDone ? 1 : 0.99));
+    const p = ease(Math.min(raw, (firstFrameDone && openingFX.formed()) ? 1 : 0.99));   // the scene has rendered AND the particle name has formed
     if (pctEl) pctEl.textContent = Math.round(p * 100);
     for (let i = 0; i < ticks.length; i++) ticks[i].classList.toggle('on', i / ticks.length < p);
     if (labEl) { let s = STEPS[0][1]; for (const [at, txt] of STEPS) if (p >= at) s = txt; if (labEl.textContent !== s) labEl.textContent = s; }
     if (loop && p >= 0.62 && loop.classList.contains('on')) loop.classList.remove('on');   // the loop dissolves into the constellation before the warp, so the hand-off is loop → lattice → void, not a cut
     const reach = p * 1.12 * cells.length;                  // decode runs slightly ahead of the meter
+    if (!matched && p >= 0.92 && markEl) { matched = true; openingFX.matchTo(markEl.getBoundingClientRect()); }   // decoded by now: hand the wordmark's rect to the particle name
     const cyc = ts - scramT > 55; if (cyc) scramT = ts;
     if (!RM) for (let i = 0; i < cells.length; i++) {
       const c = cells[i]; if (c.fixed) continue;
@@ -3078,7 +3109,7 @@ bar = initBar({ profile: PROFILE, onWork: () => goTo(WORK_INDEX), onAbout: () =>
       else if (cyc) c.el.textContent = SCRAM[(Math.random() * SCRAM.length) | 0];
     }
     draw(p, 0, ts / 1000);
-    if (raw < 1 || !firstFrameDone) { requestAnimationFrame(step); return; }
+    if (raw < 1 || !firstFrameDone || !openingFX.formed()) { requestAnimationFrame(step); return; }
     // ---- exit: the lattice warps past the viewer, the panel falls away -------
     ld.classList.add('done'); loaderDone = true;
     if (overlay) overlay.classList.add('revealed');

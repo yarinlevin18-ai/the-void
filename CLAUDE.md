@@ -133,7 +133,7 @@ folds a second featured project in as a compact row under the links.
 | `src/printcv.js` | 54 | Print-only CV (moved out of the old dossier.js) |
 | `src/content/profile.js` | 269 | **Single source of truth** for bio, CV, intro/method/proof, 7 featured + shipped/labs projects, links, status |
 | `src/text3d.js` | 193 | Extruded 3D text (Source Code Pro, dev-only) |
-| `src/cursor.js` | 57 | Magnetic cursor |
+| `src/cursor.js` | 70 | Cursor light trail (native pointer, 2D canvas comet tail; off on touch / reduced motion) |
 | `src/style.css` | 613 | All styling incl. @media phone layout + print CV |
 | `index.html` | 390 | Shell, loader, editor panels, JSON-LD, noscript skim path |
 | `public/previews/*.webp` | | teepo · aerocy · shadiez · smartcut · llm-gateway · focus · sabai · kiaras-club (q82, 1400–1600 px wide; the panel canvas is 1024) |

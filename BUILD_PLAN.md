@@ -219,6 +219,16 @@ Spec: `docs/superpowers/specs/2026-09-14-contact-door-and-loader-design.md`.
   ember 0.06 → 0.5, `open` class on the section at 0.75. Dev slider `door`.
 - Loader: Higgsfield (Seedance 2.5) void loop under the constellation canvas
   (opacity .5), poster-first, reduced motion = poster only.
+- Opening polish (same day): the typed whisper line is gone; the particle
+  wordmark's point size scales with the portrait FOV ratio (it fused into a
+  bar on phones); the loader hands its wordmark's screen rect to the particle
+  name (`openingFX.matchTo`) and holds at 99 % until the name has formed, so
+  the DOM mark crossfades into particles already in its place and the name
+  rides the flight out; the loop dissolves into the constellation before the
+  exit warp. `openForm` default 2.6 → 1.2 s.
+- Cursor: the magnetic dot/ring is gone; the native pointer is back with a
+  short cyan light tail (`src/cursor.js`, 2D canvas at z-index 2, off on
+  coarse pointers and reduced motion). The liquid-cursor raycast went with it.
 - Tests 50 passing; save version unchanged (18).
 
 ## Open work (2026-09-12) — in priority order

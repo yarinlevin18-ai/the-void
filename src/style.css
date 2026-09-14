@@ -289,26 +289,8 @@ html, body {
   transform: translateX(-50%); pointer-events: none;
 }
 
-/* ---- Magnetic custom cursor ---- */
-body.has-custom-cursor,
-body.has-custom-cursor a,
-body.has-custom-cursor button,
-body.has-custom-cursor input,
-body.has-custom-cursor textarea,
-body.has-custom-cursor [data-magnetic] { cursor: none; }
-.cursor-dot, .cursor-ring {
-  position: fixed; top: 0; left: 0; z-index: 9999; pointer-events: none;
-  border-radius: 50%; will-change: transform;
-}
-.cursor-dot { width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; background: #4fd2ff; box-shadow: 0 0 8px rgba(79, 210, 255, 0.8); }
-.cursor-ring {
-  width: 38px; height: 38px; margin: -19px 0 0 -19px;
-  border: 1px solid rgba(79, 210, 255, 0.55);
-  transition: width .22s ease, height .22s ease, margin .22s ease, background .22s ease, border-color .22s ease;
-}
-.cursor-ring.cursor-grow { width: 60px; height: 60px; margin: -30px 0 0 -30px; background: rgba(79, 210, 255, 0.08); border-color: rgba(79, 210, 255, 0.85); }
-.cursor-ring.cursor-press { width: 30px; height: 30px; margin: -15px 0 0 -15px; }
-[data-magnetic] { transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1); }
+/* ---- Cursor light trail (src/cursor.js) — under the stops, over the void ---- */
+.cursor-trail { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
 
 /* ---- FX control panel (B) ---- */
 #fxpanel {
@@ -373,6 +355,7 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
               filter .8s cubic-bezier(0.5, 0, 0.75, 0);
 }
 #loader.done { opacity: 0; transform: scale(1.09); filter: blur(7px); pointer-events: none; }
+#loader.done .ld-mark { opacity: 0; transition: opacity .22s ease; }   /* the particle name is already in its place — drop the DOM mark before the panel scales */
 #ld-loop { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .9s ease; }   /* the Higgsfield void loop: poster first, fades in on canplay */
 #ld-loop.on { opacity: 1; }
 #ld-canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .5; }   /* the constellation wires up over the loop */
