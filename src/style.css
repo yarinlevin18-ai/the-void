@@ -373,7 +373,7 @@ body.has-custom-cursor [data-magnetic] { cursor: none; }
               filter .8s cubic-bezier(0.5, 0, 0.75, 0);
 }
 #loader.done { opacity: 0; transform: scale(1.09); filter: blur(7px); pointer-events: none; }
-#ld-loop { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .4s ease; }   /* the Higgsfield void loop: poster first, fades in on canplay */
+#ld-loop { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .9s ease; }   /* the Higgsfield void loop: poster first, fades in on canplay */
 #ld-loop.on { opacity: 1; }
 #ld-canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .5; }   /* the constellation wires up over the loop */
 #loader .ld-core { position: relative; display: flex; flex-direction: column; align-items: center; gap: 1.7rem; padding: 0 5vw; }

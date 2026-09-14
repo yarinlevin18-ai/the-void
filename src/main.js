@@ -3069,6 +3069,7 @@ bar = initBar({ profile: PROFILE, onWork: () => goTo(WORK_INDEX), onAbout: () =>
     if (pctEl) pctEl.textContent = Math.round(p * 100);
     for (let i = 0; i < ticks.length; i++) ticks[i].classList.toggle('on', i / ticks.length < p);
     if (labEl) { let s = STEPS[0][1]; for (const [at, txt] of STEPS) if (p >= at) s = txt; if (labEl.textContent !== s) labEl.textContent = s; }
+    if (loop && p >= 0.62 && loop.classList.contains('on')) loop.classList.remove('on');   // the loop dissolves into the constellation before the warp, so the hand-off is loop → lattice → void, not a cut
     const reach = p * 1.12 * cells.length;                  // decode runs slightly ahead of the meter
     const cyc = ts - scramT > 55; if (cyc) scramT = ts;
     if (!RM) for (let i = 0; i < cells.length; i++) {
