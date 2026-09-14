@@ -881,14 +881,20 @@ const PP = (cx, cy, cz, side) => {          // portrait pose for the panel P() p
 // desktop camera + side, so saved paths (which predate the field) and Director
 // Mode edits stay in step. Re-run after load() and in commit().
 function applyPortraitPoses() {
-  for (const b of beats) if (b.stop === 'project' && b.cam && b.side) b.portrait = PP(b.cam[0], b.cam[1], b.cam[2], b.side);
+  for (const b of beats) if ((b.stop === 'project' || b.stop === 'hi' || b.stop === 'about') && b.cam && b.side) b.portrait = PP(b.cam[0], b.cam[1], b.cam[2], b.side);
 }
 const VOID_FX = { panelDimFloor: 0, panelLightRange: 26 };   // shared by every stop that must not show a neighbouring panel
 const DEFAULT_BEATS = [
   /* 0 */ { name: 'Opening', cam: [-56, 2, 120], look: [-11, 59, 42], up: [0, 1, 0], fov: 25, dur: 1.4, desc: '', img: '', link: '', fx: { bloomStrength: 0.65 }, panel: null },
-  /* 1 */ { name: 'Hero', stop: 'hero', cam: [1, 53, 33], look: [192, -55, -56], up: [0, 1, 0], fov: 41, dur: 2.1, desc: '', img: '', link: '', panel: null },
-  /* 2 */ { name: 'Intro', stop: 'intro', ease: 'easeOut', cam: [6, 12, 5], look: [-30, 26, -55], up: [0, 1, 0], fov: 55, dur: 2.4, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null },
-  /* 3 */ { name: 'CV', stop: 'cv', cam: [-8, 8, -21], look: [26, 20, -71], up: [0, 1, 0], fov: 60, dur: 1.6, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null },
+  // v18 (2026-09-14): person chapter — Hi / About / Timeline replace Hero / Intro / CV.
+  /* 1 */ { name: 'Hi', stop: 'hi', side: 'left', cam: [1, 53, 33], look: [192, -55, -56], up: [0, 1, 0], fov: 41, dur: 2.1, desc: '', img: '/assets/me/portrait.webp', link: '', fx: { ...VOID_FX }, panel: (() => { const p = P(1, 53, 33, 'left'); p.size = [20, 26.7]; return p; })() },
+  /* 2 */ { name: 'About', stop: 'about', side: 'right', ease: 'easeOut', cam: [6, 12, 5], look: [-30, 26, -55], up: [0, 1, 0], fov: 55, dur: 2.4, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null,
+           panels: [
+             { img: '/assets/me/speaking-1.webp', ...P(6, 12, 5, 'right') },
+             { img: '/assets/me/speaking-2.webp', ...mkPanel(6 + PANEL_DX - 9, 12 + PANEL_DY - 7, 5 - PANEL_DZ + 12, 17, 10.6, [0, -12, 0]) },
+             { img: '/assets/me/speaking-3.webp', ...mkPanel(6 + PANEL_DX + 8, 12 + PANEL_DY - 9, 5 - PANEL_DZ + 20, 12.6, 7.9, [0, -18, 0]) },
+           ] },
+  /* 3 */ { name: 'Timeline', stop: 'timeline', screens: true, cam: [-8, 8, -21], look: [26, 20, -71], up: [0, 1, 0], fov: 60, dur: 1.6, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null },
   /* 4 */ { name: 'How I Build', stop: 'build', cam: [7, 6, -45], look: [-14, 18, -95], up: [0, 1, 0], fov: 58, dur: 1.6, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null },
   // v16 (2026-09-12): five project stops, SaaS first. AeroCy and SmartCut ride
   // along as `also` rows on TEEPO and SHADIEZ instead of owning a hop each.
@@ -904,7 +910,7 @@ const DEFAULT_BEATS = [
 let WORK_INDEX = 0, ABOUT_INDEX = 0;
 function computeStopIndices() {
   WORK_INDEX = Math.max(0, beats.findIndex((b) => b.stop === 'project'));
-  ABOUT_INDEX = Math.max(0, beats.findIndex((b) => b.stop === 'intro'));
+  ABOUT_INDEX = Math.max(0, beats.findIndex((b) => b.stop === 'about'));
 }
 
 // ---- State -----------------------------------------------------------------
@@ -981,7 +987,7 @@ function load() {
           // The v2–v14 patch migrations were deleted on 2026-09-12: v14 already
           // re-adopted wholesale, so nothing they touched could reach v15, and
           // running them on old shapes could throw before this reset.
-          // Future shape changes: add `if (!(d.version >= 18)) { ... }` blocks
+          // Future shape changes: add `if (!(d.version >= 19)) { ... }` blocks
           // below this one, in ascending order.
           beats = structuredClone(DEFAULT_BEATS);
           migrated = true;
@@ -992,6 +998,13 @@ function load() {
           // Only the bundled paths are rewritten — a URL pasted in Director Mode is kept.
           const PREVIEW_JPG = /^\/previews\/([a-z-]+)\.jpg$/;
           for (const b of beats) for (const k of ['img', 'img2']) if (PREVIEW_JPG.test(b[k])) b[k] = b[k].replace(/\.jpg$/, '.webp');
+          migrated = true;
+        }
+        if (!(d.version >= 18)) {
+          // v18 (2026-09-14): person chapter — Hi / About / Timeline replace Hero /
+          // Intro / CV, beats gain `panels[]` and `screens`. Wholesale re-adopt;
+          // global FX / speed / ease stay.
+          beats = structuredClone(DEFAULT_BEATS);
           migrated = true;
         }
         beats.forEach(backfillBeat); // bring older saves up to the current schema
@@ -1005,7 +1018,7 @@ function load() {
 }
 function save() {
   const g = {}; for (const k of GLOBAL_KEYS) g[k] = FX[k]; g.ease = txEaseName;
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 17 })); }
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 18 })); }
   catch (e) { console.warn('[save]', e); }   // private mode / quota: never let a failed write abort the boot
 }
 // push the global (saved) FX/UX/transition state into the live scene + DOM
@@ -1043,9 +1056,9 @@ function applyProjectTints() {
       return x ? parseInt(x.tint.slice(1), 16) : null;
     }
     if (b.stop === 'contact') return 0xff9e7a;
-    if (b.stop === 'hero') return null;   // Hero keeps the chapter fallback like the Opening
-    if (b.stop) return 0x4fd2ff;   // intro / cv / build
-    return null;                   // Opening / Hero
+    if (b.screens) return null;   // the screens stop keeps the chapter fallback like the Opening
+    if (b.stop) return 0x4fd2ff;   // hi / about / timeline / build
+    return null;                   // Opening
   });
 }
 load();
@@ -1192,24 +1205,29 @@ function makePanelMesh(b, i) {
   mesh.renderOrder = 2;                       // panels render in front of the background network
   return mesh;
 }
+const extraPanelMeshes = [];   // v18: a beat's `panels[]` cluster (About's photos) — not index-aligned; disposed with the rest
 function disposePanels() {
-  for (const m of panelMeshes) {
+  for (const m of [...panelMeshes, ...extraPanelMeshes]) {
     if (!m) continue;
     m.geometry.dispose(); if (m.material.map) m.material.map.dispose(); m.material.dispose();
   }
-  panelMeshes.length = 0; panelGroup.clear();
+  panelMeshes.length = 0; extraPanelMeshes.length = 0; panelGroup.clear();
 }
 function rebuildPanels() {
   disposePanels();
   beats.forEach((b, i) => {
-    if (!b.panel) { panelMeshes.push(null); return; }
-    const mesh = makePanelMesh(b, i);
-    panelGroup.add(mesh); panelMeshes.push(mesh);
+    if (!b.panel) panelMeshes.push(null);
+    else { const mesh = makePanelMesh(b, i); panelGroup.add(mesh); panelMeshes.push(mesh); }
+    for (const x of b.panels || []) {
+      if (IS_TOUCH && x !== b.panels[0]) continue;   // phones: the largest photo only
+      const mesh = makePanelMesh({ img: x.img, img2: '', panel: x }, i);   // pseudo-beat: drawPanelCanvas reads img + panel
+      panelGroup.add(mesh); extraPanelMeshes.push(mesh);
+    }
   });
   // pre-upload every panel texture (incl. mipmap generation) NOW — three.js
   // otherwise defers it to the first frame the panel enters the frustum, which
   // is exactly when a flight toward it starts (a visible hitch on phones)
-  for (const m of panelMeshes) if (m && m.material.map) renderer.initTexture(m.material.map);
+  for (const m of [...panelMeshes, ...extraPanelMeshes]) if (m && m.material.map) renderer.initTexture(m.material.map);
 }
 // cheap in-place update for live slider/typing edits (avoids full rebuild churn)
 function updatePanel(i) {
@@ -2430,7 +2448,7 @@ let asSel = ASSET_DEFS[0].id;
 let _asFrame = -1;
 function frameAssets() {                          // assets that belong to the current frame
   if (index === 0) return ASSET_DEFS.filter((a) => a.group === 'overlay');
-  const isHero = /^hero$/i.test((beats[index]?.name || '').trim());
+  const isHero = !!beats[index]?.screens;   // v18: the beat that carries the live screens
   return ASSET_DEFS.filter((a) => isHero && a.group === 'hero');
 }
 function loadAssetFields() {
@@ -2711,7 +2729,7 @@ function animate() {
   cursorLinks.update(t, !editMode && FX.cursorDrive > 0, _cN, _cVel * FX.cursorDrive, (FX.driftOn && !PREFERS_REDUCED) ? 1 : 0);   // Layer 3: the network reaches toward the cursor
   meteors.update(dt, !editMode && index === 0);   // falling stars on the start frame only
   {                                          // Frame 2 — the grouped Hero cluster (assets parallax to cursor + scroll)
-    const heroOn = !editMode && /^hero$/i.test(beats[index]?.name || '');
+    const heroOn = !editMode && !!beats[index]?.screens;   // v18: the Timeline beat carries the two live screens
     const hsc = heroOn ? Math.max(-0.5, Math.min(0.5, progress * Math.max(1, lastIdx()) - index)) : 0;
     heroCluster.update(heroOn, t, beats[index], hsc);
   }
@@ -2737,10 +2755,10 @@ function animate() {
   }
 
   // panels: billboard to face the camera, and light up as the camera arrives
-  for (let i = 0; i < panelMeshes.length; i++) {
-    const m = panelMeshes[i];
+  for (let i = 0, n = panelMeshes.length + extraPanelMeshes.length; i < n; i++) {
+    const m = i < panelMeshes.length ? panelMeshes[i] : extraPanelMeshes[i - panelMeshes.length];
     if (!m) continue;
-    if (beats[i]?.panel?.billboard) m.quaternion.copy(camera.quaternion);
+    if (i < panelMeshes.length && beats[i]?.panel?.billboard) m.quaternion.copy(camera.quaternion);
     if (editMode) { m.material.opacity = 1; m.scale.setScalar(1); }
     else {
       const a = clamp(1 - (camera.position.distanceTo(m.position) - 90) / curFX.panelLightRange, 0, 1); // near = lit
