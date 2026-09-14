@@ -887,12 +887,12 @@ const VOID_FX = { panelDimFloor: 0, panelLightRange: 26 };   // shared by every 
 const DEFAULT_BEATS = [
   /* 0 */ { name: 'Opening', cam: [-56, 2, 120], look: [-11, 59, 42], up: [0, 1, 0], fov: 25, dur: 1.4, desc: '', img: '', link: '', fx: { bloomStrength: 0.65 }, panel: null },
   // v18 (2026-09-14): person chapter — Hi / About / Timeline replace Hero / Intro / CV.
-  /* 1 */ { name: 'Hi', stop: 'hi', side: 'left', cam: [1, 53, 33], look: [192, -55, -56], up: [0, 1, 0], fov: 41, dur: 2.1, desc: '', img: '/assets/me/portrait.webp', link: '', fx: { ...VOID_FX }, panel: (() => { const p = P(1, 53, 33, 'left'); p.size = [20, 26.7]; return p; })() },
-  /* 2 */ { name: 'About', stop: 'about', side: 'right', ease: 'easeOut', cam: [6, 12, 5], look: [-30, 26, -55], up: [0, 1, 0], fov: 55, dur: 2.4, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null,
+  /* 1 */ { name: 'Hi', stop: 'hi', side: 'left', cam: [1, 53, 33], look: [1, 53, -67], up: [0, 1, 0], fov: 48, dur: 2.1, desc: '', img: '/assets/me/portrait.webp', link: '', fx: { ...VOID_FX }, panel: (() => { const p = P(1, 53, 33, 'left'); p.size = [16, 21.3]; p.pos[1] = 53; return p; })() },
+  /* 2 */ { name: 'About', stop: 'about', side: 'right', ease: 'easeOut', cam: [6, 12, 5], look: [6, 12, -95], up: [0, 1, 0], fov: 48, dur: 2.4, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null,
            panels: [
              { img: '/assets/me/speaking-1.webp', ...P(6, 12, 5, 'right') },
-             { img: '/assets/me/speaking-2.webp', ...mkPanel(6 + PANEL_DX - 9, 12 + PANEL_DY - 7, 5 - PANEL_DZ + 12, 17, 10.6, [0, -12, 0]) },
-             { img: '/assets/me/speaking-3.webp', ...mkPanel(6 + PANEL_DX + 8, 12 + PANEL_DY - 9, 5 - PANEL_DZ + 20, 12.6, 7.9, [0, -18, 0]) },
+             { img: '/assets/me/speaking-2.webp', ...mkPanel(24, 2, -36, 13, 8.1, [0, -16, 0]) },
+             { img: '/assets/me/speaking-3.webp', ...mkPanel(12, 3, -30, 11, 6.9, [0, -8, 0]) },
            ] },
   /* 3 */ { name: 'Timeline', stop: 'timeline', screens: true, cam: [-8, 8, -21], look: [26, 20, -71], up: [0, 1, 0], fov: 60, dur: 1.6, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null },
   /* 4 */ { name: 'How I Build', stop: 'build', cam: [7, 6, -45], look: [-14, 18, -95], up: [0, 1, 0], fov: 58, dur: 1.6, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null },
@@ -2729,7 +2729,7 @@ function animate() {
   cursorLinks.update(t, !editMode && FX.cursorDrive > 0, _cN, _cVel * FX.cursorDrive, (FX.driftOn && !PREFERS_REDUCED) ? 1 : 0);   // Layer 3: the network reaches toward the cursor
   meteors.update(dt, !editMode && index === 0);   // falling stars on the start frame only
   {                                          // Frame 2 — the grouped Hero cluster (assets parallax to cursor + scroll)
-    const heroOn = !editMode && !!beats[index]?.screens;   // v18: the Timeline beat carries the two live screens
+    const heroOn = !editMode && !!beats[index]?.screens && !isPortrait();   // v18: the Timeline beat carries the two live screens; portrait screens keep the rows readable
     const hsc = heroOn ? Math.max(-0.5, Math.min(0.5, progress * Math.max(1, lastIdx()) - index)) : 0;
     heroCluster.update(heroOn, t, beats[index], hsc);
   }
@@ -2755,13 +2755,16 @@ function animate() {
   }
 
   // panels: billboard to face the camera, and light up as the camera arrives
+  const _pIdx = progress * Math.max(1, lastIdx());   // continuous stop index, for the per-stop clusters
   for (let i = 0, n = panelMeshes.length + extraPanelMeshes.length; i < n; i++) {
-    const m = i < panelMeshes.length ? panelMeshes[i] : extraPanelMeshes[i - panelMeshes.length];
+    const extra = i >= panelMeshes.length;
+    const m = extra ? extraPanelMeshes[i - panelMeshes.length] : panelMeshes[i];
     if (!m) continue;
-    if (i < panelMeshes.length && beats[i]?.panel?.billboard) m.quaternion.copy(camera.quaternion);
+    if (!extra && beats[i]?.panel?.billboard) m.quaternion.copy(camera.quaternion);
     if (editMode) { m.material.opacity = 1; m.scale.setScalar(1); }
     else {
-      const a = clamp(1 - (camera.position.distanceTo(m.position) - 90) / curFX.panelLightRange, 0, 1); // near = lit
+      let a = clamp(1 - (camera.position.distanceTo(m.position) - 90) / curFX.panelLightRange, 0, 1); // near = lit
+      if (extra) a *= clamp(1 - Math.abs(_pIdx - m.userData.i), 0, 1);   // a `panels[]` cluster belongs to one stop: fade with it, never bleed into the neighbours
       m.material.opacity = curFX.panelDimFloor + (1 - curFX.panelDimFloor) * a;
       m.scale.setScalar(0.92 + 0.08 * a);
     }

@@ -203,6 +203,11 @@ panel + greeting), About (three speaking-photo panels at different depths +
 story), Timeline (dated rows on a rail + the two hero screens) replace Hero /
 Intro / CV. Beats gain `panels[]` and `screens`; save v18 re-adopts wholesale.
 Photos are placeholders in `public/assets/me/` until Yarin's files land.
+Tuning notes (2026-09-14): Hi and About cameras look straight down the flight
+axis like the project stops (the old Hero/Intro poses looked sideways, so the
+panels sat off-frame); a `panels[]` cluster fades with its own stop index so it
+never lights up from the neighbouring cameras; hero screens stay off on
+portrait viewports so the timeline rows stay readable.
 Open: timeline months, photo captions, real photos.
 
 ## Open work (2026-09-12) — in priority order
