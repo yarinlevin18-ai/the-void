@@ -190,11 +190,18 @@ Nine changes from a fresh walk-through of the live v15 flight:
 
 ---
 
+## Phase J — Wording rework ✅ (2026-09-14)
+Spec: `docs/superpowers/specs/2026-09-14-wording-rework-design.md`. Term is
+"AI-native developer" everywhere (title, meta, JSON-LD, og.jpg, bio, CV row).
+TEEPO's "real users" and SmartCut's "dropped Wix" claims retired; SmartCut is
+"a booking CRM designed for a grooming studio". Counters 17 / 7 / 1 confirmed.
+Guard test blocks the retired phrases. Method stop untouched. Tests 47 → 48.
+
 ## Open work (2026-09-12) — in priority order
 1. ~~Camera authoring for stops 2–11~~ ✅ 2026-09-12 — desktop shots baked
    into `DEFAULT_BEATS`; phones get a derived portrait pose per project stop
    (`applyPortraitPoses`). Re-tune in Director Mode → Copy config if needed.
-2. **Confirm the three proof numbers** in `profile.js` `proof[]` before launch.
+2. ~~Confirm the three proof numbers~~ ✅ 2026-09-14, see Phase J.
 3. **X handle** — `links.x` is commented out pending confirmation with Yarin.
 4. **SmartCut redeploy** — `smart-cut-gamma.vercel.app` still 404 on
    2026-09-13; the entry now carries `url: '', offline: true` so the SHADIEZ

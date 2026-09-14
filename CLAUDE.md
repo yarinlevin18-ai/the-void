@@ -4,7 +4,7 @@ Read this first. It captures the locked decisions and where everything lives so
 you can pick up the build with full context. Last synced to code: **v16, 2026-09-12**.
 
 ## What this is
-A 3D, scroll-driven portfolio for **Yarin Levin — AI-Native Builder**. The
+A 3D, scroll-driven portfolio for **Yarin Levin — AI-native developer**. The
 visitor flies through a dark "void" (a 900-node data network with living energy
 links, star parallax, volumetric nebula); sections are camera "beats" along a
 flight path. The **v16 flight** (2026-09-12) puts the work first: 11 stops from Hero
@@ -161,7 +161,10 @@ hard-refresh if a change doesn't show.
 ## Open work (authoritative checklist in BUILD_PLAN.md Phase H)
 1. ~~Camera authoring for stops 2–11~~ done 2026-09-12; phones use a derived
    portrait pose per project stop (`applyPortraitPoses` in `main.js`).
-2. **Confirm the three proof numbers** in `profile.js` `proof[]` before launch.
+2. ~~Confirm the three proof numbers~~ confirmed 2026-09-14 with the wording
+   rework (spec `docs/superpowers/specs/2026-09-14-wording-rework-design.md`):
+   the term is "AI-native developer" everywhere, every claim is checkable, and
+   `tests/profile.test.js` blocks the retired phrases.
 3. **X handle** — `links.x` is commented out pending confirmation.
 4. **SmartCut redeploy** — `smart-cut-gamma.vercel.app` returned 404 on
    2026-09-08 (still on 09-13). Shipped as `url: '', offline: true` in
