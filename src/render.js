@@ -7,23 +7,38 @@ export const escAttr = (s) => esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39
 
 const eyebrow = (t) => `<div class="eyebrow">${esc(t)}</div>`;
 
-// 01 Hero — one line under the floating screens (the visitor's first words).
-export function renderHero(p) {
-  return `<p class="hero-line">${esc(p.hero.line)}</p>`;
+// 01 Hi — portrait panel on the left (WebGL), greeting on the right.
+export function renderHi(p) {
+  const lines = p.hi.lines.map((l, i) => `<p class="line" style="--i:${i + 1}">${esc(l)}</p>`).join('');
+  return `<article class="hi" data-side="left">
+    ${eyebrow('Hello')}
+    <h2 class="greeting" style="--i:0">${esc(p.hi.greeting)}</h2>
+    <div class="status">${esc(p.hi.status)}</div>
+    ${lines}
+  </article>`;
 }
 
-export function renderIntro(p) {
-  const lines = p.intro.lines.map((l, i) => `<p class="line" style="--i:${i}">${esc(l)}</p>`).join('');
-  return `<div class="intro">${lines}<div class="context">${esc(p.intro.context)}</div></div>`;
+// 02 About — three speaking photos on the right (WebGL panels), the story on the left.
+export function renderAbout(p) {
+  const paras = p.about.paragraphs.map((l, i) => `<p class="para" style="--i:${i + 1}">${esc(l)}</p>`).join('');
+  return `<article class="about" data-side="right">
+    ${eyebrow(p.about.eyebrow)}
+    <h2 class="about-title" style="--i:0">${esc(p.about.title)}</h2>
+    ${paras}
+  </article>`;
 }
 
-export function renderCV(p) {
-  const rows = p.cvStop.map((r, i) => `
-    <div class="cv-row" style="--i:${i}">
-      <span class="cv-years">${esc(r.years)}</span>
-      <span class="cv-body"><b>${esc(r.role)}</b><span>${esc(r.line)}</span></span>
-    </div>`).join('');
-  return `${eyebrow('CV')}<div class="cv">${rows}</div>
+// 03 Timeline — dated rows on a glowing rail; the hero screens float beside it (main.js).
+export function renderTimeline(p) {
+  const rows = p.timeline.rows.map((r, i) => `
+    <li class="tl-row" style="--i:${i}">
+      <span class="tl-dot"></span>
+      <span class="tl-when">${esc(r.when)}</span>
+      <span class="tl-body"><b class="tl-what">${esc(r.what)}</b><span class="tl-line">${esc(r.line)}</span></span>
+    </li>`).join('');
+  return `${eyebrow(p.timeline.eyebrow)}
+    <h2 class="tl-title">${esc(p.timeline.title)}</h2>
+    <ol class="timeline">${rows}</ol>
     <button type="button" class="pill" data-print-cv>Download CV ↓</button>`;
 }
 

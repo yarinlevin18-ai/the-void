@@ -1,22 +1,33 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { esc, renderHero, renderIntro, renderCV, renderBuild, renderProject, renderContact } from '../src/render.js';
+import { esc, renderHi, renderAbout, renderTimeline, renderBuild, renderProject, renderContact } from '../src/render.js';
 import { PROFILE } from '../src/content/profile.js';
 
 test('esc escapes html', () => {
   assert.equal(esc('<a & b>'), '&lt;a &amp; b&gt;');
 });
 
-test('intro renders one .line per sentence plus context', () => {
-  const h = renderIntro(PROFILE);
-  assert.equal((h.match(/class="line"/g) || []).length, PROFILE.intro.lines.length);
-  assert.ok(h.includes(PROFILE.intro.context));
+test('hi renders greeting, status and two lines, side left', () => {
+  const h = renderHi(PROFILE);
+  assert.ok(h.includes('data-side="left"'));
+  assert.ok(h.includes(esc(PROFILE.hi.greeting)));
+  assert.ok(h.includes(esc(PROFILE.hi.status)));
+  assert.equal((h.match(/class="line"/g) || []).length, 2);
 });
 
-test('cv renders 5 rows with years and role', () => {
-  const h = renderCV(PROFILE);
-  assert.equal((h.match(/class="cv-row"/g) || []).length, PROFILE.cvStop.length);
-  assert.ok(h.includes('Rescue &amp; Training'));
+test('about renders title, three paragraphs, side right, and never draws photos', () => {
+  const h = renderAbout(PROFILE);
+  assert.ok(h.includes('data-side="right"'));
+  assert.equal((h.match(/class="para"/g) || []).length, 3);
+  assert.ok(!h.includes('<img'), 'photos are WebGL panels, not DOM images');
+});
+
+test('timeline renders one row per entry, a dot each, and the print pill', () => {
+  const h = renderTimeline(PROFILE);
+  assert.equal((h.match(/class="tl-row"/g) || []).length, PROFILE.timeline.rows.length);
+  assert.equal((h.match(/class="tl-dot"/g) || []).length, PROFILE.timeline.rows.length);
+  assert.ok(h.includes('data-print-cv'));
+  assert.ok(h.includes('Search and Rescue') === false, 'timeline is about code, not service');
 });
 
 test('build renders method, 3 proof numbers with data-n, and the gateway card', () => {
@@ -52,7 +63,7 @@ test('contact renders mailto, availability and text links', () => {
 });
 
 test('renderers escape hostile text and attributes', () => {
-  const h = renderIntro({ intro: { lines: ['<script>x</script>'], context: 'a & b' } });
+  const h = renderHi({ hi: { greeting: '<script>x</script>', status: 'a & b', lines: ['<b>'] } });
   assert.ok(!h.includes('<script>'));
   assert.ok(h.includes('a &amp; b'));
   const hp = renderProject({ id: 'q', name: 'n', kind: 'k', tag: 't', tint: '#000000', problem: 'p', decision: 'd', outcome: 'o', stack: 's', url: 'https://x.test/?a="b"', repo: '' }, 'left');
@@ -61,7 +72,7 @@ test('renderers escape hostile text and attributes', () => {
 });
 
 test('renderers expose the DOM hooks panels.js binds to', () => {
-  assert.ok(renderCV(PROFILE).includes('data-print-cv'));
+  assert.ok(renderTimeline(PROFILE).includes('data-print-cv'));
   assert.ok(renderContact(PROFILE).includes('data-copy-email'));
   assert.ok(renderContact(PROFILE, 2031).includes('2031'));
 });
@@ -92,12 +103,6 @@ test('outcome leads the project block, above Problem and Decision', () => {
   const teepo = PROFILE.work.featured[0];
   assert.ok(h.indexOf(teepo.outcome) < h.indexOf('Problem'));
   assert.ok(!h.includes('<dt>Outcome</dt>'));
-});
-
-test('hero renders the one-line positioning', () => {
-  const h = renderHero(PROFILE);
-  assert.ok(h.includes(PROFILE.hero.line.replace(/&/g, '&amp;')));
-  assert.equal(renderHero({ hero: { line: '<b>x' } }).includes('<b>x'), false);
 });
 
 test('contact offers a way back to the start', () => {
