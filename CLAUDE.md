@@ -53,9 +53,11 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   no text or CTA baked in. They must read sharp and bright on arrival
   (2026-09-14): the DOF pass racks focus onto the stop's panel (not the look
   point 100 units out; nearest beat by camera pose, not look point), the
-  adaptive dim is .03–.35, and project stops lift the bloom threshold .22 → .75
-  in the render loop — otherwise bloom paints a blurred copy of any bright
-  screenshot over itself, which read as "the panels are blurry". A DOM text block (`src/panels.js` + `src/render.js`)
+  screenshot is drawn undimmed (2026-09-15: every dim curve is gone), and
+  project stops lift the bloom threshold .22 → 1.0 in the render loop —
+  otherwise bloom paints a blurred copy of any bright screenshot over itself,
+  which read as "the panels are blurry". Screenshot whites top out at exactly
+  1.0; the additive node cores exceed it, so they still glow. A DOM text block (`src/panels.js` + `src/render.js`)
   sits on the opposite side and owns the words; one focal point and one CTA
   per screen. Beats with no imagery have no panel.
 - **Flight:** 13 stops (see below), section-snapping. Per-shot FOV + duration

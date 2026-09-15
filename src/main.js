@@ -1257,32 +1257,13 @@ function drawPanelCanvas(b) {
   // Screens in a dark void run dim: a dark multiply keeps bright site pixels
   // (~1.0 luminance) under control so UnrealBloom halos the preview instead of
   // detonating it — same rule as the card header.
-  const meanLum = (im) => {                // sampled once per image, cached on it
-    if (im._lum != null) return im._lum;
-    try {
-      const c = document.createElement('canvas'); c.width = 32; c.height = 20;
-      const x = c.getContext('2d'); x.drawImage(im, 0, 0, 32, 20);
-      const d = x.getImageData(0, 0, 32, 20).data; let s = 0;
-      for (let i = 0; i < d.length; i += 4) s += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
-      im._lum = s / (d.length / 4) / 255;
-    } catch (e) { im._lum = 0.5; }
-    return im._lum;
-  };
   const drawDimmed = (im, x0, y0, w0, h0) => {
+    // 2026-09-15: no dim at all — the screenshot shows as shipped. Every earlier
+    // dim curve (.30–.66, .06–.56, .03–.35) existed to keep pale screenshots
+    // under bloom's threshold; project stops now lift that threshold to 1.0
+    // (animate()) so a screenshot's whites (exactly 1.0) never bloom while the
+    // additive node cores (> 1.0 in the half-float target) still do.
     drawImageCover(ctx, im, x0, y0, w0, h0);
-    // adaptive: pale screenshots (cream dashboards, skies) get dimmed harder so
-    // no preview can hand bloom a giant über-threshold surface
-    // lifted floor/cap (was .30-.66): previews were dimmed into black slabs —
-    // the per-beat bloomStrength .5 keyframes are what actually protect bloom
-    // v16: the words sit beside the panel now, not on it, so DARK screenshots can
-    // stay bright (floor .15 → .06). Pale ones (TEEPO's cream dashboard) still get
-    // dimmed hard — at full brightness they blow out and hand bloom a white slab.
-    // 2026-09-14: dark/mid screenshots barely dimmed (.03 floor) so they read
-    // on arrival; pale ones (TEEPO, lum ≈ .9) cap at .35, which keeps them
-    // under the .75 bloom threshold project stops run (animate()) — above it
-    // bloom paints a blurred copy of the panel over itself.
-    const dim = clamp(0.03 + (meanLum(im) - 0.3) * 0.6, 0.03, 0.35);
-    ctx.fillStyle = `rgba(6,14,22,${dim.toFixed(2)})`; ctx.fillRect(x0, y0, w0, h0);
   };
   if (img && img2) {                       // twin-project beat: two full-bleed halves, hairline divider
     const iw = W / 2;
@@ -2948,12 +2929,13 @@ function animate() {
   voidWarp *= 0.94; if (voidWarp < 0.001) voidWarp = 0;
   livingVoid.setWarp(voidWarp);
   if (network) network.setWarp(voidWarp);    // nodes swell + links flare on the burst
-  // project stops lift bloom's threshold .22 → .75: a bright screenshot (TEEPO's
-  // cream dashboard at ≈ .45 after its dim) sat above .22, so bloom painted a
-  // blurred copy of the whole panel over itself — that WAS the "blurry panel".
-  // Nodes (≈ 1.0) still glow. Loop-side so DEFAULT_BEATS / save version stay put.
+  // project stops lift bloom's threshold .22 → 1.0: any screenshot pixel above
+  // the threshold makes bloom paint a blurred copy of the panel over itself —
+  // that WAS the "blurry panel". Screenshots top out at exactly 1.0; the
+  // additive node cores exceed it (half-float target), so they still glow.
+  // Loop-side so DEFAULT_BEATS / save version stay put.
   if (bloom) {
-    bloom.threshold = !editMode && beats[index]?.stop === 'project' ? 0.75 : 0.22;
+    bloom.threshold = !editMode && beats[index]?.stop === 'project' ? 1.0 : 0.22;
     bloom.strength = curFX.bloomStrength + voidWarp * 0.5;   // gentler transition flare (restraint pass)
   }
   if (bokeh) bokeh.enabled = !(editMode);   // DOF only in play; bloom stays on in all modes
