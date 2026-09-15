@@ -546,6 +546,22 @@ html, body {
 .project .also b { color: #eaf4ff; font-weight: 600; }
 .project .also-links { display: flex; gap: .9rem; }
 @media (min-width: 720px) { .project .also { grid-template-columns: auto 1fr; } .project .also-label { grid-column: 1 / -1; } .project .also-links { justify-self: end; } }
+/* phones: the portrait pose parks the panel in the top ~36% of the screen, so
+   the text starts below it and the block is tightened — the TEEPO / SHADIEZ
+   stops (which carry an `also` row) otherwise climbed over the screenshot */
+@media (max-width: 640px) {
+  .stop-project { padding-top: 37vh; padding-bottom: 7vh; }
+  .project .title { font-size: clamp(2rem, 8vw, 5.5rem); margin-bottom: .6rem; }
+  .project .outcome { font-size: 1rem; margin-bottom: .7rem; }
+  .project dl { gap: .4rem; }
+  .project dd { font-size: .86rem; line-height: 1.45; }
+  .project .stack { margin-top: .6rem; }
+  .project .also { margin-top: .9rem; padding-top: .6rem; grid-template-columns: auto 1fr; align-items: baseline; }
+  .project .also-label { grid-column: 1 / -1; }
+  .project .also-line { display: none; }   /* the one-liner is the desktop luxury; name + links carry it on a phone */
+  .project .also-links { justify-self: end; }
+  .stop .group-label { position: static; margin-bottom: .6rem; }   /* in flow above the eyebrow — pinned at 12vh it sat on the panel (the base rule is later in the file, hence the extra specificity) */
+}
 .group-label { position: absolute; top: 12vh; left: 6vw; }
 @media (min-width: 900px) {
   .stop-project { justify-content: safe center; }
