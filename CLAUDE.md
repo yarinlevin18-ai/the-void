@@ -21,8 +21,12 @@ waypoint rail and free-roam are gone — see
 `docs/superpowers/specs/2026-09-08-flight-restructure-design.md` for that
 design. Audience: hiring teams (part-time student position) + clients.
 
-**Live:** https://yarinlevin.com (canonical since 2026-09-14; the old
-`the-void-khaki-pi.vercel.app` host 308-redirects there via `vercel.json`) —
+**Live:** https://yarinlevin.com is the canonical address (since 2026-09-14)
+but **the domain is not registered yet** (no NS records on 2026-09-16). Until
+Yarin buys it in Vercel the old `the-void-khaki-pi.vercel.app` host serves the
+site directly: the 308 redirect in `vercel.json` was pulled on 2026-09-16 so
+the site isn't a dead link. **Restore it once the domain resolves:**
+`{ "source": "/(.*)", "has": [{ "type": "host", "value": "the-void-khaki-pi.vercel.app" }], "destination": "https://yarinlevin.com/$1", "permanent": true }` —
 Vercel project `the-void`,
 repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
 `build.sh` bootstrap deploy is gone).
