@@ -57,7 +57,9 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   every stop with a panel (Hi, About, projects) lifts the bloom threshold .22 → 1.0 in the render loop —
   otherwise bloom paints a blurred copy of any bright screenshot over itself,
   which read as "the panels are blurry". Screenshot whites top out at exactly
-  1.0; the additive node cores exceed it, so they still glow. Panel textures
+  1.0; the additive node cores exceed it, so they still glow. An unlit panel is
+  fully invisible (2026-09-16): the Opening's default `panelDimFloor` .1 used
+  to ghost the Hi portrait under the wordmark. Panel textures
   use `NoColorSpace` (2026-09-16): the composer has no OutputPass, nothing
   re-encodes to sRGB, so a decoded photo hit the screen linear and crushed. A DOM text block (`src/panels.js` + `src/render.js`)
   sits on the opposite side and owns the words; one focal point and one CTA
