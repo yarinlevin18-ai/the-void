@@ -560,7 +560,16 @@ html, body {
   .project .also-label { grid-column: 1 / -1; }
   .project .also-line { display: none; }   /* the one-liner is the desktop luxury; name + links carry it on a phone */
   .project .also-links { justify-self: end; }
-  .stop .group-label { position: static; margin-bottom: .6rem; }   /* in flow above the eyebrow — pinned at 12vh it sat on the panel (the base rule is later in the file, hence the extra specificity) */
+  .stop .group-label { position: static; margin-bottom: .6rem; }
+  /* How I Build: method + proof + three repo cards ran past the fold at 844px */
+  .method .line { font-size: 1rem; margin-bottom: .35em; }
+  .proof { grid-template-columns: repeat(3, 1fr); gap: .5rem; margin: 1rem 0; padding: .6rem .75rem; border: 1px solid rgba(159,216,255,.16); border-radius: 8px; background: rgba(8,16,26,.55); }   /* same glass as the repo cards: the dense core sits behind it on phones */
+  .proof-item .num { font-size: 1.9rem; }
+  .proof-item span { letter-spacing: .08em; }   /* size stays at the .75rem floor */
+  .repos { gap: .4rem; }
+  .repo { padding: .55rem .75rem; }
+  .repo p { display: none; }   /* the one-liners are desktop depth; name + stack + links carry the card */
+  .repo .stack { margin-top: .2rem; } .repo .links { margin-top: .3rem; }   /* in flow above the eyebrow — pinned at 12vh it sat on the panel (the base rule is later in the file, hence the extra specificity) */
 }
 .group-label { position: absolute; top: 12vh; left: 6vw; }
 @media (min-width: 900px) {
