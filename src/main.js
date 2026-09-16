@@ -942,8 +942,10 @@ const DEFAULT_BEATS = [
   /* 1 */ { name: 'Hi', stop: 'hi', side: 'left', cam: [1, 53, 33], look: [1, 53, -67], up: [0, 1, 0], fov: 48, dur: 2.1, desc: '', img: '/assets/me/portrait.webp', link: '', fx: { ...VOID_FX }, panel: (() => { const p = P(1, 53, 33, 'left'); p.size = [16, 21.3]; p.pos[1] = 53; return p; })() },
   /* 2 */ { name: 'About', stop: 'about', side: 'right', ease: 'easeOut', cam: [6, 12, 5], look: [6, 12, -95], up: [0, 1, 0], fov: 48, dur: 2.4, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null,
            panels: [
-             { img: '/assets/me/speaking-1.webp', ...P(6, 12, 5, 'right') },
-             { img: '/assets/me/speaking-2.webp', ...mkPanel(24, 2, -36, 13, 8.1, [0, -16, 0]) },
+             // v19 (2026-09-16): each panel takes its photo's real aspect so nothing is cropped —
+             // stage 3:2 (28×18.67), memorial 3:4 (8.4×11.2, portrait), lectern detail 16:10
+             { img: '/assets/me/speaking-1.webp', ...(() => { const p = P(6, 12, 5, 'right'); p.size = [28, 18.67]; return p; })() },
+             { img: '/assets/me/speaking-2.webp', ...mkPanel(26, 1.2, -36, 8.4, 11.2, [0, -16, 0]) },
              { img: '/assets/me/speaking-3.webp', ...mkPanel(12, 3, -30, 11, 6.9, [0, -8, 0]) },
            ] },
   /* 3 */ { name: 'Timeline', stop: 'timeline', screens: true, cam: [-8, 8, -21], look: [26, 20, -71], up: [0, 1, 0], fov: 60, dur: 1.6, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null },
@@ -1068,6 +1070,13 @@ function load() {
           beats = structuredClone(DEFAULT_BEATS);
           migrated = true;
         }
+        if (!(d.version >= 19)) {
+          // v19 (2026-09-16): About's photo panels take their photos' real aspect
+          // (the memorial shot is portrait). Only the About cluster is re-adopted.
+          const src = DEFAULT_BEATS.find((b) => b.stop === 'about');
+          for (const b of beats) if (b.stop === 'about' && src) b.panels = structuredClone(src.panels);
+          migrated = true;
+        }
         beats.forEach(backfillBeat); // bring older saves up to the current schema
         if (migrated) save();
         return;
@@ -1079,7 +1088,7 @@ function load() {
 }
 function save() {
   const g = {}; for (const k of GLOBAL_KEYS) g[k] = FX[k]; g.ease = txEaseName;
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 18 })); }
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 19 })); }
   catch (e) { console.warn('[save]', e); }   // private mode / quota: never let a failed write abort the boot
 }
 // push the global (saved) FX/UX/transition state into the live scene + DOM
@@ -1305,6 +1314,7 @@ function rebuildPanels() {
     for (const x of b.panels || []) {
       if (IS_TOUCH && x !== b.panels[0]) continue;   // phones: the largest photo only
       const mesh = makePanelMesh({ img: x.img, img2: '', panel: x }, i);   // pseudo-beat: drawPanelCanvas reads img + panel
+      mesh.userData.lead = x === b.panels[0];   // the cluster's largest photo — the only one portrait windows show
       panelGroup.add(mesh); extraPanelMeshes.push(mesh);
     }
   });
@@ -2870,8 +2880,10 @@ function animate() {
     if (editMode) { m.material.opacity = 1; m.scale.setScalar(1); }
     else {
       let a = clamp(1 - (camera.position.distanceTo(m.position) - 90) / curFX.panelLightRange, 0, 1); // near = lit
-      if (extra) a *= clamp(1 - Math.abs(_pIdx - m.userData.i), 0, 1);   // a `panels[]` cluster belongs to one stop: fade with it, never bleed into the neighbours
-      else a *= clamp(2 - 2 * Math.abs(_pIdx - i), 0, 1);   // a stop's own panel: full from halfway through the hop in, fully off at any neighbour (the next stop's panel, 115 units on, used to ghost through at ≈ 4 %)
+      if (extra) {
+        a *= clamp(1 - Math.abs(_pIdx - m.userData.i), 0, 1);   // a `panels[]` cluster belongs to one stop: fade with it, never bleed into the neighbours
+        if (!m.userData.lead && isPortrait()) a = 0;             // portrait windows keep the lead photo only (touch never builds the others) — the small ones sat on the About title
+      } else a *= clamp(2 - 2 * Math.abs(_pIdx - i), 0, 1);      // a stop's own panel: full from halfway through the hop in, fully off at any neighbour (the next stop's panel, 115 units on, used to ghost through at ≈ 4 %)
       m.material.opacity = curFX.panelDimFloor + (1 - curFX.panelDimFloor) * a;
       m.scale.setScalar(0.92 + 0.08 * a);
     }
