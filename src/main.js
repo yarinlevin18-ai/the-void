@@ -939,14 +939,15 @@ const VOID_FX = { panelDimFloor: 0, panelLightRange: 26 };   // shared by every 
 const DEFAULT_BEATS = [
   /* 0 */ { name: 'Opening', cam: [-56, 2, 120], look: [-11, 59, 42], up: [0, 1, 0], fov: 25, dur: 1.4, desc: '', img: '', link: '', fx: { bloomStrength: 0.65 }, panel: null },
   // v18 (2026-09-14): person chapter — Hi / About / Timeline replace Hero / Intro / CV.
-  /* 1 */ { name: 'Hi', stop: 'hi', side: 'left', cam: [1, 53, 33], look: [1, 53, -67], up: [0, 1, 0], fov: 48, dur: 2.1, desc: '', img: '/assets/me/portrait.webp', link: '', fx: { ...VOID_FX }, panel: (() => { const p = P(1, 53, 33, 'left'); p.size = [16, 21.3]; p.pos[1] = 53; return p; })() },
+  /* 1 */ { name: 'Hi', stop: 'hi', side: 'left', cam: [1, 53, 33], look: [1, 53, -67], up: [0, 1, 0], fov: 48, dur: 2.1, desc: '', img: '/assets/me/portrait.webp', link: '', fx: { ...VOID_FX }, panel: (() => { const p = P(1, 53, 33, 'left'); p.size = [18, 24]; p.pos[1] = 52; return p; })() },
   /* 2 */ { name: 'About', stop: 'about', side: 'right', ease: 'easeOut', cam: [6, 12, 5], look: [6, 12, -95], up: [0, 1, 0], fov: 48, dur: 2.4, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null,
            panels: [
-             // v19 (2026-09-16): each panel takes its photo's real aspect so nothing is cropped —
-             // stage 3:2 (28×18.67), memorial 3:4 (8.4×11.2, portrait), lectern detail 16:10
-             { img: '/assets/me/speaking-1.webp', ...(() => { const p = P(6, 12, 5, 'right'); p.size = [28, 18.67]; return p; })() },
-             { img: '/assets/me/speaking-2.webp', ...mkPanel(26, 1.2, -36, 8.4, 11.2, [0, -16, 0]) },
-             { img: '/assets/me/speaking-3.webp', ...mkPanel(12, 3, -30, 11, 6.9, [0, -8, 0]) },
+             // v20 (2026-09-16): three panels that never overlap — stage 3:2 (24×16) top,
+             // lectern 16:10 (12×7.5) bottom-left, memorial 3:4 (9.6×12.8, portrait) bottom-right. Each keeps
+             // its photo's real aspect so nothing is cropped by the panel.
+             { img: '/assets/me/speaking-1.webp', ...(() => { const p = P(6, 12, 5, 'right'); p.size = [24, 16]; p.pos[1] = 17; return p; })() },
+             { img: '/assets/me/speaking-2.webp', ...mkPanel(29.5, 1.5, -37, 9.6, 12.8, [0, -16, 0]) },
+             { img: '/assets/me/speaking-3.webp', ...mkPanel(12.5, 1, -35, 12, 7.5, [0, -8, 0]) },
            ] },
   /* 3 */ { name: 'Timeline', stop: 'timeline', screens: true, cam: [-8, 8, -21], look: [26, 20, -71], up: [0, 1, 0], fov: 60, dur: 1.6, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null },
   /* 4 */ { name: 'How I Build', stop: 'build', cam: [7, 6, -45], look: [-14, 18, -95], up: [0, 1, 0], fov: 58, dur: 1.6, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null },
@@ -1077,6 +1078,15 @@ function load() {
           for (const b of beats) if (b.stop === 'about' && src) b.panels = structuredClone(src.panels);
           migrated = true;
         }
+        if (!(d.version >= 20)) {
+          // v20 (2026-09-16): About cluster re-laid so the three photo panels never
+          // overlap; the Hi portrait panel grows to 18×24. Both re-adopted from defaults.
+          const src = DEFAULT_BEATS.find((b) => b.stop === 'about');
+          for (const b of beats) if (b.stop === 'about' && src) b.panels = structuredClone(src.panels);
+          const hi = DEFAULT_BEATS.find((b) => b.stop === 'hi');
+          for (const b of beats) if (b.stop === 'hi' && hi) b.panel = structuredClone(hi.panel);
+          migrated = true;
+        }
         beats.forEach(backfillBeat); // bring older saves up to the current schema
         if (migrated) save();
         return;
@@ -1088,7 +1098,7 @@ function load() {
 }
 function save() {
   const g = {}; for (const k of GLOBAL_KEYS) g[k] = FX[k]; g.ease = txEaseName;
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 19 })); }
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 20 })); }
   catch (e) { console.warn('[save]', e); }   // private mode / quota: never let a failed write abort the boot
 }
 // push the global (saved) FX/UX/transition state into the live scene + DOM

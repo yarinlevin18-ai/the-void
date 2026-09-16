@@ -152,13 +152,13 @@ folds a second featured project in as a compact row under the links.
 | `index.html` | 390 | Shell, loader, editor panels, JSON-LD, noscript skim path |
 | `public/previews/*.webp` | | teepo · aerocy · shadiez · smartcut · llm-gateway · focus · sabai · kiaras-club (q82, 1400–1600 px wide; the panel canvas is 1024) |
 | `public/assets/hero/` | | Hero screens (SmartCut html + png, Shadiez webp) |
-| `public/assets/me/` | | portrait (beach, tight crop) + 3 About panels: FIDF stage 3:2, Nova memorial at Re’im 3:4 (portrait panel), lectern detail 16:10 — uncropped, panels match the photo aspect |
+| `public/assets/me/` | | portrait (beach, tight crop, 18×24 panel) + 3 About panels: FIDF stage 3:2 (tighter edit of the original, 24×16), Nova memorial at Re’im 3:4 (9.6×12.8, portrait), lectern detail 16:10 (native-res crop, 12×7.5). All regenerated 2026-09-16 from the originals in `~/.claude/uploads/…` with a mild grade (autocontrast, +8% contrast, +10% saturation, unsharp) — panels match the photo aspect and never overlap |
 
 Deps: `three` 0.169, `meshline`, `three.quarks`, `vite` 8. No React.
 
 ### Persistence / migrations
 Path + FX config persists in **localStorage** `voidConfig`, currently **save
-version 19**. Any save below 16 has its beat array replaced wholesale with
+version 20**. Any save below 16 has its beat array replaced wholesale with
 `DEFAULT_BEATS` (the shape changed too much to patch) while the visitor's
 global FX/speed/ease settings are kept; v17 (2026-09-12) then rewrites
 `/previews/*.jpg` → `.webp` in whatever beat array survived (the JPGs are
@@ -166,7 +166,9 @@ gone), leaving any URL pasted in Director Mode alone; v18 (2026-09-14) — Hi /
 About / Timeline replace Hero / Intro / CV, beats gain `panels[]` and
 `screens` — wholesale re-adopts `DEFAULT_BEATS` again (any save `< 18`), same
 global-settings carve-out; v19 (2026-09-16) re-adopts only the About beat's
-`panels[]` (photo panels sized to their real aspect). The v2–v14 patch migrations were
+`panels[]` (photo panels sized to their real aspect); v20 (2026-09-16) re-adopts
+the About `panels[]` (re-laid so the three never overlap) and the Hi `panel`
+(18×24). The v2–v14 patch migrations were
 deleted on 2026-09-12: they only ever ran on beats the v14/v15 reset was about
 to discard. Any future
 `DEFAULT_BEATS` shape change needs its own migration step + version bump,
