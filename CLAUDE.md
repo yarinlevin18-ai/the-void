@@ -54,7 +54,7 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   (2026-09-14): the DOF pass racks focus onto the stop's panel (not the look
   point 100 units out; nearest beat by camera pose, not look point), the
   screenshot is drawn undimmed (2026-09-15: every dim curve is gone), and
-  project stops lift the bloom threshold .22 → 1.0 in the render loop —
+  every stop with a panel (Hi, About, projects) lifts the bloom threshold .22 → 1.0 in the render loop —
   otherwise bloom paints a blurred copy of any bright screenshot over itself,
   which read as "the panels are blurry". Screenshot whites top out at exactly
   1.0; the additive node cores exceed it, so they still glow. A DOM text block (`src/panels.js` + `src/render.js`)
@@ -150,7 +150,7 @@ folds a second featured project in as a compact row under the links.
 | `index.html` | 390 | Shell, loader, editor panels, JSON-LD, noscript skim path |
 | `public/previews/*.webp` | | teepo · aerocy · shadiez · smartcut · llm-gateway · focus · sabai · kiaras-club (q82, 1400–1600 px wide; the panel canvas is 1024) |
 | `public/assets/hero/` | | Hero screens (SmartCut html + png, Shadiez webp) |
-| `public/assets/me/` | | portrait + 3 speaking photos (placeholders until Yarin's files land) |
+| `public/assets/me/` | | portrait (beach, tight crop) + 3 About panels: FIDF stage wide, Nova memorial at Re’im, lectern detail — real photos since 2026-09-15 |
 
 Deps: `three` 0.169, `meshline`, `three.quarks`, `vite` 8. No React.
 

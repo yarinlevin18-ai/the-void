@@ -65,9 +65,9 @@ export const PROFILE = {
       'In April 2026 I started building for the web, self-taught, with AI from day one. Both earlier jobs taught the same thing I build with now: own the outcome and say it clearly.',
     ],
     photos: [
-      { src: '/assets/me/speaking-1.webp', caption: 'On stage' },
-      { src: '/assets/me/speaking-2.webp', caption: 'The room' },
-      { src: '/assets/me/speaking-3.webp', caption: 'After the talk' },
+      { src: '/assets/me/speaking-1.webp', caption: 'On stage for FIDF' },
+      { src: '/assets/me/speaking-2.webp', caption: 'Nova memorial, Re’im' },
+      { src: '/assets/me/speaking-3.webp', caption: 'At the lectern' },
     ],
   },
   // stop 03 "Timeline" — dated rows on a rail; the two hero screens float beside it.

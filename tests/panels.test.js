@@ -29,7 +29,7 @@ test('mounts one hidden, inert section per beat that has a stop', () => {
   assert.ok(panels.el(I.hi).querySelector('.greeting'), 'hi stop carries the greeting');
   assert.equal(panels.el(I.hi).dataset.side, 'left');
   assert.equal(panels.el(I.about).dataset.side, 'right');
-  assert.equal(panels.el(I.about).getAttribute('aria-label'), 'About · On stage · The room · After the talk');
+  assert.equal(panels.el(I.about).getAttribute('aria-label'), ['About', ...PROFILE.about.photos.map((x) => x.caption)].join(' · '));
   const secs = root.querySelectorAll('section.stop');
   assert.equal(secs.length, 6);
   assert.equal(panels.el(0), null);

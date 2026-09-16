@@ -2935,7 +2935,8 @@ function animate() {
   // additive node cores exceed it (half-float target), so they still glow.
   // Loop-side so DEFAULT_BEATS / save version stay put.
   if (bloom) {
-    bloom.threshold = !editMode && beats[index]?.stop === 'project' ? 1.0 : 0.22;
+    const nb = beats[index];   // any stop showing a photo/screenshot panel (Hi, About, projects), not just projects
+    bloom.threshold = !editMode && nb && (nb.panel || (nb.panels && nb.panels.length)) ? 1.0 : 0.22;
     bloom.strength = curFX.bloomStrength + voidWarp * 0.5;   // gentler transition flare (restraint pass)
   }
   if (bokeh) bokeh.enabled = !(editMode);   // DOF only in play; bloom stays on in all modes

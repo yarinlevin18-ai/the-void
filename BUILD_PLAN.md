@@ -202,13 +202,13 @@ Spec: `docs/superpowers/specs/2026-09-14-person-chapter-design.md`. Hi (portrait
 panel + greeting), About (three speaking-photo panels at different depths +
 story), Timeline (dated rows on a rail + the two hero screens) replace Hero /
 Intro / CV. Beats gain `panels[]` and `screens`; save v18 re-adopts wholesale.
-Photos are placeholders in `public/assets/me/` until Yarin's files land.
+Real photos landed 2026-09-15 (`public/assets/me/`: beach portrait, FIDF stage, Nova memorial at Re’im, lectern detail).
 Tuning notes (2026-09-14): Hi and About cameras look straight down the flight
 axis like the project stops (the old Hero/Intro poses looked sideways, so the
 panels sat off-frame); a `panels[]` cluster fades with its own stop index so it
 never lights up from the neighbouring cameras; hero screens stay off on
 portrait viewports so the timeline rows stay readable.
-Open: timeline months, photo captions, real photos.
+Open: timeline months.
 
 ## Phase L — Contact door + loader loop ✅ (2026-09-14)
 Spec: `docs/superpowers/specs/2026-09-14-contact-door-and-loader-design.md`.
@@ -261,8 +261,8 @@ Spec: `docs/superpowers/specs/2026-09-14-contact-door-and-loader-design.md`.
 9. ~~**Desktop walk-through**~~ ✅ 2026-09-13 on the dev build at 1440×900 as
    a fresh visitor (storage cleared): all 11 stops render, panels + text blocks
    correct, no console errors from shipped code, production build clean.
-10. **Person chapter holds:** real photos into `public/assets/me/`, timeline
-    months, photo captions. See Phase K.
+10. **Person chapter holds:** ~~real photos, photo captions~~ done 2026-09-15;
+    timeline months still to confirm. See Phase K.
 
 ## Risks / watch-items
 - **Save migrations** — every `DEFAULT_BEATS` change needs a version bump +
