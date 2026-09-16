@@ -1279,7 +1279,7 @@ function drawPanelCanvas(b) {
 }
 function makePanelMesh(b, i) {
   const tex = new THREE.CanvasTexture(drawPanelCanvas(b));
-  tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  tex.colorSpace = THREE.NoColorSpace; tex.anisotropy = 4;   // no sRGB decode: the composer has no OutputPass (nothing re-encodes), so a decoded photo hit the screen linear and crushed — raw values land 1:1 (2026-09-16)
   const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide });
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(b.panel.size[0], b.panel.size[1]), mat);
   mesh.position.set(...b.panel.pos);
@@ -1324,7 +1324,7 @@ function updatePanel(i) {
   mesh.geometry.dispose(); mesh.geometry = new THREE.PlaneGeometry(b.panel.size[0], b.panel.size[1]);
   if (mesh.material.map) mesh.material.map.dispose();
   const tex = new THREE.CanvasTexture(drawPanelCanvas(b));
-  tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  tex.colorSpace = THREE.NoColorSpace; tex.anisotropy = 4;   // no sRGB decode: the composer has no OutputPass (nothing re-encodes), so a decoded photo hit the screen linear and crushed — raw values land 1:1 (2026-09-16)
   mesh.material.map = tex; mesh.material.needsUpdate = true;
 }
 rebuildPanels();
