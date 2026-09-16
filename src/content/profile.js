@@ -81,7 +81,7 @@ export const PROFILE = {
       { when: 'Jun 2026', what: 'AeroCy', line: 'The company’s live bilingual site, shipped in days.' },
       { when: 'Jul 2026', what: 'TEEPO', line: 'Hebrew-RTL study platform, live with real auth.' },
       { when: 'Aug 2026', what: 'LLM Gateway', line: 'The control plane every agent I run goes through.' },
-      { when: 'Now', what: '17 built, 7 live', line: 'One or two client projects a quarter, alongside a part-time position.' },
+      { when: 'Now', what: '17 built, 7 live', line: 'Every build goes through Claude Code end-to-end; the next one is already underway.' },
     ],
   },
 

@@ -92,7 +92,7 @@ test('buildStop ids exist in featured and every featured preview file is on disk
 
 // Claims that were retired in the 2026-09-14 wording rework. They must not
 // come back anywhere a visitor or crawler can read them.
-const RETIRED = ['ai-native builder', 'real users', 'with users', 'dropped wix', 'stopped rescheduling', 'one user', 'not a demo'];
+const RETIRED = ['ai-native builder', 'real users', 'with users', 'dropped wix', 'stopped rescheduling', 'one user', 'not a demo', 'projects a quarter'];
 
 function strings(value, out = []) {
   if (typeof value === 'string') out.push(value);
