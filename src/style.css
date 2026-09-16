@@ -497,6 +497,22 @@ html, body {
   .stop-about[data-side="right"] .about { margin-right: auto; margin-left: 0; }
 }
 
+/* Stop imagery as DOM figures — portrait screens only (2026-09-17). Landscape screens
+   keep the WebGL panels and never render these; main.js zeroes the panels on portrait. */
+.stop-img { display: none; margin: 0; }
+.stop-imgs { display: none; }
+@media (orientation: portrait) {
+  .stop-img { display: block; }
+  .stop-img img { display: block; width: 100%; height: auto; border: 1px solid rgba(159,216,255,.38); border-radius: 3px; box-shadow: 0 0 28px rgba(79,210,255,.14), 0 12px 30px rgba(0,0,0,.45); background: #06101c; }
+  .stop-img.portrait { max-width: 13.5rem; margin-bottom: 1.4rem; }
+  .stop-img.shot { max-width: 74%; margin-bottom: .7rem; }
+  /* About: the stage (3:2) and the memorial (3:4) side by side at equal height — 2fr:1fr makes
+     the heights match exactly. The lectern detail is a crop of the stage shot, so phones skip it. */
+  .stop-imgs { display: grid; grid-template-columns: 2fr 1fr; gap: .5rem; align-items: start; margin-bottom: 1rem; max-width: 34rem; }
+  .stop-imgs .small:last-child { display: none; }
+  .stop-hi, .stop-about, .stop-project { justify-content: safe flex-start; }
+}
+
 /* 03 Timeline — rows on a rail that grows top to bottom; dots light with their row */
 .tl-title { font-family: var(--f-display); font-weight: 800; font-stretch: 78%; font-size: clamp(2rem, 6vw, 4.2rem); line-height: .95; letter-spacing: -0.02em; color: #eaf4ff; margin: 0 0 1.2rem; }
 .timeline { list-style: none; margin: 0; padding: 0 0 0 1.4rem; position: relative; max-width: 40rem; }
@@ -546,21 +562,28 @@ html, body {
 .project .also b { color: #eaf4ff; font-weight: 600; }
 .project .also-links { display: flex; gap: .9rem; }
 @media (min-width: 720px) { .project .also { grid-template-columns: auto 1fr; } .project .also-label { grid-column: 1 / -1; } .project .also-links { justify-self: end; } }
-/* phones: the portrait pose parks the panel in the top ~36% of the screen, so
-   the text starts below it and the block is tightened — the TEEPO / SHADIEZ
-   stops (which carry an `also` row) otherwise climbed over the screenshot */
+/* phones: the screenshot is a DOM figure in flow above the text (2026-09-17), so
+   the block just needs tightening to keep the TEEPO / SHADIEZ stops (which carry
+   an `also` row) inside the fold */
 @media (max-width: 640px) {
-  .stop-project { padding-top: 37vh; padding-bottom: 7vh; }
-  .project .title { font-size: clamp(2rem, 8vw, 5.5rem); margin-bottom: .6rem; }
-  .project .outcome { font-size: 1rem; margin-bottom: .7rem; }
-  .project dl { gap: .4rem; }
+  .stop-hi, .stop-about, .stop-project { padding-top: 9.5vh; padding-bottom: 9vh; }
+  .stop-project .eyebrow { margin-bottom: .5rem; }
+  .project dd { font-size: .84rem; margin-bottom: 0; }
+  .project .links { margin-top: .7rem; }
+  .about .para { font-size: .9rem; line-height: 1.45; margin-bottom: .6em; }
+  .about .about-title { font-size: clamp(1.7rem, 7.5vw, 2.4rem); margin-bottom: .6rem; }
+  .stop-about .eyebrow { margin-bottom: .5rem; }
+  .hi .status { margin-bottom: 1rem; }
+  .project .title { font-size: clamp(1.8rem, 7.5vw, 5.5rem); margin-bottom: .4rem; }
+  .project .outcome { font-size: .92rem; margin-bottom: .5rem; }
+  .project dl { gap: .3rem; }
   .project dd { font-size: .86rem; line-height: 1.45; }
   .project .stack { margin-top: .6rem; }
-  .project .also { margin-top: .9rem; padding-top: .6rem; grid-template-columns: auto 1fr; align-items: baseline; }
+  .project .also { margin-top: .6rem; padding-top: .45rem; grid-template-columns: auto 1fr; align-items: baseline; }
   .project .also-label { grid-column: 1 / -1; }
   .project .also-line { display: none; }   /* the one-liner is the desktop luxury; name + links carry it on a phone */
   .project .also-links { justify-self: end; }
-  .stop .group-label { position: static; margin-bottom: .6rem; }
+  .stop .group-label { position: static; margin-bottom: .45rem; }
   /* How I Build: method + proof + three repo cards ran past the fold at 844px */
   .method .line { font-size: 1rem; margin-bottom: .35em; }
   .proof { grid-template-columns: repeat(3, 1fr); gap: .5rem; margin: 1rem 0; padding: .6rem .75rem; border: 1px solid rgba(159,216,255,.16); border-radius: 8px; background: rgba(8,16,26,.55); }   /* same glass as the repo cards: the dense core sits behind it on phones */

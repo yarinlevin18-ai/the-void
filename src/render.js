@@ -7,10 +7,17 @@ export const escAttr = (s) => esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39
 
 const eyebrow = (t) => `<div class="eyebrow">${esc(t)}</div>`;
 
-// 01 Hi — portrait panel on the left (WebGL), greeting on the right.
+// Portrait screens show a stop's imagery as a DOM <img> in flow above the text
+// (2026-09-17): the WebGL panels render soft through the touch tier's 1.25× DPR
+// cap and, with Safari's URL bar shortening the viewport, landed on the words.
+// CSS hides these figures on landscape screens, where the WebGL panels take over.
+const figure = (src, alt, cls) => src ? `<figure class="stop-img ${cls}"><img src="${escAttr(src)}" alt="${escAttr(alt)}" loading="lazy" decoding="async"></figure>` : '';
+
+// 01 Hi — portrait panel on the left (WebGL on landscape, DOM figure on portrait), greeting on the right.
 export function renderHi(p) {
   const lines = p.hi.lines.map((l, i) => `<p class="line" style="--i:${i + 1}">${esc(l)}</p>`).join('');
   return `<article class="hi" data-side="left">
+    ${figure(p.hi.portrait, p.hi.portraitAlt || p.name || 'Portrait', 'portrait')}
     ${eyebrow('Hello')}
     <h2 class="greeting" style="--i:0">${esc(p.hi.greeting)}</h2>
     <div class="status">${esc(p.hi.status)}</div>
@@ -18,10 +25,12 @@ export function renderHi(p) {
   </article>`;
 }
 
-// 02 About — three speaking photos on the right (WebGL panels), the story on the left.
+// 02 About — three speaking photos on the right (WebGL panels; DOM figures on portrait screens), the story on the left.
 export function renderAbout(p) {
   const paras = p.about.paragraphs.map((l, i) => `<p class="para" style="--i:${i + 1}">${esc(l)}</p>`).join('');
+  const photos = (p.about.photos || []).map((x, i) => figure(x.src, x.caption, i === 0 ? 'lead' : 'small')).join('');
   return `<article class="about" data-side="right">
+    ${photos ? `<div class="stop-imgs">${photos}</div>` : ''}
     ${eyebrow(p.about.eyebrow)}
     <h2 class="about-title" style="--i:0">${esc(p.about.title)}</h2>
     ${paras}
@@ -80,6 +89,7 @@ export function renderProject(x, side, also = null) {
       <span class="also-links">${small(also.url, 'Visit live')}${small(also.repo, 'GitHub')}</span>
     </div>` : '';
   return `<article class="project" data-side="${escAttr(side)}">
+    ${figure(x.img, `${x.name} — screenshot`, 'shot')}
     ${eyebrow(`${x.kind} · ${x.tag}`)}
     <h2 class="title">${esc(x.name)}</h2>
     <p class="outcome">${esc(x.outcome)}</p>

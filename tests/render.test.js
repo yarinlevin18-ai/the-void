@@ -15,11 +15,23 @@ test('hi renders greeting, status and two lines, side left', () => {
   assert.equal((h.match(/class="line"/g) || []).length, 2);
 });
 
-test('about renders title, three paragraphs, side right, and never draws photos', () => {
+test('about renders title, three paragraphs, side right, and the three photos as portrait-only figures', () => {
   const h = renderAbout(PROFILE);
   assert.ok(h.includes('data-side="right"'));
   assert.equal((h.match(/class="para"/g) || []).length, 3);
-  assert.ok(!h.includes('<img'), 'photos are WebGL panels, not DOM images');
+  assert.equal((h.match(/<img /g) || []).length, PROFILE.about.photos.length);
+  for (const x of PROFILE.about.photos) { assert.ok(h.includes(`src="${x.src}"`)); assert.ok(h.includes(`alt="${x.caption}"`)); }
+  assert.ok(h.includes('class="stop-imgs"') && h.includes('class="stop-img lead"'));
+});
+
+test('hi and project carry their imagery as a portrait-only figure with alt text', () => {
+  const hi = renderHi(PROFILE);
+  assert.ok(hi.includes(`class="stop-img portrait"`) && hi.includes(`src="${PROFILE.hi.portrait}"`));
+  const teepo = PROFILE.work.featured.find((p) => p.id === 'teepo');
+  const hp = renderProject(teepo, 'left');
+  assert.ok(hp.includes(`class="stop-img shot"`) && hp.includes(`src="${teepo.img}"`) && hp.includes('alt="TEEPO — screenshot"'));
+  assert.ok(hp.indexOf('stop-img') < hp.indexOf('class="eyebrow"'), 'figure comes before the words');
+  assert.ok(!renderProject({ ...teepo, img: '' }, 'left').includes('<img'), 'no figure without an image');
 });
 
 test('timeline renders one row per entry, a dot each, and the print pill', () => {

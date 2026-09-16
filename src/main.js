@@ -2890,10 +2890,9 @@ function animate() {
     if (editMode) { m.material.opacity = 1; m.visible = true; m.scale.setScalar(1); }
     else {
       let a = clamp(1 - (camera.position.distanceTo(m.position) - 90) / curFX.panelLightRange, 0, 1); // near = lit
-      if (extra) {
-        a *= clamp(1 - Math.abs(_pIdx - m.userData.i), 0, 1);   // a `panels[]` cluster belongs to one stop: fade with it, never bleed into the neighbours
-        if (!m.userData.lead && isPortrait()) a = 0;             // portrait windows keep the lead photo only (touch never builds the others) — the small ones sat on the About title
-      } else a *= clamp(2 - 2 * Math.abs(_pIdx - i), 0, 1);      // a stop's own panel: full from halfway through the hop in, fully off at any neighbour (the next stop's panel, 115 units on, used to ghost through at ≈ 4 %)
+      if (extra) a *= clamp(1 - Math.abs(_pIdx - m.userData.i), 0, 1);   // a `panels[]` cluster belongs to one stop: fade with it, never bleed into the neighbours
+      else a *= clamp(2 - 2 * Math.abs(_pIdx - i), 0, 1);      // a stop's own panel: full from halfway through the hop in, fully off at any neighbour (the next stop's panel, 115 units on, used to ghost through at ≈ 4 %)
+      if (isPortrait()) a = 0;   // portrait screens show the imagery as DOM figures in the stop (render.js, 2026-09-17): the WebGL panel rendered soft through the touch DPR cap and sat on the words under Safari's URL bar
       // An unlit panel is invisible, floor or not (2026-09-16): the Opening's default
       // floor of .1 left the Hi portrait ghosting under the wordmark.
       m.material.opacity = a > 0 ? curFX.panelDimFloor + (1 - curFX.panelDimFloor) * a : 0;

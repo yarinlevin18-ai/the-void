@@ -68,6 +68,15 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   re-encodes to sRGB, so a decoded photo hit the screen linear and crushed. A DOM text block (`src/panels.js` + `src/render.js`)
   sits on the opposite side and owns the words; one focal point and one CTA
   per screen. Beats with no imagery have no panel.
+  **Portrait screens don't use the WebGL panels at all** (2026-09-17): every
+  panel is zeroed in the render loop and the stop's imagery comes from DOM
+  `<figure class="stop-img">` elements that `render.js` emits into the stop
+  (Hi portrait, About stage + memorial side by side, project screenshot) and
+  `style.css` shows only under `@media (orientation: portrait)`. The WebGL
+  version rendered soft through the touch tier's 1.25× DPR cap and, with
+  Safari's URL bar shortening the viewport, landed on the words. Verified in
+  the iOS Simulator (iPhone 17, Safari) — the Chrome phone emulation never
+  showed either problem, so phone checks go through the simulator now.
 - **Flight:** 13 stops (see below), section-snapping. Per-shot FOV + duration
   with a deliberate rhythm (Hero 2.1s breath · Hero→Intro 2.4s exhale · CV/How
   I Build 1.6s · project hops 1.35s · finale 3s held). `fitFov()` widens
@@ -147,7 +156,7 @@ folds a second featured project in as a compact row under the links.
 |---|---|---|
 | `src/main.js` | ~3,023 | Scene, network, nebula, flight, Director Mode, perf tiers, save/migrate |
 | `src/panels.js` | 83 | DOM stop layer: builds/shows/hides stops (inert + aria-hidden), count-up, print/copy |
-| `src/render.js` | 74 | Pure HTML renderers (hi, about, timeline, build, project, contact), node-tested |
+| `src/render.js` | ~90 | Pure HTML renderers (hi, about, timeline, build, project, contact) incl. the portrait-only `stop-img` figures, node-tested |
 | `src/bar.js` | 43 | Fixed top bar: name, availability, Work, About, Copy email |
 | `src/hash.js` | 28 | Deep-link resolver: fragment/anchor → stop index, prototype-free, node-tested |
 | `src/printcv.js` | 54 | Print-only CV (moved out of the old dossier.js) |
@@ -250,7 +259,9 @@ hard-refresh if a change doesn't show.
   root to 13.6 px under 640 px, which put every rem label at 8–9 px
   (Lighthouse: 20 % legible). Phone sizing lives in `style.css`; the
   visitor-facing label tier is `.75rem` = 12 px and should not go lower.
-- Verify on an emulated phone (390×844, CPU throttle) before pushing — mobile
-  perf has been the recurring regression.
+- Verify on a phone before pushing — mobile has been the recurring regression.
+  Use the iOS Simulator (Safari on iPhone 17 via the `Claude_Code_iOS_Simulator`
+  tool; `xcode-select` is set) rather than Chrome's 390×844 emulation, which
+  hid both the soft-panel and the panel-on-text bugs of 2026-09-17.
 - Root-level `demo-*.html` and `font-specimen*.html` are scratch/reference —
   not part of the shipped site. The `references/` folder no longer exists.
