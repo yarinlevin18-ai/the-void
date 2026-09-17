@@ -1714,6 +1714,12 @@ window.addEventListener('pointermove', (e) => {
 const overlay = document.querySelector('#overlay');
 const hudBeat = document.querySelector('#hud-beat');
 const hudProgress = document.querySelector('#hud-progress');
+const hudEl = document.querySelector('#hud');
+const hudUp = document.querySelector('#hud-up'), hudDown = document.querySelector('#hud-down'), hudRail = document.querySelector('#hud-rail');
+// 2026-09-17: chevrons replace the page counter for visitors (the counter stays for
+// screen readers). Both route through goTo like every other input.
+hudUp?.addEventListener('click', () => goTo(index - 1));
+hudDown?.addEventListener('click', () => goTo(index + 1));
 
 // ---- Text assets: per-asset content + in/out animation + DOF blur -------------
 //  Every text box on the site is an "asset" you can re-word and re-time. The reveal
@@ -2904,6 +2910,13 @@ function animate() {
 
   hudBeat.textContent = editMode ? 'Director mode' : (beats[index]?.name ?? '');
   hudProgress.textContent = (editMode ? (sel + 1) : (index + 1)) + ' / ' + beats.length;
+  if (hudRail) {
+    const last = Math.max(1, beats.length - 1);
+    hudRail.style.transform = `scaleX(${editMode ? (sel / last) : (index / last)})`;
+    hudUp.disabled = !editMode && index <= 0;
+    hudDown.disabled = !editMode && index >= last;
+    hudEl.classList.toggle('at-start', !editMode && index === 0 && loaderDone);
+  }
   try {                                                             // never let asset reveals break the render loop
     const showOpening = !editMode && progress < 0.04;  // the Opening text lives at the very start
     for (const a of ASSET_DEFS) if (a.group === 'overlay') (showOpening ? showAsset : hideAsset)(a);

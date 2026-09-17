@@ -129,24 +129,22 @@ html, body {
   opacity: 0; transition: opacity .8s ease .45s;
 }
 
-/* ---- Heads-up display, bottom-left ---- */
-#hud {
-  font-family: var(--f);
-  position: fixed;
-  left: 1.5rem;
-  bottom: 1.25rem;
-  z-index: 2;
-  display: flex;
-  gap: 0.9rem;
-  align-items: baseline;
-  font-size: 0.75rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: #6f8db0;
-  pointer-events: none;
-}
-#hud #hud-beat { color: #cfe8ff; }
-#hud #hud-progress { color: #4fd2ff; }
+/* ---- Heads-up display (2026-09-17): two chevrons bottom-centre + a hairline of progress
+   along the bottom edge. The stop name / count lives on for screen readers only. ---- */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+#hud { position: fixed; left: 0; right: 0; bottom: 0; z-index: 2; pointer-events: none; }
+#hud .hud-arrows { position: absolute; left: 50%; bottom: calc(1.1rem + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); display: flex; gap: .7rem; }
+#hud .hud-arrows button { pointer-events: auto; width: 2.4rem; height: 2.4rem; border-radius: 50%; border: 1px solid rgba(79,210,255,.45); background: rgba(6,12,20,.55); color: #4fd2ff; display: grid; place-items: center; cursor: pointer; padding: 0;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); transition: border-color .25s ease, background .25s ease, opacity .3s ease, transform .3s ease; }
+#hud .hud-arrows button svg { width: 1rem; height: 1rem; }
+#hud .hud-arrows button:hover { background: rgba(79,210,255,.14); border-color: #4fd2ff; }
+#hud .hud-arrows button:focus-visible { outline: 2px solid #4fd2ff; outline-offset: 2px; }
+#hud .hud-arrows button[disabled] { opacity: .25; pointer-events: none; }
+#hud.at-start #hud-down { animation: hudPulse 1.8s ease-out 2; }
+@keyframes hudPulse { 0% { box-shadow: 0 0 0 0 rgba(79,210,255,.45); } 70% { box-shadow: 0 0 0 10px rgba(79,210,255,0); } 100% { box-shadow: 0 0 0 0 rgba(79,210,255,0); } }
+#hud .hud-rail { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: rgba(79,210,255,.12); }
+#hud .hud-rail i { display: block; height: 100%; width: 100%; background: #4fd2ff; box-shadow: 0 0 8px #4fd2ff; transform-origin: left center; transform: scaleX(0); transition: transform .8s cubic-bezier(.22,1,.36,1); }
+@media (prefers-reduced-motion: reduce) { #hud .hud-rail i { transition: none; } #hud.at-start #hud-down { animation: none; } }
 
 /* ---- Live edit panel (press E) ---- */
 #editor {
@@ -415,7 +413,7 @@ html, body {
 
 /* ---- Mobile layout (the file's first breakpoint — everything above assumes desktop) ---- */
 @media (max-width: 640px) {
-  #hud { left: 1rem; bottom: 0.9rem; gap: 0.6rem; }
+  #hud .hud-arrows { bottom: calc(.9rem + env(safe-area-inset-bottom, 0px)); }
 }
 
 @media (pointer: coarse) {
@@ -505,7 +503,7 @@ html, body {
   .stop-img { display: block; }
   .stop-img img { display: block; width: 100%; height: auto; border: 1px solid rgba(159,216,255,.38); border-radius: 3px; box-shadow: 0 0 28px rgba(79,210,255,.14), 0 12px 30px rgba(0,0,0,.45); background: #06101c; }
   .stop-img.portrait { max-width: 13.5rem; margin-bottom: 1.4rem; }
-  .stop-img.shot { max-width: 74%; margin-bottom: .7rem; }
+  .stop-img.shot { max-width: 70%; margin-bottom: .6rem; }
   /* About: the stage (3:2) and the memorial (3:4) side by side at equal height — 2fr:1fr makes
      the heights match exactly. The lectern detail is a crop of the stage shot, so phones skip it. */
   .stop-imgs { display: grid; grid-template-columns: 2fr 1fr; gap: .5rem; align-items: start; margin-bottom: 1rem; max-width: 34rem; }
@@ -615,7 +613,7 @@ html, body {
    the block just needs tightening to keep the TEEPO / SHADIEZ stops (which carry
    an `also` row) inside the fold */
 @media (max-width: 640px) {
-  .stop-hi, .stop-about, .stop-project { padding-top: 9.5vh; padding-bottom: 9vh; }
+  .stop-hi, .stop-about, .stop-project { padding-top: 12.5vh; padding-bottom: 9vh; }
   .stop-project .eyebrow { margin-bottom: .5rem; }
   .project dd { font-size: .84rem; margin-bottom: 0; }
   .project .links { margin-top: .7rem; }
@@ -634,7 +632,7 @@ html, body {
   .project .also-links { justify-self: end; }
   .stop .group-label { position: static; margin-bottom: .45rem; }
   /* How I Build: method + proof + three repo cards ran past the fold at 844px */
-  .stop-build { padding-top: 9.5vh; padding-bottom: 9vh; }
+  .stop-build { padding-top: 12.5vh; padding-bottom: 9vh; }
   .stop-build .eyebrow { margin-bottom: .5rem; }
   .method .line { font-size: .95rem; margin-bottom: .3em; }
   .proof { grid-template-columns: repeat(3, 1fr); gap: .4rem; margin: .7rem 0; padding: .5rem .6rem; border: 1px solid rgba(159,216,255,.16); border-radius: 8px; background: rgba(8,16,26,.55); }   /* same glass as the repo cards: the dense core sits behind it on phones */
@@ -694,18 +692,41 @@ html, body {
   opacity: 0; transform: translateY(-10px); transition: opacity .5s ease, transform .5s ease; pointer-events: none; }
 #bar.show { opacity: 1; transform: none; pointer-events: auto; }
 #bar .bar-name { font-family: var(--f-display); font-weight: 700; font-stretch: 85%; font-size: 1.05rem; letter-spacing: 0; text-transform: none; color: #eaf4ff; margin-right: auto; }
-#bar .bar-avail { display: none; align-items: center; gap: .45rem; margin-right: .6rem; }
+#bar .bar-avail { display: none; align-items: center; gap: .45rem; margin-right: .6rem; white-space: nowrap; }
 #bar .bar-avail i { width: 6px; height: 6px; border-radius: 50%; background: #3fc978; box-shadow: 0 0 8px #3fc978; }
 #bar .bar-link { display: inline-flex; font: inherit; color: inherit; background: none; border: 0; padding: .5rem .45rem; border-radius: 999px; cursor: pointer; }
 #bar .bar-link:hover { color: #eaf4ff; background: rgba(159,216,255,.08); }
-#bar .bar-copy { font: inherit; color: #eaf4ff; background: rgba(79,210,255,.1); border: 1px solid rgba(79,210,255,.45); padding: .5rem .8rem; border-radius: 999px; cursor: pointer; }
+#bar .bar-copy { font: inherit; white-space: nowrap; color: #eaf4ff; background: rgba(79,210,255,.1); border: 1px solid rgba(79,210,255,.45); padding: .5rem .8rem; border-radius: 999px; cursor: pointer; }
 #bar .bar-copy:hover { background: rgba(79,210,255,.2); }
-#bar .bar-link:focus-visible, #bar .bar-copy:focus-visible { outline: 2px solid #4fd2ff; outline-offset: 2px; }
+#bar .bar-link:focus-visible, #bar .bar-copy:focus-visible, #bar .bar-details a:focus-visible { outline: 2px solid #4fd2ff; outline-offset: 2px; }
+/* details (2026-09-17): role under the name, phone · LinkedIn · GitHub as compact links */
+#bar .bar-id { display: flex; flex-direction: column; gap: .05rem; margin-right: auto; min-width: 0; }
+#bar .bar-id .bar-name { margin-right: 0; line-height: 1.1; }
+#bar .bar-role { font-size: .62rem; letter-spacing: .14em; color: #4fd2ff; line-height: 1.2; white-space: nowrap; }
+#bar .bar-details { display: inline-flex; align-items: center; gap: .1rem; }
+#bar .bar-details a { display: inline-flex; align-items: center; color: #cfe8ff; text-decoration: none; padding: .5rem .45rem; border-radius: 999px; white-space: nowrap; }
+#bar .bar-details a:hover { color: #eaf4ff; background: rgba(159,216,255,.08); }
+#bar .bar-details svg { display: none; width: 1.05rem; height: 1.05rem; }
+@media (max-width: 719px) {
+  /* phones: a two-row grid — name + role with Copy email on the first row, Work · About
+     and the icon links on the second. Icons instead of words: the row is 340px wide. */
+  #bar { display: grid; grid-template-columns: auto auto 1fr auto; grid-template-areas: "id id id copy" "work about . details"; align-items: center; column-gap: .1rem; row-gap: .15rem; border-radius: 18px; padding: .5rem .55rem .35rem .9rem; }
+  #bar .bar-id { grid-area: id; }
+  #bar .bar-copy { grid-area: copy; padding: .4rem .6rem; }
+  #bar .bar-link[data-act="work"] { grid-area: work; margin-left: -.45rem; }
+  #bar .bar-link[data-act="about"] { grid-area: about; }
+  #bar .bar-link { padding: .4rem .45rem; }
+  #bar .bar-details { grid-area: details; gap: .15rem; }
+  #bar .bar-details a { padding: .35rem .4rem; }
+  #bar .bar-details svg { display: block; }
+  #bar .bar-details .lbl { display: none; }
+}
 @media (min-width: 720px) {
   #bar { left: 50%; right: auto; transform: translate(-50%, -10px); }
   #bar.show { transform: translate(-50%, 0); }
   #bar .bar-avail { display: inline-flex; }
   #bar .bar-link { padding: .5rem .6rem; }
-  #bar .bar-name { margin-right: .9rem; }
+  #bar .bar-id { margin-right: .9rem; }
+  #bar .bar-details { margin: 0 .3rem 0 .2rem; padding-left: .5rem; border-left: 1px solid rgba(159,216,255,.16); }
 }
 @media (prefers-reduced-motion: reduce) { #ld-loop { display: none; } }   /* poster only: the JS also removes the element */

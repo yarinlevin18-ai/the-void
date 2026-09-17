@@ -57,6 +57,20 @@ test('renders name + availability escaped, starts inert, show/hide toggle it', (
   assert.ok(!root.classList.contains('show'));
 });
 
+test('the bar carries the details: role, tel link, LinkedIn and GitHub from the profile', () => {
+  const { root } = mount();
+  assert.equal(root.querySelector('.bar-role').textContent, PROFILE.title);
+  assert.equal(root.querySelector('.bar-tel').getAttribute('href'), 'tel:+972548029820');
+  assert.equal(root.querySelector('.bar-tel .lbl').textContent, PROFILE.links.phone);
+  assert.ok(root.querySelector('.bar-tel svg') && root.querySelector('.bar-details a[aria-label="GitHub"] svg'), 'icons for the phone layout');
+  const hrefs = [...root.querySelectorAll('.bar-details a[target="_blank"]')].map((a) => a.getAttribute('href'));
+  assert.deepEqual(hrefs, [PROFILE.links.linkedin, PROFILE.links.github]);
+  const p = structuredClone(PROFILE); p.links.phone = ''; p.links.linkedin = '';
+  const { root: r2 } = mount(p);
+  assert.equal(r2.querySelector('.bar-tel'), null, 'no phone → no tel link');
+  assert.equal(r2.querySelectorAll('.bar-details a').length, 1, 'only GitHub left');
+});
+
 test('Work / About dispatch their callbacks', () => {
   const { root, calls } = mount();
   click(root.querySelector('[data-act="work"]'));
