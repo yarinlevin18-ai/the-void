@@ -714,7 +714,7 @@ function buildNetwork() {
   pgeo.setAttribute('aColor', new THREE.BufferAttribute(aColor, 3));
   const pmat = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-    uniforms: { uTime: { value: 0 }, uSize: { value: 3.2 }, uTwinkle: { value: 1 }, uWarp: { value: 0 }, uDrift: { value: 1 }, uFlare: { value: 1 }, uPtN: { value: new THREE.Vector2(9, 9) }, uVel: { value: 0 }, uTint: { value: new THREE.Color(0x4fd2ff) }, uTintAmt: { value: 0 }, uDoor: { value: 0 }, uDoorC: { value: new THREE.Vector3() }, uDoorAx: { value: new THREE.Vector3(0, 1, 0) } },
+    uniforms: { uTime: { value: 0 }, uSize: { value: 3.2 }, uTwinkle: { value: 1 }, uWarp: { value: 0 }, uDrift: { value: 1 }, uFlare: { value: 1 }, uPtN: { value: new THREE.Vector2(9, 9) }, uVel: { value: 0 }, uTint: { value: new THREE.Color(0x4fd2ff) }, uTintAmt: { value: 0 }, uDoor: { value: 0 }, uDoorC: { value: new THREE.Vector3() }, uDoorAx: { value: new THREE.Vector3(0, 1, 0) }, uDim: { value: 1 } },
     vertexShader: `attribute vec3 aAmp,aFre,aPha,aColor; attribute float aPhase,aScale;
       uniform float uTime,uSize,uTwinkle,uWarp,uDrift,uVel,uFlare; uniform vec2 uPtN;
       varying vec3 vC; varying float vA;
@@ -734,11 +734,11 @@ function buildNetwork() {
         vC=aColor;
         gl_PointSize=min(aScale*uSize*tw*(1.0+uWarp*1.6)*(420.0/max(depth,1.0)), 24.0);
         gl_Position=clip; }`,
-    fragmentShader: `varying vec3 vC; varying float vA; uniform vec3 uTint; uniform float uTintAmt;
+    fragmentShader: `varying vec3 vC; varying float vA; uniform vec3 uTint; uniform float uTintAmt,uDim;
       void main(){ vec2 c=gl_PointCoord-0.5; float d=length(c); if(d>0.5) discard;
-        float a=smoothstep(0.5,0.0,d)*vA;
+        float a=smoothstep(0.5,0.0,d)*vA*uDim;                             // uDim: the void steps back while a stop is open (2026-09-17)
         vec3 col=mix(vC,uTint,uTintAmt);                                   // per-chapter recolor
-        gl_FragColor=vec4(col*(0.7+vA),a); }`,
+        gl_FragColor=vec4(col*(0.7+vA)*mix(0.7,1.0,uDim),a); }`,
   });
   const nodes = new THREE.Points(pgeo, pmat);
   nodes.renderOrder = -6; nodes.frustumCulled = false;
@@ -774,7 +774,7 @@ function buildNetwork() {
   lgeo.setAttribute('aLColor', new THREE.BufferAttribute(lCol, 3));
   const lmat = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-    uniforms: { uTime: { value: 0 }, uDrift: { value: 1 }, uWarp: { value: 0 }, uPulse: { value: 1 }, uTint: { value: new THREE.Color(0x4fd2ff) }, uTintAmt: { value: 0 }, uDoor: { value: 0 }, uDoorC: { value: new THREE.Vector3() }, uDoorAx: { value: new THREE.Vector3(0, 1, 0) } },
+    uniforms: { uTime: { value: 0 }, uDrift: { value: 1 }, uWarp: { value: 0 }, uPulse: { value: 1 }, uTint: { value: new THREE.Color(0x4fd2ff) }, uTintAmt: { value: 0 }, uDoor: { value: 0 }, uDoorC: { value: new THREE.Vector3() }, uDoorAx: { value: new THREE.Vector3(0, 1, 0) }, uDim: { value: 1 } },
     vertexShader: `attribute vec3 aAmp,aFre,aPha,aLColor; attribute float aT,aLPhase;
       uniform float uTime,uDrift; varying float vT,vP,vFade,vD; varying vec3 vC;
       ${DRIFT_GLSL}
@@ -786,7 +786,7 @@ function buildNetwork() {
         vT=aT; vP=aLPhase; vC=aLColor;
         gl_Position=projectionMatrix*mv; }`,
     fragmentShader: `varying float vT,vP,vFade,vD; varying vec3 vC;
-      uniform float uTime,uWarp,uTintAmt,uPulse,uDoor; uniform vec3 uTint;
+      uniform float uTime,uWarp,uTintAmt,uPulse,uDoor,uDim; uniform vec3 uTint;
       void main(){
         float life=0.08+0.15*sin(uTime*0.35+vP*6.2831);                    // slow form/dissolve (restraint: lines support, never shout)
         // Traffic, not a metronome. Every link used to run a packet at the same
@@ -800,8 +800,8 @@ function buildNetwork() {
         float fire=step(0.58,roll);                                        // ~42% of cycles carry a packet
         float dir=step(0.5,fract(roll*7.0));                               // half of them travel B->A
         float head=fract(cyc); head=mix(head,1.0-head,dir);
-        float pulse=fire*smoothstep(0.035,0.0,abs(vT-head))*uPulse;        // bright spark travelling the link
-        float a=clamp(life+pulse*1.15,0.0,1.0)*vFade*(1.0+uWarp*0.8)*(1.0-uDoor*smoothstep(${DOOR_R.toFixed(1)},${(DOOR_R * 0.4).toFixed(1)},vD));
+        float pulse=fire*smoothstep(0.035,0.0,abs(vT-head))*uPulse*smoothstep(0.35,1.0,uDim);   // bright spark travelling the link; traffic pauses while a stop is open
+        float a=clamp(life+pulse*1.15,0.0,1.0)*vFade*(1.0+uWarp*0.8)*uDim*(1.0-uDoor*smoothstep(${DOOR_R.toFixed(1)},${(DOOR_R * 0.4).toFixed(1)},vD));
         vec3 col=mix(vC,uTint,uTintAmt)+pulse*vec3(0.55,0.75,0.9);
         gl_FragColor=vec4(col,a); }`,
   });
@@ -819,12 +819,13 @@ function buildNetwork() {
   }
   const setTint = (hex, amt) => { pmat.uniforms.uTint.value.set(hex); pmat.uniforms.uTintAmt.value = amt; lmat.uniforms.uTint.value.set(hex); lmat.uniforms.uTintAmt.value = amt; };
   const setWarp = (v) => { pmat.uniforms.uWarp.value = v; lmat.uniforms.uWarp.value = v; };
+  const setDim = (v) => { pmat.uniforms.uDim.value = v; lmat.uniforms.uDim.value = v; };
   const setDoor = (v, c, ax) => {
     pmat.uniforms.uDoor.value = v; lmat.uniforms.uDoor.value = v;
     if (c) { pmat.uniforms.uDoorC.value.copy(c); lmat.uniforms.uDoorC.value.copy(c); }
     if (ax) { pmat.uniforms.uDoorAx.value.copy(ax); lmat.uniforms.uDoorAx.value.copy(ax); }
   };
-  return { N, L, nodes, lines, pgeo, lgeo, pmat, lmat, update, setTint, setWarp, setDoor, base, amp, fre, pha, aColor };
+  return { N, L, nodes, lines, pgeo, lgeo, pmat, lmat, update, setTint, setWarp, setDoor, setDim, base, amp, fre, pha, aColor };
 }
 
 // ---- Cursor links (ENVIRONMENT.md Layer 3) — the network reaches toward the
@@ -1715,6 +1716,7 @@ const overlay = document.querySelector('#overlay');
 const hudBeat = document.querySelector('#hud-beat');
 const hudProgress = document.querySelector('#hud-progress');
 const hudEl = document.querySelector('#hud');
+let _stopOpen = false, _dimV = 1;   // is a stop's DOM block showing → how far the void has stepped back (1 = full)
 const hudUp = document.querySelector('#hud-up'), hudDown = document.querySelector('#hud-down'), hudRail = document.querySelector('#hud-rail');
 // 2026-09-17: chevrons replace the page counter for visitors (the counter stays for
 // screen readers). Both route through goTo like every other input.
@@ -2834,7 +2836,7 @@ function animate() {
   if (editMode) { thumbTimer += dt; if (thumbTimer > 0.8) { thumbTimer = 0; renderAllThumbs(); } }
 
   resolveFX();                               // per-beat FX keyframes → interpolated live values
-  livingVoid.nebMat.uniforms.uDens.value = curFX.nebula;   // per-section nebula density (keyframed)
+  // per-section nebula density (keyframed) is applied in the dim block below, scaled by _dimV
   livingVoid.update(t);                      // advance nebula + starfield time
   if (gradePass) { gradePass.uniforms.uTime.value = t; gradePass.uniforms.uDark.value = FX.vignette; gradePass.uniforms.uGrain.value = FX.grain; }
   if (network) network.update(t, (FX.driftOn && !PREFERS_REDUCED) ? 1 : 0, _cN, _cVel * FX.cursorDrive);   // data network: drift + cursor stir
@@ -2862,8 +2864,21 @@ function animate() {
       const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
       if (!tween && dist < 26 && loaderDone) panels.show(index);   // Opening/Hero have no stop → panels no-ops
       else if (tween || dist > 70) panels.hide();
+      _stopOpen = !tween && dist < 26 && loaderDone && !!beats[index]?.stop;
       setBar(progress > 0.02);                       // the bar arrives once the flight leaves the wordmark
     }
+  }
+
+  {                                          // the void steps back while a stop is open (2026-09-17)
+    // Reviewer feedback: the network fought the words. Nodes, links and the nebula
+    // ease down to DIM_OPEN on arrival and the link traffic pauses; the flight brings
+    // them back. Portrait screens dim harder — the text sits right on the void there.
+    const DIM_OPEN = isPortrait() ? 0.32 : 0.55;
+    const target = !editMode && _stopOpen ? DIM_OPEN : 1;
+    const rate = dt / (target < _dimV ? 0.6 : 0.45);
+    _dimV = PREFERS_REDUCED ? target : _dimV + clamp(target - _dimV, -rate, rate);
+    if (network) network.setDim(_dimV);
+    livingVoid.nebMat.uniforms.uDens.value = curFX.nebula * (0.45 + 0.55 * _dimV);
   }
 
   {                                          // the contact door

@@ -617,7 +617,8 @@ html, body {
   .stop-project .eyebrow { margin-bottom: .5rem; }
   .project dd { font-size: .84rem; margin-bottom: 0; }
   .project .links { margin-top: .7rem; }
-  .about .para { font-size: .9rem; line-height: 1.45; margin-bottom: .6em; }
+  .about .para { font-size: .9rem; line-height: 1.45; margin-bottom: .6em; color: #d6e8f7; }
+  .project dd { color: #d6e8f7; }
   .about .about-title { font-size: clamp(1.7rem, 7.5vw, 2.4rem); margin-bottom: .6rem; }
   .stop-about .eyebrow { margin-bottom: .5rem; }
   .hi .status { margin-bottom: 1rem; }
