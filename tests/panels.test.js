@@ -42,6 +42,8 @@ test('mounts one hidden, inert section per beat that has a stop', () => {
   assert.equal(panels.el(I.project).dataset.side, 'left');
   assert.equal(panels.el(I.project).querySelector('.group-label').textContent, 'Landing pages');
   assert.equal(panels.el(I.timeline).id, `stop-${I.timeline}`);
+  assert.equal(panels.el(I.project).dataset.reveal, 'scan', 'first project stop gets the first entrance recipe');
+  assert.ok(!panels.el(I.timeline).dataset.reveal, 'only project stops carry a reveal');
 });
 
 test('throws on an unknown stop type or a project id missing from the profile', () => {

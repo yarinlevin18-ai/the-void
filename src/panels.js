@@ -7,8 +7,14 @@ import { copyLabel, failLabel } from './bar.js';
 
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+// Portrait-screen entrance recipes for project stops, assigned by position among the
+// project stops (never by project name — a Director Mode reorder keeps them). CSS owns
+// the motion (`[data-reveal]` in style.css); this only hands out the names.
+export const PROJECT_REVEALS = ['scan', 'iris', 'deal', 'wipe', 'shutter'];
+
 export function initPanels({ beats, profile, root }) {
   root.innerHTML = '';
+  let nProject = 0;
   const els = beats.map((b, i) => {
     if (!b.stop) return null;
     const sec = document.createElement('section');
@@ -31,6 +37,7 @@ export function initPanels({ beats, profile, root }) {
       if (b.also && !also) throw new Error(`panels: no featured project with id "${b.also}" (also)`);
       sec.innerHTML = renderProject(x, b.side || 'left', also);
       sec.dataset.side = b.side || 'left';
+      sec.dataset.reveal = PROJECT_REVEALS[nProject++ % PROJECT_REVEALS.length];
       if (b.groupLabel) sec.insertAdjacentHTML('afterbegin', `<div class="group-label">${esc(b.groupLabel)}</div>`);
     } else if (b.stop === 'contact') sec.innerHTML = renderContact(profile, typeof __BUILT__ !== 'undefined' ? __BUILT__ : null);   // build stamp from vite.config.js
     else throw new Error(`panels: unknown stop type "${b.stop}"`);

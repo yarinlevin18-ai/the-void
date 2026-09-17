@@ -513,6 +513,55 @@ html, body {
   .stop-hi, .stop-about, .stop-project { justify-content: safe flex-start; }
 }
 
+/* ---- Per-stop entrances on portrait screens (2026-09-17) ----
+   One easing curve, short travel, ≤ 600 ms, staggered so each stop reads as one
+   composed reveal. Only under (orientation: portrait) — landscape keeps the WebGL
+   panels and their own reveal — and only when motion is welcome: the hidden
+   start states live inside this block, so reduced-motion never sees them. */
+@media (orientation: portrait) and (prefers-reduced-motion: no-preference) {
+  :root { --ease-out: cubic-bezier(.22, 1, .36, 1); }
+  /* Hi — the portrait develops (cool, soft, slightly large → true), then the lines rise */
+  .stop-img.portrait img { opacity: 0; transform: scale(1.03); filter: saturate(.2) sepia(.25) hue-rotate(165deg) blur(6px); transition: opacity .35s ease, transform .6s var(--ease-out), filter .6s ease; }
+  .stop.in .stop-img.portrait img { opacity: 1; transform: none; filter: none; }
+  .stop-hi .hi .greeting, .stop-hi .hi .status, .stop-hi .hi .line { transition-delay: calc(var(--i, 0) * 70ms + 180ms); }
+  .hi .status { opacity: 0; transition: opacity .4s ease; } .stop.in .hi .status { opacity: 1; }
+  /* About — stage from the left, memorial from the right, a 2° tilt that settles */
+  .stop-imgs .lead  { opacity: 0; transform: translateX(-22px) rotate(-2deg); transform-origin: right center; }
+  .stop-imgs .small { opacity: 0; transform: translateX(22px) rotate(2deg); transform-origin: left center; }
+  .stop-imgs .lead, .stop-imgs .small { transition: opacity .4s ease, transform .55s var(--ease-out); }
+  .stop-imgs .small { transition-delay: 60ms; }
+  .stop.in .stop-imgs .lead, .stop.in .stop-imgs .small { opacity: 1; transform: none; }
+  .stop-about .about .about-title, .stop-about .about .para { transition-delay: calc(var(--i, 0) * 60ms + 220ms); }
+  /* How I Build — the proof panel lights first, then the repo cards deal in from below */
+  .proof { opacity: 0; transform: translateY(8px); box-shadow: 0 0 0 rgba(79,210,255,0); transition: opacity .35s ease, transform .45s var(--ease-out), box-shadow .5s ease; }
+  .stop.in .proof { opacity: 1; transform: none; animation: proofLight .9s ease-out .1s; }
+  @keyframes proofLight { 30% { box-shadow: 0 0 26px rgba(79,210,255,.35); border-color: rgba(79,210,255,.5); } 100% { box-shadow: 0 0 0 rgba(79,210,255,0); } }
+  .repo { opacity: 0; transform: translateY(14px); transition: opacity .35s ease, transform .5s var(--ease-out); }
+  .repo:nth-child(1) { transition-delay: 260ms; } .repo:nth-child(2) { transition-delay: 340ms; } .repo:nth-child(3) { transition-delay: 420ms; }
+  .stop.in .repo { opacity: 1; transform: none; }
+  /* Projects — one recipe each by position; the text block follows 200 ms later */
+  .stop-project .project { transition-delay: .2s; }
+  .stop-img.shot { position: relative; overflow: hidden; border-radius: 3px; }
+  .stop-img.shot::after { content: ''; position: absolute; pointer-events: none; opacity: 0; }
+  [data-reveal="scan"] .stop-img.shot img { clip-path: inset(0 0 100% 0); transition: clip-path .55s linear; }
+  [data-reveal="scan"] .stop-img.shot::after { left: 0; right: 0; top: 0; height: 2px; background: #4fd2ff; box-shadow: 0 0 12px #4fd2ff, 0 0 2px #fff; }
+  .stop.in[data-reveal="scan"] .stop-img.shot img { clip-path: inset(0); }
+  .stop.in[data-reveal="scan"] .stop-img.shot::after { animation: scanDown .55s linear forwards; }
+  @keyframes scanDown { 0% { top: 0; opacity: 1; } 90% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
+  [data-reveal="iris"] .stop-img.shot img { clip-path: inset(46% 46% 46% 46% round 8px); opacity: .6; transition: clip-path .6s var(--ease-out), opacity .3s ease; }
+  .stop.in[data-reveal="iris"] .stop-img.shot img { clip-path: inset(0 round 2px); opacity: 1; }
+  [data-reveal="deal"] .stop-img.shot { overflow: visible; }
+  [data-reveal="deal"] .stop-img.shot img { opacity: 0; transform: perspective(700px) translateY(28px) rotateX(14deg); transform-origin: center bottom; transition: opacity .35s ease, transform .6s var(--ease-out); }
+  .stop.in[data-reveal="deal"] .stop-img.shot img { opacity: 1; transform: none; }
+  [data-reveal="wipe"] .stop-img.shot img { clip-path: inset(0 100% 0 0); transition: clip-path .55s var(--ease-out); }
+  [data-reveal="wipe"] .stop-img.shot::after { top: 0; bottom: 0; left: 0; width: 2px; background: #9fd8ff; box-shadow: 0 0 12px #4fd2ff, 0 0 2px #fff; }
+  .stop.in[data-reveal="wipe"] .stop-img.shot img { clip-path: inset(0); }
+  .stop.in[data-reveal="wipe"] .stop-img.shot::after { animation: wipeAcross .55s var(--ease-out) forwards; }
+  @keyframes wipeAcross { 0% { left: 0; opacity: 1; } 85% { opacity: 1; } 100% { left: 100%; opacity: 0; } }
+  [data-reveal="shutter"] .stop-img.shot img { opacity: 0; filter: brightness(1.9) contrast(.7) blur(3px); transition: opacity .3s ease, filter .6s ease-out; }
+  .stop.in[data-reveal="shutter"] .stop-img.shot img { opacity: 1; filter: none; }
+}
+
 /* 03 Timeline — rows on a rail that grows top to bottom; dots light with their row */
 .tl-title { font-family: var(--f-display); font-weight: 800; font-stretch: 78%; font-size: clamp(2rem, 6vw, 4.2rem); line-height: .95; letter-spacing: -0.02em; color: #eaf4ff; margin: 0 0 1.2rem; }
 .timeline { list-style: none; margin: 0; padding: 0 0 0 1.4rem; position: relative; max-width: 40rem; }
@@ -585,12 +634,14 @@ html, body {
   .project .also-links { justify-self: end; }
   .stop .group-label { position: static; margin-bottom: .45rem; }
   /* How I Build: method + proof + three repo cards ran past the fold at 844px */
-  .method .line { font-size: 1rem; margin-bottom: .35em; }
-  .proof { grid-template-columns: repeat(3, 1fr); gap: .5rem; margin: 1rem 0; padding: .6rem .75rem; border: 1px solid rgba(159,216,255,.16); border-radius: 8px; background: rgba(8,16,26,.55); }   /* same glass as the repo cards: the dense core sits behind it on phones */
-  .proof-item .num { font-size: 1.9rem; }
+  .stop-build { padding-top: 9.5vh; padding-bottom: 9vh; }
+  .stop-build .eyebrow { margin-bottom: .5rem; }
+  .method .line { font-size: .95rem; margin-bottom: .3em; }
+  .proof { grid-template-columns: repeat(3, 1fr); gap: .4rem; margin: .7rem 0; padding: .5rem .6rem; border: 1px solid rgba(159,216,255,.16); border-radius: 8px; background: rgba(8,16,26,.55); }   /* same glass as the repo cards: the dense core sits behind it on phones */
+  .proof-item .num { font-size: 1.6rem; }
   .proof-item span { letter-spacing: .08em; }   /* size stays at the .75rem floor */
-  .repos { gap: .4rem; }
-  .repo { padding: .55rem .75rem; }
+  .repos { gap: .35rem; }
+  .repo { padding: .45rem .7rem; }
   .repo p { display: none; }   /* the one-liners are desktop depth; name + stack + links carry the card */
   .repo .stack { margin-top: .2rem; } .repo .links { margin-top: .3rem; }   /* in flow above the eyebrow — pinned at 12vh it sat on the panel (the base rule is later in the file, hence the extra specificity) */
 }
