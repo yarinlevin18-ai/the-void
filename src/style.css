@@ -120,7 +120,7 @@ html, body {
 #overlay .hint {
   font-family: var(--f);
   position: absolute;
-  bottom: 2.2rem;
+  bottom: calc(4.4rem + env(safe-area-inset-bottom, 0px));   /* clear of the HUD chevrons (2.4rem tall at 1.1rem from the bottom) */
   left: 0; right: 0;
   font-size: 0.75rem;
   letter-spacing: 0.32em;
@@ -504,6 +504,7 @@ html, body {
   .stop-img img { display: block; width: 100%; height: auto; border: 1px solid rgba(159,216,255,.38); border-radius: 3px; box-shadow: 0 0 28px rgba(79,210,255,.14), 0 12px 30px rgba(0,0,0,.45); background: #06101c; }
   .stop-img.portrait { max-width: 13.5rem; margin-bottom: 1.4rem; }
   .stop-img.shot { max-width: 70%; margin-bottom: .6rem; }
+  .stop-img.shot img { max-height: 30vh; width: auto; max-width: 100%; }   /* a tall capture (Sabai) at 70% width pushed the pills under the chevrons */
   /* About: the stage (3:2) and the memorial (3:4) side by side at equal height — 2fr:1fr makes
      the heights match exactly. The lectern detail is a crop of the stage shot, so phones skip it. */
   .stop-imgs { display: grid; grid-template-columns: 2fr 1fr; gap: .5rem; align-items: start; margin-bottom: 1rem; max-width: 34rem; }
@@ -676,6 +677,15 @@ html, body {
   .repo p { display: none; }   /* the one-liners are desktop depth; name + stack + links carry the card */
   .repo .stack { display: none; }   /* stacks repeat on each project stop; name + links carry the phone card */
   .repo .links { margin-top: .25rem; }   /* in flow above the eyebrow — pinned at 12vh it sat on the panel (the base rule is later in the file, hence the extra specificity) */
+  /* Timeline: six rows + the CV pill ran under the chevrons on an iPhone — date and title share a line
+     (the base .tl-* rules sit earlier in the file, hence the .stop-timeline prefix) */
+  .stop-timeline { padding-top: 12.5vh; padding-bottom: 11vh; }
+  .stop-timeline .tl-title { font-size: 1.9rem; margin-bottom: .6rem; }
+  .stop-timeline .tl-row { grid-template-columns: auto 1fr; gap: .05rem .6rem; padding: .38rem 0; align-items: baseline; }
+  .stop-timeline .tl-body { display: contents; }
+  .stop-timeline .tl-line { grid-column: 1 / -1; }
+  .stop-timeline .tl-dot { top: .72rem; }
+  .stop.stop-timeline .pill { margin-top: .8rem; }
 }
 .group-label { position: absolute; top: 12vh; left: 6vw; }
 @media (min-width: 900px) {
