@@ -201,7 +201,7 @@ export const PROFILE = {
         problem: 'Israeli students juggle Moodle, grades and deadlines across sites that never talk to each other.',
         decision: 'One Hebrew-RTL platform with real auth and a Chrome-extension scraper; Google Drive as the datastore instead of a backend nobody asked for.',
         outcome: 'Live all semester, with real auth and the real Moodle data.',
-        stack: 'Next.js · Supabase · Chrome extension · Claude',
+        stack: 'Next.js · Supabase · Chrome extension',
         url: 'https://bgu-study-organizer.vercel.app', repo: 'https://github.com/yarinlevin18-ai/TEEPO',
       },
       {
