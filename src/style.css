@@ -146,6 +146,26 @@ html, body {
 #hud .hud-rail i { display: block; height: 100%; width: 100%; background: #4fd2ff; box-shadow: 0 0 8px #4fd2ff; transform-origin: left center; transform: scaleX(0); transition: transform .8s cubic-bezier(.22,1,.36,1); }
 @media (prefers-reduced-motion: reduce) { #hud .hud-rail i { transition: none; } #hud.at-start #hud-down { animation: none; } }
 
+/* ---- Phone notice (2026-09-20): shown once the loader lifts on touch phones, pinned over the
+   chevrons on the Opening; gone on "Got it" or the first flight, remembered for the session. ---- */
+#phone-note { position: fixed; left: 12px; right: 12px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 8;
+  display: grid; grid-template-columns: auto 1fr auto; gap: .7rem; align-items: center;
+  padding: .8rem .9rem; border-radius: 12px; border: 1px solid rgba(234,176,78,.7); background: rgba(24,18,8,.92);
+  box-shadow: 0 0 0 1px rgba(234,176,78,.18), 0 0 28px rgba(234,176,78,.28), 0 14px 34px rgba(0,0,0,.55);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  font-family: var(--f-body); font-size: .9rem; line-height: 1.4; color: #f4ecdc;
+  animation: pnIn .5s var(--ease-out, cubic-bezier(.22,1,.36,1)) both; }
+#phone-note[hidden] { display: none; }
+#phone-note p { margin: 0; }
+#phone-note b { color: #ffd27a; font-weight: 700; }
+#phone-note .pn-icon { width: 1.9rem; height: 1.9rem; border-radius: 50%; display: grid; place-items: center; background: #eab04e; color: #1a1207;
+  font-family: var(--f-mono); font-weight: 800; font-size: 1.1rem; box-shadow: 0 0 14px rgba(234,176,78,.6); animation: pnPulse 1.6s ease-in-out 3; }
+#phone-note button { font: inherit; font-weight: 600; padding: .45rem .8rem; border-radius: 999px; border: 1px solid rgba(255,210,122,.6); background: rgba(234,176,78,.16); color: #ffd27a; cursor: pointer; white-space: nowrap; }
+@keyframes pnIn { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes pnPulse { 50% { box-shadow: 0 0 0 8px rgba(234,176,78,0), 0 0 14px rgba(234,176,78,.6); } }
+@media (prefers-reduced-motion: reduce) { #phone-note, #phone-note .pn-icon { animation: none; } }
+@media (min-width: 640px) { #phone-note { display: none !important; } }   /* phones only, whatever main.js decides */
+
 /* ---- Live edit panel (press E) ---- */
 #editor {
   position: fixed;

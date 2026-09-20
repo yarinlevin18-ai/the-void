@@ -1624,8 +1624,25 @@ function lastIdx() { return Math.max(0, beats.length - 1); }
 // one cooldown means hybrid devices can't double-step (e.g. a wheel event
 // trailing a touch swipe).
 const NAV_COOLDOWN = 300;
+// Phone notice (2026-09-20): touch + narrow screens get one loud "best on desktop" card once the
+// loader lifts. "Got it" or the first flight hides it; localStorage keeps it away for 12 hours.
+const PHONE_NOTE_KEY = 'voidPhoneNote', PHONE_NOTE_TTL = 12 * 3600 * 1000;
+function showPhoneNote() {
+  const el = document.getElementById('phone-note');
+  if (!el || !IS_TOUCH || Math.min(window.innerWidth, window.innerHeight) >= 640 || editMode) return;
+  try { if (Date.now() - Number(localStorage.getItem(PHONE_NOTE_KEY) || 0) < PHONE_NOTE_TTL) return; } catch { /* private mode: show it */ }
+  el.hidden = false;
+  el.querySelector('#phone-note-ok')?.addEventListener('click', hidePhoneNote, { once: true });
+}
+function hidePhoneNote() {
+  const el = document.getElementById('phone-note');
+  if (!el || el.hidden) return;
+  el.hidden = true;
+  try { localStorage.setItem(PHONE_NOTE_KEY, String(Date.now())); } catch { /* ignore */ }
+}
 function goTo(i) {
   if (editMode) return;
+  hidePhoneNote();
   if (performance.now() - lastNav < NAV_COOLDOWN) return;
   const n = clamp(i, 0, lastIdx());
   if (n === index) return;
@@ -3185,7 +3202,7 @@ bar = initBar({ profile: PROFILE, onWork: () => goTo(WORK_INDEX), onAbout: () =>
 //  the viewer (lab departure curve: leave with gravity) into the opening shot.
 (() => {
   const ld = document.querySelector('#loader');
-  if (!ld) { loaderDone = true; startLive(); return; }
+  if (!ld) { loaderDone = true; startLive(); showPhoneNote(); return; }
   const pctEl = document.querySelector('#ld-pct'), labEl = document.querySelector('#ld-label');
   const markEl = document.querySelector('#ld-mark'), ticksEl = document.querySelector('#ld-ticks');
   const cv = document.querySelector('#ld-canvas'), overlay = document.querySelector('#overlay');
@@ -3289,7 +3306,7 @@ bar = initBar({ profile: PROFILE, onWork: () => goTo(WORK_INDEX), onAbout: () =>
     draw(p, 0, ts / 1000);
     if (raw < 1 || !firstFrameDone || !openingFX.formed()) { requestAnimationFrame(step); return; }
     // ---- exit: the lattice warps past the viewer, the panel falls away -------
-    ld.classList.add('done'); loaderDone = true; startLive();
+    ld.classList.add('done'); loaderDone = true; startLive(); showPhoneNote();
     if (overlay) overlay.classList.add('revealed');
     const doneAt = ts;
     (function out(ts2) {

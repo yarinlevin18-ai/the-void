@@ -91,6 +91,12 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   one pulses once on the Opening) and a 2px progress hairline along the
   bottom edge (`#hud-rail`, `scaleX(index/last)`). The stop name + count
   survive only in an `sr-only` `aria-live` region — no visible page counter.
+- **Phone notice (2026-09-20):** touch + narrow screens (`min(innerWidth,
+  innerHeight) < 640`) get one loud amber card (`#phone-note`, `index.html`)
+  over the chevrons once the loader lifts: "Best on a desktop browser". "Got
+  it" or the first flight (`goTo`) hides it; `localStorage` `voidPhoneNote`
+  (a timestamp) keeps it away for 12 hours. CSS also kills it at ≥ 640 px. Yarin asked for
+  it to be very visible — don't quiet it down.
 - **Void dimming (2026-09-17):** while a stop is open (`_stopOpen`: landed,
   not tweening, beat has a `stop`) the network eases to `uDim` = .32
   (portrait) / .55 (landscape) — node alpha and brightness, link alpha, link

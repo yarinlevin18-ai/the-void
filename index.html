@@ -87,6 +87,13 @@
       <div class="hud-rail" aria-hidden="true"><i id="hud-rail"></i></div>
     </div>
 
+    <!-- Phone notice (2026-09-20): the 3D flight is built for a big screen — say so once, loudly, on phones -->
+    <aside id="phone-note" role="note" hidden>
+      <span class="pn-icon" aria-hidden="true">!</span>
+      <p><b>Best on a desktop browser.</b> This is a 3D flight built for a big screen — it works on your phone, but the full experience is on desktop.</p>
+      <button type="button" id="phone-note-ok">Got it</button>
+    </aside>
+
     <!-- FX control panel (toggle with B) — live-edits every effect -->
     <div id="fxpanel" hidden>
       <div class="fx-head">FX Controls <span>B</span></div>
