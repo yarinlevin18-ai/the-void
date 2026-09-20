@@ -560,6 +560,37 @@ html, body {
   .stop.in[data-reveal="shutter"] .stop-img.shot img { opacity: 1; filter: none; }
 }
 
+/* ---- Live strip (2026-09-17): the real event stream's accounting on How I Build ---- */
+.live { margin: .2rem 0 1.1rem; max-width: 60rem; border: 1px solid rgba(79,210,255,.28); border-radius: 8px; background: rgba(6,12,20,.72); padding: .6rem .8rem .55rem; font-family: var(--f-mono); font-weight: 700; font-size: .75rem; letter-spacing: .06em; color: #9fc2e0; }
+.live-hd { display: flex; justify-content: space-between; gap: .8rem; align-items: baseline; text-transform: uppercase; letter-spacing: .14em; color: #4fd2ff; margin-bottom: .45rem; }
+.live-state { display: inline-flex; align-items: center; gap: .4rem; color: #7fa8c8; }
+.live-state i { width: 7px; height: 7px; border-radius: 50%; background: #7fa8c8; }
+.live[data-live-state="live"] .live-state { color: #3fc978; } .live[data-live-state="live"] .live-state i { background: #3fc978; box-shadow: 0 0 8px #3fc978; animation: liveDot 1.6s ease-in-out infinite; }
+.live[data-live-state="simulated"] .live-state { color: #eab04e; } .live[data-live-state="simulated"] .live-state i { background: #eab04e; }
+@keyframes liveDot { 50% { opacity: .35; } }
+.live-ring { display: grid; grid-template-columns: repeat(64, 1fr); gap: 2px; margin: .2rem 0 .5rem; }
+.live-ring i { height: 6px; border-radius: 1px; background: rgba(79,210,255,.14); transition: background .25s ease, box-shadow .25s ease; }
+.live-ring i.on { background: #4fd2ff; box-shadow: 0 0 5px #4fd2ff; }
+.live-ring i.head { background: #eaf4ff; box-shadow: 0 0 8px #9fd8ff; transition: none; }
+.live-kv { display: grid; grid-template-columns: auto 1fr auto 1fr auto 1fr; gap: .25rem .6rem; align-items: baseline; text-transform: uppercase; }
+.live-kv b { color: #eaf4ff; font-variant-numeric: tabular-nums; text-transform: none; letter-spacing: .04em; }
+.live-feed { margin-top: .45rem; padding-top: .4rem; border-top: 1px solid rgba(159,216,255,.12); height: 3.3em; overflow: hidden; line-height: 1.65; color: #9fc2e0; font-weight: 400; letter-spacing: .02em; text-transform: none; white-space: nowrap; }
+.live-feed div { overflow: hidden; text-overflow: ellipsis; }
+.live-feed .src { color: #4fd2ff; } .live-feed .add { color: #3fc978; } .live-feed .del { color: #eab04e; }
+@media (prefers-reduced-motion: reduce) { .live[data-live-state="live"] .live-state i { animation: none; } .live-ring i { transition: none; } }
+@media (max-width: 640px) {
+  .live { margin-bottom: .6rem; padding: .45rem .6rem .4rem; }
+  .live .more { display: none; }   /* header and labels drop their tails so each row stays one line */
+  .live-hd { margin-bottom: .25rem; white-space: nowrap; }
+  .live-ring { grid-template-columns: repeat(32, 1fr); margin: .15rem 0 .3rem; }
+  .live-ring i { height: 5px; }
+  .live-ring i:nth-child(n+33) { display: none; }   /* 32 cells fit a phone; the buffer stays 64 */
+  .live-kv { grid-template-columns: auto auto 1fr auto; gap: .2rem .45rem; white-space: nowrap; }
+  .live-kv span:nth-child(5), .live-kv b:nth-child(6) { display: none; }   /* top-k is desktop depth */
+  .live-kv b:nth-child(4) { text-align: right; }
+  .live-feed { display: none; }   /* the ring + counters are the phone story; the feed needs desktop height */
+}
+
 /* 03 Timeline — rows on a rail that grows top to bottom; dots light with their row */
 .tl-title { font-family: var(--f-display); font-weight: 800; font-stretch: 78%; font-size: clamp(2rem, 6vw, 4.2rem); line-height: .95; letter-spacing: -0.02em; color: #eaf4ff; margin: 0 0 1.2rem; }
 .timeline { list-style: none; margin: 0; padding: 0 0 0 1.4rem; position: relative; max-width: 40rem; }
@@ -633,16 +664,18 @@ html, body {
   .project .also-links { justify-self: end; }
   .stop .group-label { position: static; margin-bottom: .45rem; }
   /* How I Build: method + proof + three repo cards ran past the fold at 844px */
-  .stop-build { padding-top: 12.5vh; padding-bottom: 9vh; }
+  .stop-build { padding-top: 12.5vh; padding-bottom: 11vh; }   /* the chevrons sit in the bottom ~10vh; keep the last card's links clear of them */
   .stop-build .eyebrow { margin-bottom: .5rem; }
-  .method .line { font-size: .95rem; margin-bottom: .3em; }
-  .proof { grid-template-columns: repeat(3, 1fr); gap: .4rem; margin: .7rem 0; padding: .5rem .6rem; border: 1px solid rgba(159,216,255,.16); border-radius: 8px; background: rgba(8,16,26,.55); }   /* same glass as the repo cards: the dense core sits behind it on phones */
-  .proof-item .num { font-size: 1.6rem; }
+  .method .line { font-size: .92rem; margin-bottom: .25em; }
+  .proof { grid-template-columns: repeat(3, 1fr); gap: .4rem; margin: .55rem 0; padding: .4rem .6rem; border: 1px solid rgba(159,216,255,.16); border-radius: 8px; background: rgba(8,16,26,.55); }   /* same glass as the repo cards: the dense core sits behind it on phones */
+  .proof-item .num { font-size: 1.4rem; }
   .proof-item span { letter-spacing: .08em; }   /* size stays at the .75rem floor */
-  .repos { gap: .35rem; }
+  .repos { gap: .35rem; grid-template-columns: 1fr 1fr; }   /* lead card full width, the two compact rows side by side — keeps the block above the chevrons */
+  .repo.lead { grid-column: 1 / -1; }
   .repo { padding: .45rem .7rem; }
   .repo p { display: none; }   /* the one-liners are desktop depth; name + stack + links carry the card */
-  .repo .stack { margin-top: .2rem; } .repo .links { margin-top: .3rem; }   /* in flow above the eyebrow — pinned at 12vh it sat on the panel (the base rule is later in the file, hence the extra specificity) */
+  .repo .stack { display: none; }   /* stacks repeat on each project stop; name + links carry the phone card */
+  .repo .links { margin-top: .25rem; }   /* in flow above the eyebrow — pinned at 12vh it sat on the panel (the base rule is later in the file, hence the extra specificity) */
 }
 .group-label { position: absolute; top: 12vh; left: 6vw; }
 @media (min-width: 900px) {

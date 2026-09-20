@@ -1,7 +1,7 @@
 # CLAUDE.md — context for "The Void" portfolio
 
 Read this first. It captures the locked decisions and where everything lives so
-you can pick up the build with full context. Last synced to code: **v18 + contact door / loader loop, 2026-09-14**.
+you can pick up the build with full context. Last synced to code: **v20 + phone polish / live layer, 2026-09-20**.
 
 ## What this is
 A 3D, scroll-driven portfolio for **Yarin Levin — AI-native developer**. The
@@ -86,7 +86,39 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   line would cross a panel mesh (2026-09-14).
 - **Inputs:** wheel · ↑/↓/Space · touch swipe (one section per swipe). Everything
   funnels through `goTo(i)` with a 300ms cooldown. No free-roam, no hotkeys
-  legend — the fixed bar is the only navigation chrome for visitors.
+  legend. Visitor chrome (2026-09-17, reviewer feedback): the fixed bar, two
+  chevrons bottom-centre (`#hud-up/#hud-down` → `goTo(index ∓ 1)`, the down
+  one pulses once on the Opening) and a 2px progress hairline along the
+  bottom edge (`#hud-rail`, `scaleX(index/last)`). The stop name + count
+  survive only in an `sr-only` `aria-live` region — no visible page counter.
+- **Void dimming (2026-09-17):** while a stop is open (`_stopOpen`: landed,
+  not tweening, beat has a `stop`) the network eases to `uDim` = .32
+  (portrait) / .55 (landscape) — node alpha and brightness, link alpha, link
+  traffic (`smoothstep(.35,1,uDim)`) and nebula density (`.45 + .55·uDim`) all
+  follow — and back to 1 during the flight. Eased in the render loop
+  (`_dimV`, .45s down / .6s up; instant under reduced motion). The void stays
+  the transition, the words own the stop. Body text is `#d6e8f7` on phones.
+- **Per-stop entrances on phones (2026-09-17):** portrait + no-preference
+  only, ≤600ms, one easing (`--ease-out`). Hi "develops" (blur/tint → colour),
+  About slides in from both sides, How I Build lights the proof panel then
+  deals the repo cards, project stops get a recipe by position among project
+  stops (`PROJECT_REVEALS` in `panels.js` → `data-reveal` = scan / iris / deal
+  / wipe / shutter — by position, never by project name). Desktop unchanged.
+- **Live layer (2026-09-17, `src/live.js`):** the one optional external
+  request. An `EventSource` on Wikimedia's public recent-changes stream
+  (`https://stream.wikimedia.org/v2/stream/recentchange`, CORS-open, no key);
+  every accepted event (human edit / new page) becomes a packet riding a
+  network link (`livePackets`, a soft-sprite `Points` layer following
+  `driftedNode()`, the CPU mirror of `DRIFT_GLSL`) and feeds a pure,
+  node-tested model: ring buffer of the last 64, sliding-window rate over
+  10s, top-3 sources via a size-k min-heap. `renderLive()` in `render.js`
+  emits the strip on How I Build (source · state, ring cells, counters,
+  three feed rows); `renderLiveStrip()` in `main.js` updates it ≤8Hz and only
+  while the stop is `.in`. No stream within 6s (offline, blocked, no
+  `EventSource`) → a labelled synthetic generator (`offline · simulated`) —
+  the strip never claims a source it doesn't have. Phones: 32 ring cells,
+  label tails (`.more`) and the feed hidden, top-k hidden, TEEPO/SHADIEZ
+  cards side by side so the block clears the chevrons.
 - **Stops:** `src/panels.js` (`initPanels({ beats, profile, root })`) builds one
   `<section class="stop">` per beat from `profile.js` (hidden, `inert` +
   `aria-hidden`), shows/hides on arrival/departure, and runs one reveal recipe
@@ -108,12 +140,15 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   no in-page anchors inside `#stops` any more (the Contact card has no "Back
   to the start"). With scripting off, a `<noscript><style>` in `<head>` hides the fixed
   3D chrome so the skim path at the end of `<body>` is readable.
-- **Fixed bar:** `src/bar.js` — name, availability dot, Work, About, Copy email.
+- **Fixed bar:** `src/bar.js` — name + role (`profile.title`), availability
+  dot, Work, About, details (phone `tel:`, LinkedIn, GitHub with inline SVG
+  icons — from `profile.links`), Copy email.
   `initBar({ profile, onWork, onAbout, root })`; the target indices are derived
   live by `computeStopIndices()` (first `project` / first `intro` stop), not
   hard-coded, so Director Mode reorders stay correct. The bar fades in once the
-  flight leaves the Opening; phones keep Work / About and hide only the
-  availability text. Replaces the old dossier button / waypoint rail.
+  flight leaves the Opening. Phones: a two-row CSS grid (`grid-template-areas`
+  — name/role + Copy email, then Work · About · icon links), availability
+  text hidden, icons only. Replaces the old dossier button / waypoint rail.
 - **Director Mode** (`E`) and the FX/Transitions/UI/3D-Text/Assets panels
   (`B T U Y A`) are **dev-only**: gated by `DEV_TOOLS = import.meta.env.DEV ||
   ?edit` in the URL. Visitors never see them.
@@ -154,17 +189,18 @@ folds a second featured project in as a compact row under the links.
 ## Code map
 | File | Lines | What |
 |---|---|---|
-| `src/main.js` | ~3,023 | Scene, network, nebula, flight, Director Mode, perf tiers, save/migrate |
-| `src/panels.js` | 83 | DOM stop layer: builds/shows/hides stops (inert + aria-hidden), count-up, print/copy |
-| `src/render.js` | ~90 | Pure HTML renderers (hi, about, timeline, build, project, contact) incl. the portrait-only `stop-img` figures, node-tested |
-| `src/bar.js` | 43 | Fixed top bar: name, availability, Work, About, Copy email |
+| `src/main.js` | ~3,300 | Scene, network, nebula, flight, Director Mode, perf tiers, save/migrate, void dimming, HUD, live packets + strip |
+| `src/live.js` | 105 | Live layer: pure ring buffer / sliding-window rate / heap top-k, `parseRecentChange`, `connectLive` with the simulated fallback — node-tested |
+| `src/panels.js` | 96 | DOM stop layer: builds/shows/hides stops (inert + aria-hidden), count-up, print/copy |
+| `src/render.js` | ~140 | Pure HTML renderers (hi, about, timeline, build, project, contact, live strip) incl. the portrait-only `stop-img` figures, node-tested |
+| `src/bar.js` | 53 | Fixed top bar: name + role, availability, Work, About, phone / LinkedIn / GitHub, Copy email |
 | `src/hash.js` | 28 | Deep-link resolver: fragment/anchor → stop index, prototype-free, node-tested |
 | `src/printcv.js` | 54 | Print-only CV (moved out of the old dossier.js) |
 | `src/content/profile.js` | 269 | **Single source of truth** for bio, CV, intro/method/proof, 7 featured + shipped/labs projects, links, status |
 | `src/text3d.js` | 193 | Extruded 3D text (Source Code Pro, dev-only) |
 | `src/cursor.js` | 70 | Cursor light trail (native pointer, 2D canvas comet tail; off on touch / reduced motion) |
-| `src/style.css` | 613 | All styling incl. @media phone layout + print CV |
-| `index.html` | 390 | Shell, loader, editor panels, JSON-LD, noscript skim path |
+| `src/style.css` | ~770 | All styling incl. @media phone layout + print CV |
+| `index.html` | ~410 | Shell, loader, editor panels, JSON-LD, noscript skim path |
 | `public/previews/*.webp` | | teepo · aerocy · shadiez · smartcut · llm-gateway · focus · sabai · kiaras-club (q82, 1400–1600 px wide; the panel canvas is 1024) |
 | `public/assets/hero/` | | Hero screens (SmartCut html + png, Shadiez webp) |
 | `public/assets/me/` | | portrait (beach, tight crop, 18×24 panel) + 3 About panels: FIDF stage 3:2 (tighter edit of the original, 24×16), Nova memorial at Re’im 3:4 (9.6×12.8, portrait), lectern detail 16:10 (native-res crop, 12×7.5). All regenerated 2026-09-16 from the originals in `~/.claude/uploads/…` with a mild grade (autocontrast, +8% contrast, +10% saturation, unsharp) — panels match the photo aspect and never overlap |
@@ -207,10 +243,10 @@ export tuned `BEATS` and paste into `DEFAULT_BEATS`.
 npm install
 npm run dev      # http://localhost:5173  (DEV_TOOLS on → E/B/T/U/Y/A work)
 npm run build    # dist/
-npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash, save, assets, domain (happy-dom for the DOM ones), 54 passing
+npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash, save, assets, domain live (happy-dom for the DOM ones), 65 passing
 ```
 `.claude/launch.json` has a `void-dev` config for the browser preview.
-Fully offline-capable: fonts are self-hosted, no external requests. HMR can be flaky —
+Offline-capable: fonts are self-hosted; the only external request is the optional Wikimedia stream (`src/live.js`), which falls back to a labelled simulation. HMR can be flaky —
 hard-refresh if a change doesn't show.
 
 ## Open work (authoritative checklist in BUILD_PLAN.md Phase H)

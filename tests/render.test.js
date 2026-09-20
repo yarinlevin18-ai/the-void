@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { esc, renderHi, renderAbout, renderTimeline, renderBuild, renderProject, renderContact, telHref } from '../src/render.js';
+import { esc, renderHi, renderAbout, renderTimeline, renderBuild, renderProject, renderContact, renderLive, telHref } from '../src/render.js';
 import { PROFILE } from '../src/content/profile.js';
 
 test('esc escapes html', () => {
@@ -143,4 +143,13 @@ test('contact card carries the build stamp when one is injected', () => {
   assert.ok(h.includes('class="card-row card-built"'));
   assert.ok(h.includes('<time datetime="2026-09-14">14 Sep 2026</time>'));
   assert.ok(!renderContact(PROFILE).includes('card-built'), 'no stamp without a build');
+});
+
+test('the live strip renders its frame with a cell per ring slot and the value hooks', () => {
+  const h = renderLive(8);
+  const ring = h.slice(h.indexOf('data-live-ring'), h.indexOf('live-kv'));
+  assert.equal((ring.match(/<i><\/i>/g) || []).length, 8);
+  for (const hook of ['data-live-label', 'data-live-ring', 'data-live-count', 'data-live-rate', 'data-live-top', 'data-live-feed']) assert.ok(h.includes(hook), hook);
+  assert.ok(h.includes('data-live-state="connecting"'));
+  assert.ok(renderBuild(PROFILE).includes('class="live"'), 'How I Build carries the strip');
 });

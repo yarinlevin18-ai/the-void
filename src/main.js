@@ -16,6 +16,8 @@ import { initCursorTrail } from './cursor.js';
 import { PROFILE } from './content/profile.js';
 import { initPanels } from './panels.js';
 import { initBar } from './bar.js';
+import { createLiveModel, connectLive } from './live.js';
+import { esc } from './render.js';
 import { resolveHash } from './hash.js';
 import { mountPrintCV } from './printcv.js';
 let panels = null, bar = null;   // assigned at bootstrap, after the scene exists
@@ -825,7 +827,7 @@ function buildNetwork() {
     if (c) { pmat.uniforms.uDoorC.value.copy(c); lmat.uniforms.uDoorC.value.copy(c); }
     if (ax) { pmat.uniforms.uDoorAx.value.copy(ax); lmat.uniforms.uDoorAx.value.copy(ax); }
   };
-  return { N, L, nodes, lines, pgeo, lgeo, pmat, lmat, update, setTint, setWarp, setDoor, setDim, base, amp, fre, pha, aColor };
+  return { N, L, nodes, lines, pgeo, lgeo, pmat, lmat, update, setTint, setWarp, setDoor, setDim, base, amp, fre, pha, aColor, pairs };
 }
 
 // ---- Cursor links (ENVIRONMENT.md Layer 3) — the network reaches toward the
@@ -2784,6 +2786,88 @@ function nearestBeat(getPoint) {
   }
   return [bi, bd];
 }
+// ---- Live layer (2026-09-17): Wikimedia's recent-change stream flows through the void.
+//  Every accepted event spawns a packet that rides one link of the data network
+//  (CPU copy of the vertex drift so it tracks the endpoints exactly) and feeds the
+//  strip on How I Build: ring buffer · sliding-window rate · heap top-k (live.js).
+//  Connects once the loader lifts; falls back to labelled synthetic events when
+//  the stream can't be reached, so the site never depends on it.
+const LIVE_MAX = 48;
+const liveModel = createLiveModel({ ring: 64, window: 10000, k: 3 });
+let liveConn = null, liveState = 'connecting', livePackets = null, liveEl = null, liveDirty = false, _liveLast = 0;
+function initLivePackets() {
+  if (!network || livePackets) return;
+  const pos = new Float32Array(LIVE_MAX * 3);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const c = document.createElement('canvas'); c.width = c.height = 32;   // soft round sprite — a bare Points square reads as a pixel block on phones
+  const g = c.getContext('2d'), grad = g.createRadialGradient(16, 16, 0, 16, 16, 16);
+  grad.addColorStop(0, 'rgba(255,255,255,1)'); grad.addColorStop(0.35, 'rgba(191,240,255,.9)'); grad.addColorStop(1, 'rgba(191,240,255,0)');
+  g.fillStyle = grad; g.fillRect(0, 0, 32, 32);
+  const map = new THREE.CanvasTexture(c); map.colorSpace = THREE.NoColorSpace;
+  const mat = new THREE.PointsMaterial({ size: IS_TOUCH ? 4.2 : 3.4, map, color: 0xbff0ff, transparent: true, opacity: 0.95, sizeAttenuation: true, depthWrite: false, blending: THREE.AdditiveBlending });
+  const pts = new THREE.Points(geo, mat); pts.renderOrder = -5; pts.frustumCulled = false;
+  scene.add(pts);
+  livePackets = { pos, geo, pts, slots: Array.from({ length: LIVE_MAX }, () => null), next: 0 };
+  for (let i = 0; i < LIVE_MAX; i++) pos[i * 3 + 1] = -9999;   // parked
+}
+const _pa = new THREE.Vector3(), _pb = new THREE.Vector3();
+function driftedNode(i, t, out) {              // mirrors DRIFT_GLSL for one node
+  const on = (FX.driftOn && !PREFERS_REDUCED) ? 1 : 0, b = network.base, A = network.amp, F = network.fre, P = network.pha, j = i * 3;
+  out.set(b[j] + on * A[j] * Math.sin(t * F[j] + P[j]), b[j + 1] + on * A[j + 1] * Math.sin(t * F[j + 1] + P[j + 1]), b[j + 2] + on * A[j + 2] * Math.sin(t * F[j + 2] + P[j + 2]));
+}
+function spawnPacket() {
+  if (!livePackets || !network.pairs.length || document.hidden) return;
+  const k = Math.floor(Math.random() * (network.pairs.length / 2));
+  const a = network.pairs[k * 2], b = network.pairs[k * 2 + 1];
+  const s = livePackets.next; livePackets.next = (s + 1) % LIVE_MAX;
+  livePackets.slots[s] = { a: Math.random() < 0.5 ? a : b, b: Math.random() < 0.5 ? b : a, t: 0, dur: 0.9 + Math.random() * 0.9 };
+}
+function updateLivePackets(t, dt) {
+  if (!livePackets) return;
+  const pos = livePackets.pos;
+  let any = false;
+  for (let i = 0; i < LIVE_MAX; i++) {
+    const p = livePackets.slots[i];
+    if (!p) continue;
+    p.t += dt / p.dur;
+    if (p.t >= 1) { livePackets.slots[i] = null; pos[i * 3 + 1] = -9999; any = true; continue; }
+    driftedNode(p.a, t, _pa); driftedNode(p.b, t, _pb);
+    const e = p.t < 0.5 ? 2 * p.t * p.t : 1 - Math.pow(-2 * p.t + 2, 2) / 2;   // ease in-out along the link
+    pos[i * 3] = _pa.x + (_pb.x - _pa.x) * e; pos[i * 3 + 1] = _pa.y + (_pb.y - _pa.y) * e; pos[i * 3 + 2] = _pa.z + (_pb.z - _pa.z) * e;
+    any = true;
+  }
+  if (any) livePackets.geo.attributes.position.needsUpdate = true;
+}
+function onLiveEvent(evt) {
+  liveModel.push(evt);
+  spawnPacket();
+  liveDirty = true;
+}
+function startLive() {
+  if (liveConn || editMode) return;
+  initLivePackets();
+  liveEl = document.querySelector('#stops .live');
+  liveConn = connectLive({ onEvent: onLiveEvent, onState: (st) => { liveState = st; liveDirty = true; } });
+}
+const _liveFmt = (n) => (n >= 0 ? '+' : '−') + Math.abs(n);
+function renderLiveStrip(now) {                 // ≤ 8 Hz, and only while the strip is on screen
+  if (!liveEl || !liveDirty || now - _liveLast < 125) return;
+  const sec = liveEl.closest('.stop'); if (!sec || !sec.classList.contains('in')) return;
+  _liveLast = now; liveDirty = false;
+  liveEl.dataset.liveState = liveState;
+  liveEl.querySelector('[data-live-label]').textContent = liveState === 'live' ? 'live' : liveState === 'simulated' ? 'offline · simulated' : 'connecting';
+  liveEl.querySelector('[data-live-count]').textContent = `${liveModel.filled()} / ${liveModel.size}`;
+  liveEl.querySelector('[data-live-rate]').textContent = liveModel.rate(now).toFixed(1);
+  const top = liveModel.topK();
+  liveEl.querySelector('[data-live-top]').textContent = top.length ? top.map((x) => `${x.source} ${x.count}`).join(' · ') : '—';
+  const cells = liveEl.querySelector('[data-live-ring]').children, filled = liveModel.filled(), head = (liveModel.head - 1 + liveModel.size) % liveModel.size;
+  for (let i = 0; i < cells.length; i++) { const on = i < filled; cells[i].className = i === head ? 'head' : on ? 'on' : ''; }
+  const feed = liveEl.querySelector('[data-live-feed]');
+  const rows = liveModel.recent(3);
+  feed.innerHTML = rows.map((e) => `<div><span class="src">${esc(e.source)}</span> · ${esc(e.title)} · <span class="${e.delta < 0 ? 'del' : 'add'}">${_liveFmt(e.delta)}</span>${isPortrait() && top.length ? ` · top ${esc(top[0].source)}` : ''}</div>`).join('');
+}
+
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.05); // seconds since last frame (clamped for tab-switches)
   elapsed += dt;
@@ -2840,6 +2924,7 @@ function animate() {
   livingVoid.update(t);                      // advance nebula + starfield time
   if (gradePass) { gradePass.uniforms.uTime.value = t; gradePass.uniforms.uDark.value = FX.vignette; gradePass.uniforms.uGrain.value = FX.grain; }
   if (network) network.update(t, (FX.driftOn && !PREFERS_REDUCED) ? 1 : 0, _cN, _cVel * FX.cursorDrive);   // data network: drift + cursor stir
+  updateLivePackets(t, dt); renderLiveStrip(performance.now());
   cursorLinks.update(t, !editMode && FX.cursorDrive > 0, _cN, _cVel * FX.cursorDrive, (FX.driftOn && !PREFERS_REDUCED) ? 1 : 0);   // Layer 3: the network reaches toward the cursor
   meteors.update(dt, !editMode && index === 0);   // falling stars on the start frame only
   {                                          // Frame 2 — the grouped Hero cluster (assets parallax to cursor + scroll)
@@ -3100,7 +3185,7 @@ bar = initBar({ profile: PROFILE, onWork: () => goTo(WORK_INDEX), onAbout: () =>
 //  the viewer (lab departure curve: leave with gravity) into the opening shot.
 (() => {
   const ld = document.querySelector('#loader');
-  if (!ld) { loaderDone = true; return; }
+  if (!ld) { loaderDone = true; startLive(); return; }
   const pctEl = document.querySelector('#ld-pct'), labEl = document.querySelector('#ld-label');
   const markEl = document.querySelector('#ld-mark'), ticksEl = document.querySelector('#ld-ticks');
   const cv = document.querySelector('#ld-canvas'), overlay = document.querySelector('#overlay');
@@ -3204,7 +3289,7 @@ bar = initBar({ profile: PROFILE, onWork: () => goTo(WORK_INDEX), onAbout: () =>
     draw(p, 0, ts / 1000);
     if (raw < 1 || !firstFrameDone || !openingFX.formed()) { requestAnimationFrame(step); return; }
     // ---- exit: the lattice warps past the viewer, the panel falls away -------
-    ld.classList.add('done'); loaderDone = true;
+    ld.classList.add('done'); loaderDone = true; startLive();
     if (overlay) overlay.classList.add('revealed');
     const doneAt = ts;
     (function out(ts2) {
