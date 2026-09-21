@@ -75,7 +75,9 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   `style.css` shows under `@media (orientation: portrait)` **or `(max-height:
   520px)`** — landscape phones count too (2026-09-21, `isCompact()` in
   `main.js`: the panels projected onto the words at 874×402 and the hero
-  screens sat on the Timeline rows; landscape gets the same figures, smaller).
+  screens sat on the Timeline rows; landscape gets the same figures, smaller;
+  the bar drops the availability text + link labels and the live strip uses
+  its phone layout there too — Safari's landscape safe areas leave ~750 px).
   The WebGL
   version rendered soft through the touch tier's 1.25× DPR cap and, with
   Safari's URL bar shortening the viewport, landed on the words. Verified in

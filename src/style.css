@@ -608,7 +608,7 @@ html, body {
 .live-feed div { overflow: hidden; text-overflow: ellipsis; }
 .live-feed .src { color: #4fd2ff; } .live-feed .add { color: #3fc978; } .live-feed .del { color: #eab04e; }
 @media (prefers-reduced-motion: reduce) { .live[data-live-state="live"] .live-state i { animation: none; } .live-ring i { transition: none; } }
-@media (max-width: 640px) {
+@media (max-width: 640px), (max-height: 520px) {   /* phones, and landscape phones: the desktop counter grid wrapped in Safari landscape */
   .live { margin-bottom: .6rem; padding: .45rem .6rem .4rem; }
   .live .more { display: none; }   /* header and labels drop their tails so each row stays one line */
   .live-hd { margin-bottom: .25rem; white-space: nowrap; }
@@ -801,5 +801,15 @@ html, body {
   #bar .bar-link { padding: .5rem .6rem; }
   #bar .bar-id { margin-right: .9rem; }
   #bar .bar-details { margin: 0 .3rem 0 .2rem; padding-left: .5rem; border-left: 1px solid rgba(159,216,255,.16); }
+}
+/* Landscape phone (2026-09-21): one row, but Safari's safe-area insets leave ~750 px — drop the
+   availability text and the link labels (icons only) so the centred bar never clips at both ends. */
+@media (min-width: 720px) and (max-height: 520px) {
+  #bar { max-width: calc(100vw - 28px); padding: .3rem .35rem .3rem .8rem; }
+  #bar .bar-avail { display: none; }
+  #bar .bar-id { margin-right: .5rem; }
+  #bar .bar-details svg { display: block; }
+  #bar .bar-details .lbl { display: none; }
+  #bar .bar-details a { padding: .4rem .4rem; }
 }
 @media (prefers-reduced-motion: reduce) { #ld-loop { display: none; } }   /* poster only: the JS also removes the element */
