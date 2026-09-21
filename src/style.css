@@ -515,11 +515,12 @@ html, body {
   .stop-about[data-side="right"] .about { margin-right: auto; margin-left: 0; }
 }
 
-/* Stop imagery as DOM figures — portrait screens only (2026-09-17). Landscape screens
-   keep the WebGL panels and never render these; main.js zeroes the panels on portrait. */
+/* Stop imagery as DOM figures — portrait screens (2026-09-17) and landscape phones
+   (≤ 520 px tall, 2026-09-21: the panels landed on the words there too). Wide screens
+   keep the WebGL panels and never render these; main.js zeroes the panels (`isCompact`). */
 .stop-img { display: none; margin: 0; }
 .stop-imgs { display: none; }
-@media (orientation: portrait) {
+@media (orientation: portrait), (max-height: 520px) {
   .stop-img { display: block; }
   .stop-img img { display: block; width: 100%; height: auto; border: 1px solid rgba(159,216,255,.38); border-radius: 3px; box-shadow: 0 0 28px rgba(79,210,255,.14), 0 12px 30px rgba(0,0,0,.45); background: #06101c; }
   .stop-img.portrait { max-width: 13.5rem; margin-bottom: 1.4rem; }
@@ -531,13 +532,21 @@ html, body {
   .stop-imgs .small:last-child { display: none; }
   .stop-hi, .stop-about, .stop-project { justify-content: safe flex-start; }
 }
+/* Landscape phone: same figures, smaller, so the words keep most of the ~400 px of height */
+@media (orientation: landscape) and (max-height: 520px) {
+  .stop { padding-top: 15vh; padding-bottom: 14vh; }
+  .stop-img.portrait { max-width: 8.5rem; margin-bottom: .8rem; }
+  .stop-img.shot { max-width: 40%; }
+  .stop-img.shot img { max-height: 42vh; }
+  .stop-imgs { max-width: 22rem; margin-bottom: .7rem; }
+}
 
 /* ---- Per-stop entrances on portrait screens (2026-09-17) ----
    One easing curve, short travel, ≤ 600 ms, staggered so each stop reads as one
    composed reveal. Only under (orientation: portrait) — landscape keeps the WebGL
    panels and their own reveal — and only when motion is welcome: the hidden
    start states live inside this block, so reduced-motion never sees them. */
-@media (orientation: portrait) and (prefers-reduced-motion: no-preference) {
+@media (orientation: portrait) and (prefers-reduced-motion: no-preference), (max-height: 520px) and (prefers-reduced-motion: no-preference) {
   :root { --ease-out: cubic-bezier(.22, 1, .36, 1); }
   /* Hi — the portrait develops (cool, soft, slightly large → true), then the lines rise */
   .stop-img.portrait img { opacity: 0; transform: scale(1.03); filter: saturate(.2) sepia(.25) hue-rotate(165deg) blur(6px); transition: opacity .35s ease, transform .6s var(--ease-out), filter .6s ease; }

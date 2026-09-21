@@ -1164,6 +1164,9 @@ let curve = null;    // smooth spline through the camera positions
 // replaces its desktop shot on tall screens. The accessors below are the only
 // place play mode reads a beat's pose; Director Mode edits the desktop fields.
 const isPortrait = () => camera.aspect < 1;
+// "Compact" (2026-09-21): portrait, or a landscape phone (≤ 520 px tall). Both use the DOM
+// figures instead of the WebGL panels — in landscape the panels projected onto the words.
+const isCompact = () => isPortrait() || window.innerHeight < 520;
 const usesPortrait = (b) => !!(b && b.portrait && !editMode && isPortrait());
 const bCam = (b) => (usesPortrait(b) ? b.portrait.cam : b.cam);
 const bLook = (b) => (usesPortrait(b) ? b.portrait.look : b.look);
@@ -2945,7 +2948,7 @@ function animate() {
   cursorLinks.update(t, !editMode && FX.cursorDrive > 0, _cN, _cVel * FX.cursorDrive, (FX.driftOn && !PREFERS_REDUCED) ? 1 : 0);   // Layer 3: the network reaches toward the cursor
   meteors.update(dt, !editMode && index === 0);   // falling stars on the start frame only
   {                                          // Frame 2 — the grouped Hero cluster (assets parallax to cursor + scroll)
-    const heroOn = !editMode && !!beats[index]?.screens && !isPortrait();   // v18: the Timeline beat carries the two live screens; portrait screens keep the rows readable
+    const heroOn = !editMode && !!beats[index]?.screens && !isCompact();   // v18: the Timeline beat carries the two live screens; portrait screens keep the rows readable
     const hsc = heroOn ? Math.max(-0.5, Math.min(0.5, progress * Math.max(1, lastIdx()) - index)) : 0;
     heroCluster.update(heroOn, t, beats[index], hsc);
   }
@@ -2975,7 +2978,7 @@ function animate() {
     // Reviewer feedback: the network fought the words. Nodes, links and the nebula
     // ease down to DIM_OPEN on arrival and the link traffic pauses; the flight brings
     // them back. Portrait screens dim harder — the text sits right on the void there.
-    const DIM_OPEN = isPortrait() ? 0.32 : 0.55;
+    const DIM_OPEN = isCompact() ? 0.32 : 0.55;
     const target = !editMode && _stopOpen ? DIM_OPEN : 1;
     const rate = dt / (target < _dimV ? 0.6 : 0.45);
     _dimV = PREFERS_REDUCED ? target : _dimV + clamp(target - _dimV, -rate, rate);
@@ -3015,7 +3018,7 @@ function animate() {
       let a = clamp(1 - (camera.position.distanceTo(m.position) - 90) / curFX.panelLightRange, 0, 1); // near = lit
       if (extra) a *= clamp(1 - Math.abs(_pIdx - m.userData.i), 0, 1);   // a `panels[]` cluster belongs to one stop: fade with it, never bleed into the neighbours
       else a *= clamp(2 - 2 * Math.abs(_pIdx - i), 0, 1);      // a stop's own panel: full from halfway through the hop in, fully off at any neighbour (the next stop's panel, 115 units on, used to ghost through at ≈ 4 %)
-      if (isPortrait()) a = 0;   // portrait screens show the imagery as DOM figures in the stop (render.js, 2026-09-17): the WebGL panel rendered soft through the touch DPR cap and sat on the words under Safari's URL bar
+      if (isCompact()) a = 0;   // portrait and landscape-phone screens show the imagery as DOM figures in the stop (render.js, 2026-09-17): the WebGL panel rendered soft through the touch DPR cap and sat on the words under Safari's URL bar
       // An unlit panel is invisible, floor or not (2026-09-16): the Opening's default
       // floor of .1 left the Hi portrait ghosting under the wordmark.
       m.material.opacity = a > 0 ? curFX.panelDimFloor + (1 - curFX.panelDimFloor) * a : 0;

@@ -72,7 +72,11 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   panel is zeroed in the render loop and the stop's imagery comes from DOM
   `<figure class="stop-img">` elements that `render.js` emits into the stop
   (Hi portrait, About stage + memorial side by side, project screenshot) and
-  `style.css` shows only under `@media (orientation: portrait)`. The WebGL
+  `style.css` shows under `@media (orientation: portrait)` **or `(max-height:
+  520px)`** — landscape phones count too (2026-09-21, `isCompact()` in
+  `main.js`: the panels projected onto the words at 874×402 and the hero
+  screens sat on the Timeline rows; landscape gets the same figures, smaller).
+  The WebGL
   version rendered soft through the touch tier's 1.25× DPR cap and, with
   Safari's URL bar shortening the viewport, landed on the words. Verified in
   the iOS Simulator (iPhone 17, Safari) — the Chrome phone emulation never
