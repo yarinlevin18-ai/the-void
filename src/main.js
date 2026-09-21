@@ -1642,10 +1642,10 @@ function hidePhoneNote() {
 }
 function goTo(i) {
   if (editMode) return;
-  hidePhoneNote();
   if (performance.now() - lastNav < NAV_COOLDOWN) return;
   const n = clamp(i, 0, lastIdx());
   if (n === index) return;
+  hidePhoneNote();   // a real flight, not a same-stop refit (resize / rotation) — those must not dismiss the notice
   index = n; lastNav = performance.now();
   // start a timed flight into the new section (per-shot duration, scaled by speed)
   const target = index / Math.max(1, lastIdx());
