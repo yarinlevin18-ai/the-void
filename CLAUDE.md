@@ -68,6 +68,15 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   re-encodes to sRGB, so a decoded photo hit the screen linear and crushed. A DOM text block (`src/panels.js` + `src/render.js`)
   sits on the opposite side and owns the words; one focal point and one CTA
   per screen. Beats with no imagery have no panel.
+  **Desktop laptop heights (2026-09-22):** How I Build is the one stop with no
+  image panel, so on desktop its column widens to 46ch and the stop tightens its
+  frame — at 30ch the three paragraphs ran to three lines each and the block
+  stood 1154 px inside a 900 px viewport, hiding the repo cards below the fold
+  where the wheel (bound to the flight) can't reach them. A second block at
+  `(max-height: 820px)` covers 1366x768. Both carry `(min-height: 560px)` so
+  landscape phones keep their own tuning. The live feed's box was `3.3em`, two
+  rows at a 1.65 line-height, while three rows render — the third was sliced in
+  half; it is now three rows plus the padding `border-box` folds in.
   **Portrait screens don't use the WebGL panels at all** (2026-09-17): every
   panel is zeroed in the render loop and the stop's imagery comes from DOM
   `<figure class="stop-img">` elements that `render.js` emits into the stop
