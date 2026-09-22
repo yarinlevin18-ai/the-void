@@ -228,7 +228,7 @@ export const PROFILE = {
         decision: 'Self-hosted slot booking on Supabase with an approval workflow and customer self-service.',
         outcome: 'A booking CRM designed for a grooming studio: slots, approvals and customer self-service.',
         stack: 'Next.js 14 · TypeScript · Supabase · Tailwind',
-        url: '', offline: true, // ⏳ smart-cut-gamma.vercel.app 404s (2026-09-08, still 2026-09-13); restore the URL and drop `offline` once redeployed
+        url: '', offline: true, // GitHub only, by decision (2026-09-22) — the old Vercel deploy is gone and won't come back
         repo: 'https://github.com/yarinlevin18-ai/smartcut',
       },
       {

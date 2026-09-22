@@ -242,10 +242,9 @@ Spec: `docs/superpowers/specs/2026-09-14-contact-door-and-loader-design.md`.
    (`applyPortraitPoses`). Re-tune in Director Mode → Copy config if needed.
 2. ~~Confirm the three proof numbers~~ ✅ 2026-09-14, see Phase J.
 3. ~~**X handle**~~ dropped 2026-09-22 — Yarin decided against it; the placeholder and the render path are gone.
-4. **SmartCut redeploy** — `smart-cut-gamma.vercel.app` still 404 on
-   2026-09-13; the entry now carries `url: '', offline: true` so the SHADIEZ
-   "also" row shows only GitHub and the noscript path links the repo. Restore
-   the URL and drop `offline` once it's back.
+4. ~~**SmartCut redeploy**~~ closed 2026-09-22 — Yarin decided SmartCut stays
+   GitHub-only; `url: '', offline: true` is permanent, the SHADIEZ "also" row
+   and the noscript path link the repo.
 5. ~~**Formal contrast pass**~~ ✅ 2026-09-13, see Phase E. Lighthouse mobile on the
    deployed site, 2026-09-12 after WebP + labels: perf 84–88 / a11y 100 /
    best-practices 100 / SEO 100, 100 % legible text (was 82 / 100 / 96 / 100, 20 %).
