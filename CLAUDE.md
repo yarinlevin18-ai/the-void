@@ -106,6 +106,15 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   one pulses once on the Opening) and a 2px progress hairline along the
   bottom edge (`#hud-rail`, `scaleX(index/last)`). The stop name + count
   survive only in an `sr-only` `aria-live` region — no visible page counter.
+- **Phone composition (2026-09-22):** Hi and About are centred on portrait
+  instead of hugging the top (they left 230-300 px of dead void below the last
+  line); project stops carry 11.5vh of bottom padding so the links row clears
+  the chevrons by ~34 px rather than 12; the stack/context line drops to .06em
+  tracking in `#9fc2e0` (it kept the 12 px floor but was the least legible
+  thing on a phone). The desktop contact card, the last thing a hiring team
+  sees, widens to 36rem with roomier rows and a larger name/mail — scoped to
+  `(min-width: 900px) and (min-height: 560px)` and placed after the base card
+  rules, since a tie on specificity is decided by source order.
 - **Phone notice (2026-09-20):** touch + narrow screens (`min(innerWidth,
   innerHeight) < 640`) get one loud amber card (`#phone-note`, `index.html`)
   over the chevrons once the loader lifts: "Best on a desktop browser". "Got

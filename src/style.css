@@ -530,7 +530,12 @@ html, body {
      the heights match exactly. The lectern detail is a crop of the stage shot, so phones skip it. */
   .stop-imgs { display: grid; grid-template-columns: 2fr 1fr; gap: .5rem; align-items: start; margin-bottom: 1rem; max-width: 34rem; }
   .stop-imgs .small:last-child { display: none; }
-  .stop-hi, .stop-about, .stop-project { justify-content: safe flex-start; }
+  .stop-project { justify-content: safe flex-start; }
+  /* Hi and About are short columns; hugging the top left ~230-300 px of dead
+     void under the last line. Centred they sit in the middle of the screen
+     like every other stop. `safe` still falls back to the top if a small
+     phone can't fit the column. 2026-09-22. */
+  .stop-hi, .stop-about { justify-content: safe center; }
 }
 /* Landscape phone: same figures, smaller, so the words keep most of the ~400 px of height */
 @media (orientation: landscape) and (max-height: 520px) {
@@ -696,8 +701,13 @@ html, body {
    the block just needs tightening to keep the TEEPO / SHADIEZ stops (which carry
    an `also` row) inside the fold */
 @media (max-width: 640px) {
-  .stop-hi, .stop-about, .stop-project { padding-top: 12.5vh; padding-bottom: 9vh; }
+  .stop-hi, .stop-about { padding-top: 12.5vh; padding-bottom: 9vh; }
+  .stop-project { padding-top: 12.5vh; padding-bottom: 11.5vh; }   /* the links row ended 12 px above the chevrons; Safari's URL bar eats more */
   .stop-project .eyebrow { margin-bottom: .5rem; }
+  /* The stack line was the least legible thing on a phone: the 12 px label
+     floor at .14em tracking, wrapped over two lines, in the dimmest blue. It
+     keeps the floor and the mono face, loses the wide tracking, gains contrast. */
+  .stack, .context { letter-spacing: .06em; color: #9fc2e0; }
   .project dd { font-size: .84rem; margin-bottom: 0; }
   .project .links { margin-top: .7rem; }
   .about .para { font-size: .9rem; line-height: 1.45; margin-bottom: .6em; color: #d6e8f7; }
@@ -769,6 +779,18 @@ html, body {
 
 .card-built { padding-top: .55rem; padding-bottom: .85rem; }
 .card-built { font-family: var(--f-mono); font-weight: 700; font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: #68859e; line-height: 1.5; }
+
+/* The last thing a hiring team sees: on a desktop the card was a 30rem box in a
+   lot of empty void. Wider, with roomier rows. Phones keep the compact card. */
+@media (min-width: 900px) and (min-height: 560px) {
+  .card { max-width: 36rem; }
+  .card-row { padding: 1.25rem 1.8rem; }
+  .card-head { padding-top: 1.7rem; }
+  .card-name { font-size: 2.9rem; }
+  .card .mail { font-size: 2.05rem; }
+  .card .tel { font-size: 1.08rem; }
+  .card .social { font-size: 1.02rem; }
+}
 
 /* one focus language for every control in the stops (the bar has its own below) */
 .stop a:focus-visible, .stop button:focus-visible { outline: 2px solid #4fd2ff; outline-offset: 3px; border-radius: 4px; }
