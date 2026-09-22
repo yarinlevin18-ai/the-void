@@ -208,7 +208,7 @@ axis like the project stops (the old Hero/Intro poses looked sideways, so the
 panels sat off-frame); a `panels[]` cluster fades with its own stop index so it
 never lights up from the neighbouring cameras; hero screens stay off on
 portrait viewports so the timeline rows stay readable.
-Open: timeline months.
+Timeline months confirmed by Yarin 2026-09-22.
 
 ## Phase L — Contact door + loader loop ✅ (2026-09-14)
 Spec: `docs/superpowers/specs/2026-09-14-contact-door-and-loader-design.md`.
@@ -241,7 +241,7 @@ Spec: `docs/superpowers/specs/2026-09-14-contact-door-and-loader-design.md`.
    into `DEFAULT_BEATS`; phones get a derived portrait pose per project stop
    (`applyPortraitPoses`). Re-tune in Director Mode → Copy config if needed.
 2. ~~Confirm the three proof numbers~~ ✅ 2026-09-14, see Phase J.
-3. **X handle** — `links.x` is commented out pending confirmation with Yarin.
+3. ~~**X handle**~~ dropped 2026-09-22 — Yarin decided against it; the placeholder and the render path are gone.
 4. **SmartCut redeploy** — `smart-cut-gamma.vercel.app` still 404 on
    2026-09-13; the entry now carries `url: '', offline: true` so the SHADIEZ
    "also" row shows only GitHub and the noscript path links the repo. Restore
@@ -262,7 +262,7 @@ Spec: `docs/superpowers/specs/2026-09-14-contact-door-and-loader-design.md`.
    a fresh visitor (storage cleared): all 11 stops render, panels + text blocks
    correct, no console errors from shipped code, production build clean.
 10. **Person chapter holds:** ~~real photos, photo captions~~ done 2026-09-15;
-    timeline months still to confirm. See Phase K.
+    timeline months confirmed 2026-09-22.
 
 ## Risks / watch-items
 - **Save migrations** — every `DEFAULT_BEATS` change needs a version bump +

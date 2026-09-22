@@ -71,7 +71,7 @@ test('contact renders mailto and text links', () => {
   assert.ok(h.includes('href="mailto:' + PROFILE.links.email + '"'));
   assert.ok(!h.includes('card-foot'), 'no availability footer');
   assert.ok(h.includes('>GitHub<') && h.includes('>LinkedIn<'));
-  assert.equal(h.includes('>X<'), !!PROFILE.links.x);
+  assert.equal(h.includes('>X<'), false);
 });
 
 test('renderers escape hostile text and attributes', () => {
@@ -126,7 +126,7 @@ test('contact renders a card: name, role, mail, tel, socials', () => {
   assert.ok(h.includes('href="tel:+972548029820"'), 'tel href drops the leading 0 and dashes');
   assert.ok(h.includes(`>${PROFILE.links.phone}<`), 'the visible phone keeps its local format');
   assert.ok(h.includes('>GitHub<') && h.includes('>LinkedIn<'));
-  assert.equal(h.includes('>X<'), !!PROFILE.links.x);
+  assert.equal(h.includes('>X<'), false);
   assert.ok(!h.includes('href="#top"'), 'no in-page anchor: the door is the ending');
   assert.ok(!h.includes('class="foot"'), 'no year footer');
 });

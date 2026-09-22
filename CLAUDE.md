@@ -268,7 +268,7 @@ hard-refresh if a change doesn't show.
    rework (spec `docs/superpowers/specs/2026-09-14-wording-rework-design.md`):
    the term is "AI-native developer" everywhere, every claim is checkable, and
    `tests/profile.test.js` blocks the retired phrases.
-3. **X handle** — `links.x` is commented out pending confirmation.
+3. ~~X handle~~ dropped 2026-09-22 — no X link anywhere; `tests/profile.test.js` keeps `links.x` out.
 4. **SmartCut redeploy** — `smart-cut-gamma.vercel.app` returned 404 on
    2026-09-08 (still on 09-13). Shipped as `url: '', offline: true` in
    `profile.js` (no live link, GitHub only); restore the URL and drop `offline`

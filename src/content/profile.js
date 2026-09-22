@@ -107,7 +107,6 @@ export const PROFILE = {
     phone: '054-8029820', // Yarin approved publishing (site + PDF), 2026-08-29
     linkedin: 'https://www.linkedin.com/in/yarin-levin-78a783247/',
     github: 'https://github.com/yarinlevin18-ai',
-    // x: 'https://x.com/yarinlevin18',   // ⏳ confirm handle with Yarin, then uncomment
     site: 'https://yarinlevin.com',
   },
 

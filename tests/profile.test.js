@@ -51,7 +51,7 @@ test('repo links only on public repos; private builds flagged', () => {
 test('contact block', () => {
   assert.equal(PROFILE.contact, undefined, 'the card has no availability footer; contact.* is gone');
   assert.ok(PROFILE.title, 'the card role');
-  if (PROFILE.links.x) assert.match(PROFILE.links.x, /^https:\/\//);
+  assert.equal('x' in PROFILE.links, false, 'X was dropped 2026-09-22 — no dead channel');
 });
 
 test('ids are unique and the ids render.js hardcodes exist', () => {

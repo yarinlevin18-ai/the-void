@@ -127,7 +127,7 @@ export const telHref = (s) => {
 // `built` = { label: '14 Sep 2026', iso: '2026-09-14' } from Vite's __BUILT__ (injected, so this stays pure).
 export function renderContact(p, built = null) {
   const l = p.links;
-  const social = [['GitHub', l.github], ['LinkedIn', l.linkedin], ['X', l.x]].filter(([, h]) => h)
+  const social = [['GitHub', l.github], ['LinkedIn', l.linkedin]].filter(([, h]) => h)
     .map(([n, h]) => `<a href="${escAttr(h)}" target="_blank" rel="noopener">${n}</a>`).join('');
   const tel = telHref(l.phone);
   return `${eyebrow('Let’s build something')}
