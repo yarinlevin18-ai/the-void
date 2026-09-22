@@ -256,7 +256,7 @@ Spec: `docs/superpowers/specs/2026-09-14-contact-door-and-loader-design.md`.
    CV already carries it), optional capture video.
 7. ~~**Housekeeping:** decide on porting sound~~ ✅ 2026-09-13 — dropped;
    see Phase D. Sound commit kept as tag `archive/phase-b-d-sound-2026-07`.
-8. Optional trust signal: one genuine SHADIEZ client line, or none.
+8. ~~Optional trust signal~~ closed 2026-09-22 — Yarin chose no client line; SHADIEZ stands on the live site alone.
 
 9. ~~**Desktop walk-through**~~ ✅ 2026-09-13 on the dev build at 1440×900 as
    a fresh visitor (storage cleared): all 11 stops render, panels + text blocks
