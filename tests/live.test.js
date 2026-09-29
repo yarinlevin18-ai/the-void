@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createLiveModel, heapTopK, parseRecentChange, connectLive } from '../src/live.js';
+import { createLiveModel, heapTopK, parseJetstream, connectLive } from '../src/live.js';
 
 test('ring buffer keeps the last N events, newest first', () => {
   const m = createLiveModel({ ring: 4, window: 1000 });
@@ -31,52 +31,64 @@ test('model top-k tracks pushes', () => {
   assert.deepEqual(m.topK(), [{ source: 'en', count: 3 }, { source: 'de', count: 2 }]);
 });
 
-test('parseRecentChange keeps human edits and new pages, drops bots and log noise', () => {
-  const edit = parseRecentChange({ type: 'edit', wiki: 'enwiki', title: 'Kraków', bot: false, length: { old: 100, new: 160 }, timestamp: 1700000000 });
-  assert.deepEqual(edit, { source: 'enwiki', title: 'Kraków', delta: 60, kind: 'edit', at: 1700000000000 });
-  assert.equal(parseRecentChange({ type: 'edit', wiki: 'enwiki', title: 'x', bot: true }), null);
-  assert.equal(parseRecentChange({ type: 'log', wiki: 'enwiki', title: 'x' }), null);
-  assert.equal(parseRecentChange({ type: 'new', wiki: 'enwiki' }), null);
-  assert.equal(parseRecentChange(null), null);
-  assert.equal(parseRecentChange({ type: 'new', wiki: 'dewiki', title: 'Neu' }).delta, 0);
+test('parseJetstream keeps new posts as language / kind / length / embed, never text or author', () => {
+  const post = parseJetstream({ did: 'did:plc:x', time_us: 1790068134793077, kind: 'commit', commit: { operation: 'create', collection: 'app.bsky.feed.post', record: { text: 'hello world', langs: ['en-US'], embed: { $type: 'app.bsky.embed.images', images: [] } } } });
+  assert.deepEqual(post, { source: 'en', kind: 'post', chars: 11, embed: 'image', at: 1790068134793 });
+  assert.equal(JSON.stringify(post).includes('hello'), false, 'no post text leaves the parser');
+  assert.equal(JSON.stringify(post).includes('did:'), false, 'no author leaves the parser');
+  assert.equal(parseJetstream({ kind: 'commit', commit: { operation: 'create', collection: 'app.bsky.feed.post', record: { text: 'r', reply: { parent: {} } } } }).kind, 'reply');
+  assert.equal(parseJetstream({ kind: 'commit', commit: { operation: 'create', collection: 'app.bsky.feed.post', record: { text: 'q', embed: { $type: 'app.bsky.embed.record' } } } }).kind, 'quote');
+  assert.equal(parseJetstream({ kind: 'commit', commit: { operation: 'create', collection: 'app.bsky.feed.post', record: { text: 'x' } } }).source, 'und');
+  assert.equal(parseJetstream({ kind: 'commit', commit: { operation: 'delete', collection: 'app.bsky.feed.post' } }), null);
+  assert.equal(parseJetstream({ kind: 'commit', commit: { operation: 'create', collection: 'app.bsky.feed.like', record: {} } }), null);
+  assert.equal(parseJetstream({ kind: 'identity' }), null);
+  assert.equal(parseJetstream(null), null);
 });
+
+const POST = JSON.stringify({ kind: 'commit', time_us: 1, commit: { operation: 'create', collection: 'app.bsky.feed.post', record: { text: 'A', langs: ['en'] } } });
 
 test('connectLive goes live on the first parsed message and stops cleanly', () => {
   const states = [], events = [];
   let inst = null;
-  class FakeES { constructor(url) { this.url = url; inst = this; } close() { this.closed = true; } }
+  class FakeWS { constructor(url) { this.url = url; inst = this; } close() { this.closed = true; } }
   const timers = [];
-  const c = connectLive({ onEvent: (e) => events.push(e), onState: (s) => states.push(s), EventSourceImpl: FakeES,
+  const c = connectLive({ onEvent: (e) => events.push(e), onState: (s) => states.push(s), WebSocketImpl: FakeWS,
     setTimer: (fn) => { timers.push(fn); return 1; }, clearTimer: () => {}, setTick: () => 2, clearTick: () => {} });
   assert.deepEqual(states, ['connecting']);
-  inst.onmessage({ data: JSON.stringify({ type: 'edit', wiki: 'enwiki', title: 'A', length: { old: 1, new: 3 } }) });
+  inst.onmessage({ data: POST });
   inst.onmessage({ data: 'not json' });
-  inst.onmessage({ data: JSON.stringify({ type: 'log', wiki: 'enwiki', title: 'B' }) });
+  inst.onmessage({ data: JSON.stringify({ kind: 'commit', commit: { operation: 'create', collection: 'app.bsky.feed.like', record: {} } }) });
   assert.deepEqual(states, ['connecting', 'live']);
   assert.equal(events.length, 1);
   c.stop();
   assert.equal(inst.closed, true);
 });
 
-test('connectLive falls back to the simulator when the stream never delivers', () => {
-  const states = [], events = [];
+test('connectLive tries the next host on failure, then falls back to the simulator', () => {
+  const states = [], events = [], urls = [];
   let inst = null, ticker = null;
-  class FakeES { constructor() { inst = this; } close() { this.closed = true; } }
+  class FakeWS { constructor(url) { urls.push(url); inst = this; } close() { this.closed = true; } }
   const timers = [];
-  const c = connectLive({ onEvent: (e) => events.push(e), onState: (s) => states.push(s), EventSourceImpl: FakeES,
+  const c = connectLive({ onEvent: (e) => events.push(e), onState: (s) => states.push(s), WebSocketImpl: FakeWS, urls: ['wss://a', 'wss://b'],
     setTimer: (fn) => { timers.push(fn); return 1; }, clearTimer: () => {}, setTick: (fn) => { ticker = fn; return 2; }, clearTick: () => { ticker = null; } });
-  timers[0]();                                    // the guard fires with nothing received
+  const first = inst;
+  first.onerror();                                 // host a dies before delivering
+  assert.equal(first.closed, true);
+  assert.deepEqual(urls, ['wss://a', 'wss://b'], 'the next host is tried');
+  assert.deepEqual(states, ['connecting']);
+  timers[0]();                                     // the guard fires with nothing received from b either
   assert.deepEqual(states, ['connecting', 'simulated']);
   assert.equal(inst.closed, true, 'the dead stream is closed');
   ticker(); ticker();
   assert.equal(events.length, 2);
   assert.equal(events[0].simulated, true, 'synthetic events are labelled');
+  assert.ok(['post', 'reply', 'quote'].includes(events[0].kind));
   c.stop();
   assert.equal(ticker, null);
 });
 
-test('connectLive simulates when EventSource does not exist', () => {
+test('connectLive simulates when WebSocket does not exist', () => {
   const states = [];
-  connectLive({ onEvent: () => {}, onState: (s) => states.push(s), EventSourceImpl: undefined, setTick: () => 1, clearTick: () => {} });
+  connectLive({ onEvent: () => {}, onState: (s) => states.push(s), WebSocketImpl: null, setTick: () => 1, clearTick: () => {} });
   assert.deepEqual(states, ['connecting', 'simulated']);
 });

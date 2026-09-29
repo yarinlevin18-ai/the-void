@@ -2806,7 +2806,7 @@ function nearestBeat(getPoint) {
   }
   return [bi, bd];
 }
-// ---- Live layer (2026-09-17): Wikimedia's recent-change stream flows through the void.
+// ---- Live layer (2026-09-17, Bluesky since 2026-09-22): the public Jetstream firehose flows through the void.
 //  Every accepted event spawns a packet that rides one link of the data network
 //  (CPU copy of the vertex drift so it tracks the endpoints exactly) and feeds the
 //  strip on How I Build: ring buffer · sliding-window rate · heap top-k (live.js).
@@ -2870,7 +2870,8 @@ function startLive() {
   liveEl = document.querySelector('#stops .live');
   liveConn = connectLive({ onEvent: onLiveEvent, onState: (st) => { liveState = st; liveDirty = true; } });
 }
-const _liveFmt = (n) => (n >= 0 ? '+' : '−') + Math.abs(n);
+const _lang = (s) => (s === 'und' ? 'other' : s);   // ISO 639 "undetermined" — a post with no declared language
+const _liveRow = (e) => `<span class="src">${esc(_lang(e.source))}</span> · ${e.kind} · <span class="add">${e.chars} chars</span>${e.embed ? ` · ${e.embed}` : ''}`;   // language · kind · length · embed — never the text, never the author
 function renderLiveStrip(now) {                 // ≤ 8 Hz, and only while the strip is on screen
   if (!liveEl || !liveDirty || now - _liveLast < 125) return;
   const sec = liveEl.closest('.stop'); if (!sec || !sec.classList.contains('in')) return;
@@ -2880,12 +2881,12 @@ function renderLiveStrip(now) {                 // ≤ 8 Hz, and only while the 
   liveEl.querySelector('[data-live-count]').textContent = `${liveModel.filled()} / ${liveModel.size}`;
   liveEl.querySelector('[data-live-rate]').textContent = liveModel.rate(now).toFixed(1);
   const top = liveModel.topK();
-  liveEl.querySelector('[data-live-top]').textContent = top.length ? top.map((x) => `${x.source} ${x.count}`).join(' · ') : '—';
+  liveEl.querySelector('[data-live-top]').textContent = top.length ? top.map((x) => `${_lang(x.source)} ${x.count}`).join(' · ') : '—';
   const cells = liveEl.querySelector('[data-live-ring]').children, filled = liveModel.filled(), head = (liveModel.head - 1 + liveModel.size) % liveModel.size;
   for (let i = 0; i < cells.length; i++) { const on = i < filled; cells[i].className = i === head ? 'head' : on ? 'on' : ''; }
   const feed = liveEl.querySelector('[data-live-feed]');
   const rows = liveModel.recent(3);
-  feed.innerHTML = rows.map((e) => `<div><span class="src">${esc(e.source)}</span> · ${esc(e.title)} · <span class="${e.delta < 0 ? 'del' : 'add'}">${_liveFmt(e.delta)}</span>${isPortrait() && top.length ? ` · top ${esc(top[0].source)}` : ''}</div>`).join('');
+  feed.innerHTML = rows.map((e) => `<div>${_liveRow(e)}</div>`).join('');
 }
 
 function animate() {

@@ -51,15 +51,15 @@ export function renderTimeline(p) {
     <button type="button" class="pill" data-print-cv>Download CV ↓</button>`;
 }
 
-// The live strip (2026-09-17): the real event stream's accounting — ring buffer,
+// The live strip (2026-09-17, Bluesky since 2026-09-22): the real event stream's accounting — ring buffer,
 // sliding-window rate, heap top-k — rendered as a small console. main.js fills the
 // values from live.js; this only lays out the frame. `ring` = buffer size for the cells.
 export function renderLive(ring = 64) {
   const cells = Array.from({ length: ring }, () => '<i></i>').join('');
   return `<div class="live" data-live-state="connecting" aria-live="off">
-    <div class="live-hd"><span class="live-src">Wikipedia<span class="more"> · every edit, right now</span></span><span class="live-state"><i></i><b data-live-label>connecting</b></span></div>
+    <div class="live-hd"><span class="live-src">Bluesky<span class="more"> · every public post, right now</span></span><span class="live-state"><i></i><b data-live-label>connecting</b></span></div>
     <div class="live-ring" data-live-ring aria-hidden="true">${cells}</div>
-    <div class="live-kv"><span>ring<span class="more"> buffer</span></span><b data-live-count>0 / ${ring}</b><span>events / s<span class="more"> · 10 s window</span></span><b data-live-rate>0.0</b><span>top-3 wikis · min-heap</span><b data-live-top>—</b></div>
+    <div class="live-kv"><span>ring<span class="more"> buffer</span></span><b data-live-count>0 / ${ring}</b><span>events / s<span class="more"> · 10 s window</span></span><b data-live-rate>0.0</b><span>top-3 languages · min-heap</span><b data-live-top>—</b></div>
     <div class="live-feed" data-live-feed></div>
   </div>`;
 }

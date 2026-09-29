@@ -609,6 +609,7 @@ html, body {
 .live-ring i.head { background: #eaf4ff; box-shadow: 0 0 8px #9fd8ff; transition: none; }
 .live-kv { display: grid; grid-template-columns: auto 1fr auto 1fr auto 1fr; gap: .25rem .6rem; align-items: baseline; text-transform: uppercase; }
 .live-kv b { color: #eaf4ff; font-variant-numeric: tabular-nums; text-transform: none; letter-spacing: .04em; }
+.live-kv b[data-live-top] { white-space: nowrap; }   /* cumulative counts reach 4-5 digits at ~20 posts/s — keep the three on one line */
 .live-feed { margin-top: .45rem; padding-top: .4rem; border-top: 1px solid rgba(159,216,255,.12); height: calc(4.95em + .4rem + 1px); overflow: hidden;   /* three rows at 1.65 line-height + the padding/border that border-box folds in (was 3.3em, which sliced the third row in half) */ line-height: 1.65; color: #9fc2e0; font-weight: 400; letter-spacing: .02em; text-transform: none; white-space: nowrap; }
 .live-feed div { overflow: hidden; text-overflow: ellipsis; }
 .live-feed .src { color: #4fd2ff; } .live-feed .add { color: #3fc978; } .live-feed .del { color: #eab04e; }

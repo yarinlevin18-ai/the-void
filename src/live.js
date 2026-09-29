@@ -1,18 +1,27 @@
-// live.js — the live data layer (2026-09-17): a real public event stream flowing
-// through the void, and the small data structures that account for it.
+// live.js — the live data layer (2026-09-17, Bluesky since 2026-09-22): a real
+// public event stream flowing through the void, and the small data structures
+// that account for it.
 //
 //  · createLiveModel() is pure and node-tested: a fixed ring buffer of the last
 //    N events, a sliding-window rate (events / s over the last W ms), and a
 //    top-k of the busiest sources kept with a binary min-heap.
-//  · parseRecentChange() turns one Wikimedia "recentchange" event into the
-//    compact shape the model stores.
-//  · connectLive() is the only impure part: an EventSource on Wikimedia's public
-//    EventStreams (CORS-open, no key). If the stream can't connect within a few
-//    seconds — offline, blocked, or unsupported — it falls back to a synthetic
-//    generator and says so through `state`, so the strip never lies about the
-//    source. The site stays offline-capable: this is the one optional request.
+//  · parseJetstream() turns one Bluesky Jetstream commit into the compact shape
+//    the model stores — language, kind, length, embed. Never the text, never
+//    the author: a stranger's words don't belong on a hiring page.
+//  · connectLive() is the only impure part: a WebSocket on Bluesky's public
+//    Jetstream (no key, no auth; posts only — likes/reposts/follows would push
+//    it to ~170 events and ~90 KB a second). If no post arrives within a few
+//    seconds — offline, blocked, no WebSocket — it tries the next host, then
+//    falls back to a synthetic generator and says so through `state`, so the
+//    strip never lies about the source. The site stays offline-capable: this
+//    is the one optional request.
 
-export const STREAM_URL = 'https://stream.wikimedia.org/v2/stream/recentchange';
+export const STREAM_URLS = [
+  'wss://jetstream2.us-east.bsky.network/subscribe?wantedCollections=app.bsky.feed.post',
+  'wss://jetstream1.us-east.bsky.network/subscribe?wantedCollections=app.bsky.feed.post',
+  'wss://jetstream2.us-west.bsky.network/subscribe?wantedCollections=app.bsky.feed.post',
+];
+export const STREAM_URL = STREAM_URLS[0];
 
 // ---- pure model --------------------------------------------------------------
 export function createLiveModel({ ring = 64, window = 10000, k = 3 } = {}) {
@@ -58,48 +67,60 @@ export function heapTopK(counts, k) {
   return heap.sort((a, b) => b.count - a.count || (a.source < b.source ? -1 : 1));
 }
 
-// ---- Wikimedia recentchange → compact event ----------------------------------
-// Keeps edits and new pages from real wikis; drops bots, log noise and anything
-// without a title. `delta` is bytes added (negative = removed).
-export function parseRecentChange(rc) {
-  if (!rc || typeof rc !== 'object') return null;
-  if (rc.bot) return null;
-  if (rc.type !== 'edit' && rc.type !== 'new') return null;
-  if (!rc.title || !rc.wiki) return null;
-  const delta = rc.length && typeof rc.length.new === 'number' ? rc.length.new - (rc.length.old || 0) : 0;
-  return { source: String(rc.wiki), title: String(rc.title), delta, kind: rc.type, at: (rc.timestamp || 0) * 1000 };
+// ---- Bluesky Jetstream commit → compact event ---------------------------------
+// Keeps newly created posts; drops deletes, updates and every other collection.
+// `source` is the post's declared language (or `und`), `chars` its length,
+// `kind` post / reply / quote, `embed` image / video / link / null.
+const EMBEDS = { 'app.bsky.embed.images': 'image', 'app.bsky.embed.video': 'video', 'app.bsky.embed.external': 'link', 'app.bsky.embed.record': 'quote', 'app.bsky.embed.recordWithMedia': 'quote' };
+export function parseJetstream(j) {
+  if (!j || typeof j !== 'object' || j.kind !== 'commit') return null;
+  const c = j.commit;
+  if (!c || c.operation !== 'create' || c.collection !== 'app.bsky.feed.post') return null;
+  const r = c.record;
+  if (!r || typeof r !== 'object') return null;
+  const lang = Array.isArray(r.langs) && typeof r.langs[0] === 'string' ? r.langs[0].split('-')[0].toLowerCase() : 'und';
+  const embed = r.embed && typeof r.embed.$type === 'string' ? EMBEDS[r.embed.$type] || null : null;
+  const kind = r.reply ? 'reply' : embed === 'quote' ? 'quote' : 'post';
+  return { source: lang || 'und', kind, chars: typeof r.text === 'string' ? r.text.length : 0, embed: embed === 'quote' ? null : embed, at: Number.isFinite(j.time_us) ? Math.floor(j.time_us / 1000) : 0 };
 }
 
 // ---- connection with fallback ------------------------------------------------
 // onEvent(evt) for each accepted event; onState('connecting' | 'live' | 'simulated').
 // Returns { stop() }.
-export function connectLive({ onEvent, onState, url = STREAM_URL, timeout = 6000, EventSourceImpl = globalThis.EventSource, setTimer = setTimeout, clearTimer = clearTimeout, setTick = setInterval, clearTick = clearInterval } = {}) {
-  let es = null, sim = null, dead = false, gotOne = false;
+export function connectLive({ onEvent, onState, urls = STREAM_URLS, timeout = 6000, WebSocketImpl = globalThis.WebSocket, setTimer = setTimeout, clearTimer = clearTimeout, setTick = setInterval, clearTick = clearInterval } = {}) {
+  let ws = null, sim = null, dead = false, gotOne = false, guard = null, attempt = 0;
   const state = (s) => { if (!dead) onState?.(s); };
-  const startSim = () => {                            // the honest fallback: synthetic edits, labelled as such
+  const closeWs = () => { if (ws) { const w = ws; ws = null; w.onmessage = w.onerror = w.onclose = null; try { w.close(); } catch { /* ignore */ } } };
+  const startSim = () => {                            // the honest fallback: synthetic posts, labelled as such
     if (sim || dead) return;
-    if (es) { try { es.close(); } catch { /* ignore */ } es = null; }
+    closeWs();
     state('simulated');
-    const wikis = ['enwiki', 'dewiki', 'wikidatawiki', 'frwiki', 'jawiki', 'commonswiki', 'eswiki', 'itwiki'];
-    const titles = ['Talk:Main Page', 'Q42', 'Kraków', '2026 in film', 'Category:Stubs', 'Module:Arguments', 'Sandbox', 'User talk:Example'];
-    const tick = () => onEvent({ source: wikis[Math.floor(Math.random() ** 1.6 * wikis.length)], title: titles[Math.floor(Math.random() * titles.length)], delta: Math.round((Math.random() - 0.35) * 600), kind: Math.random() < 0.9 ? 'edit' : 'new', at: Date.now(), simulated: true });
-    sim = setTick(tick, 140);
+    const langs = ['en', 'ja', 'pt', 'es', 'de', 'ko', 'fr', 'tr', 'und'];
+    const embeds = [null, null, null, 'image', 'image', 'link', 'video'];
+    const tick = () => { const embed = embeds[Math.floor(Math.random() * embeds.length)]; const r = Math.random();
+      onEvent({ source: langs[Math.floor(Math.random() ** 1.7 * langs.length)], kind: r < 0.45 ? 'reply' : r < 0.55 ? 'quote' : 'post', chars: Math.floor(8 + Math.random() ** 2 * 292), embed, at: Date.now(), simulated: true }); };
+    sim = setTick(tick, 45);
   };
-  state('connecting');
-  if (typeof EventSourceImpl !== 'function') { startSim(); return { stop }; }
-  let guard = setTimer(() => { if (!gotOne) startSim(); }, timeout);
-  try {
-    es = new EventSourceImpl(url);
-    es.onmessage = (m) => {
-      if (dead) return;
+  const open = () => {                                // one host at a time; the next on failure, the simulator after the last
+    if (dead || gotOne) return;
+    closeWs();
+    if (typeof WebSocketImpl !== 'function' || attempt >= urls.length) { if (guard) { clearTimer(guard); guard = null; } startSim(); return; }
+    const url = urls[attempt++];
+    try { ws = new WebSocketImpl(url); } catch { ws = null; open(); return; }
+    const mine = ws;
+    mine.onmessage = (m) => {
+      if (dead || mine !== ws) return;
       let evt = null;
-      try { evt = parseRecentChange(JSON.parse(m.data)); } catch { evt = null; }
+      try { evt = parseJetstream(JSON.parse(m.data)); } catch { evt = null; }
       if (!evt) return;
-      if (!gotOne) { gotOne = true; clearTimer(guard); state('live'); }
+      if (!gotOne) { gotOne = true; if (guard) { clearTimer(guard); guard = null; } state('live'); }
       onEvent(evt);
     };
-    es.onerror = () => { if (!gotOne) { clearTimer(guard); startSim(); } };   // once live, EventSource reconnects on its own
-  } catch { clearTimer(guard); startSim(); }
-  function stop() { dead = true; clearTimer(guard); if (es) { try { es.close(); } catch { /* ignore */ } es = null; } if (sim) { clearTick(sim); sim = null; } }
+    mine.onerror = mine.onclose = () => { if (mine !== ws) return; if (!gotOne) open(); else { ws = null; state('connecting'); gotOne = false; attempt = 0; guard = setTimer(() => { if (!gotOne) startSim(); }, timeout); open(); } };
+  };
+  state('connecting');
+  guard = setTimer(() => { if (!gotOne) startSim(); }, timeout);
+  open();
+  function stop() { dead = true; if (guard) { clearTimer(guard); guard = null; } closeWs(); if (sim) { clearTick(sim); sim = null; } }
   return { stop };
 }

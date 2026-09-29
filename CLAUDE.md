@@ -134,21 +134,30 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   deals the repo cards, project stops get a recipe by position among project
   stops (`PROJECT_REVEALS` in `panels.js` → `data-reveal` = scan / iris / deal
   / wipe / shutter — by position, never by project name). Desktop unchanged.
-- **Live layer (2026-09-17, `src/live.js`):** the one optional external
-  request. An `EventSource` on Wikimedia's public recent-changes stream
-  (`https://stream.wikimedia.org/v2/stream/recentchange`, CORS-open, no key);
-  every accepted event (human edit / new page) becomes a packet riding a
-  network link (`livePackets`, a soft-sprite `Points` layer following
-  `driftedNode()`, the CPU mirror of `DRIFT_GLSL`) and feeds a pure,
-  node-tested model: ring buffer of the last 64, sliding-window rate over
-  10s, top-3 sources via a size-k min-heap. `renderLive()` in `render.js`
-  emits the strip on How I Build (source · state, ring cells, counters,
-  three feed rows); `renderLiveStrip()` in `main.js` updates it ≤8Hz and only
-  while the stop is `.in`. No stream within 6s (offline, blocked, no
-  `EventSource`) → a labelled synthetic generator (`offline · simulated`) —
-  the strip never claims a source it doesn't have. Phones: 32 ring cells,
-  label tails (`.more`) and the feed hidden, top-k hidden, TEEPO/SHADIEZ
-  cards side by side so the block clears the chevrons.
+- **Live layer (2026-09-17, Bluesky since 2026-09-22, `src/live.js`):** the
+  one optional external request. A `WebSocket` on Bluesky's public Jetstream
+  (`wss://jetstream2.us-east.bsky.network/subscribe?wantedCollections=app.bsky.feed.post`,
+  no key; two more hosts in `STREAM_URLS` are tried in turn before the
+  fallback). **Posts only** — with likes/reposts/follows the firehose ran
+  ~170 events and ~90 KB a second in a 5 s sample, too much for a phone on
+  data; posts alone were ~20-25/s. **Never the text, never the author**:
+  `parseJetstream()` keeps language · kind (post/reply/quote) · length ·
+  embed (image/video/link) and `tests/live.test.js` asserts no post text or
+  DID leaves the parser — a stranger's words don't belong on a hiring page.
+  Every accepted post becomes a packet riding a network link (`livePackets`,
+  a soft-sprite `Points` layer following `driftedNode()`, the CPU mirror of
+  `DRIFT_GLSL`) and feeds a pure, node-tested model: ring buffer of the last
+  64, sliding-window rate over 10s, top-3 languages via a size-k min-heap
+  (`und` renders as "other"). `renderLive()` in `render.js` emits the strip
+  on How I Build (source · state, ring cells, counters, three feed rows);
+  `renderLiveStrip()` in `main.js` updates it ≤8Hz and only while the stop is
+  `.in`. No post within 6s (offline, blocked, no `WebSocket`) → a labelled
+  synthetic generator (`offline · simulated`) — the strip never claims a
+  source it doesn't have. A drop after going live reconnects through the
+  host list with the same guard. Wikipedia's recent-change stream was the
+  source 2026-09-17 → 09-22 (Yarin wanted something more striking). Phones:
+  32 ring cells, label tails (`.more`) and the feed hidden, top-k hidden,
+  TEEPO/SHADIEZ cards side by side so the block clears the chevrons.
 - **Stops:** `src/panels.js` (`initPanels({ beats, profile, root })`) builds one
   `<section class="stop">` per beat from `profile.js` (hidden, `inert` +
   `aria-hidden`), shows/hides on arrival/departure, and runs one reveal recipe
@@ -220,7 +229,7 @@ folds a second featured project in as a compact row under the links.
 | File | Lines | What |
 |---|---|---|
 | `src/main.js` | ~3,300 | Scene, network, nebula, flight, Director Mode, perf tiers, save/migrate, void dimming, HUD, live packets + strip |
-| `src/live.js` | 105 | Live layer: pure ring buffer / sliding-window rate / heap top-k, `parseRecentChange`, `connectLive` with the simulated fallback — node-tested |
+| `src/live.js` | ~120 | Live layer: pure ring buffer / sliding-window rate / heap top-k, `parseJetstream` (Bluesky), `connectLive` with host fallback + simulator — node-tested |
 | `src/panels.js` | 96 | DOM stop layer: builds/shows/hides stops (inert + aria-hidden), count-up, print/copy |
 | `src/render.js` | ~140 | Pure HTML renderers (hi, about, timeline, build, project, contact, live strip) incl. the portrait-only `stop-img` figures, node-tested |
 | `src/bar.js` | 53 | Fixed top bar: name + role, availability, Work, About, phone / LinkedIn / GitHub, Copy email |
@@ -276,7 +285,7 @@ npm run build    # dist/
 npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash, save, assets, domain live (happy-dom for the DOM ones), 65 passing
 ```
 `.claude/launch.json` has a `void-dev` config for the browser preview.
-Offline-capable: fonts are self-hosted; the only external request is the optional Wikimedia stream (`src/live.js`), which falls back to a labelled simulation. HMR can be flaky —
+Offline-capable: fonts are self-hosted; the only external request is the optional Bluesky Jetstream socket (`src/live.js`), which falls back to a labelled simulation. HMR can be flaky —
 hard-refresh if a change doesn't show.
 
 ## Open work (authoritative checklist in BUILD_PLAN.md Phase H)
