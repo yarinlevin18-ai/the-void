@@ -131,7 +131,7 @@ export function renderBuild(p, log = null) {
 // decision follow as one sentence each. `also` is an optional second project
 // folded into this stop as a compact row (v16: five stops instead of seven).
 export function renderProject(x, side, also = null) {
-  const live = x.url ? `<a class="pill" href="${escAttr(x.url)}" target="_blank" rel="noopener">Visit live ↗</a>` : '<span class="pill ghost">Private build</span>';
+  const live = x.url ? `<a class="pill" href="${escAttr(x.url)}" target="_blank" rel="noopener">Visit live ↗</a>` : `<span class="pill ghost">${esc(x.pill || 'Private build')}</span>`;   // `pill`: what to say when there's no link (Sabai is live, just unlinked)
   const repo = x.repo ? `<a class="pill ghost" href="${escAttr(x.repo)}" target="_blank" rel="noopener">GitHub ↗</a>` : '';
   const privateRepo = (x.url && x.private && !x.repo) ? '<span class="pill ghost">Private repo</span>' : '';
   const small = (href, label) => href ? `<a href="${escAttr(href)}" target="_blank" rel="noopener">${label} ↗</a>` : '';

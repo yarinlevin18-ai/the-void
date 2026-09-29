@@ -129,6 +129,7 @@ test('a project with abilities or potential renders the list twice: text column 
   const many = renderProject({ ...base, abilities: Array.from({ length: 8 }, (_, i) => ({ t: `a${i}`, d: 'd' })) }, 'right');
   assert.ok(many.includes('xl-strip many') && many.includes('Abilities'), 'eight abilities get the four-column strip');
   assert.ok(!renderProject(base, 'left').includes('class="xl'), 'no list, no markup');
+  assert.ok(renderProject(base, 'left').includes('Private build') && renderProject({ ...base, pill: 'Personal app' }, 'left').includes('>Personal app<'), 'an unlinked project can say why it has no link');
   assert.ok(renderProject(base, 'left').includes('<span class="seg">A ·</span> <span class="seg">B</span>'), 'stack items never break inside, and a line never starts with a dot');
 });
 

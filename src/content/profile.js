@@ -84,7 +84,7 @@ export const PROFILE = {
       { when: 'May 2026', what: 'SHADIEZ', line: 'Paid client site, in production.' },
       { when: 'Jun 2026', what: 'AeroCy', line: 'The company’s live bilingual site, shipped in days.' },
       { when: 'Jul 2026', what: 'TEEPO', line: 'Hebrew-RTL study platform, live with real auth.' },
-      { when: 'Aug 2026', what: 'LLM Gateway', line: 'One control plane for model routing, a spend cap and agent policies.' },
+      { when: 'Aug 2026', what: 'LLM Gateway', line: 'Model routing, a spend cap and agent policies.' },
       { when: 'Now', what: '17 built, 7 live', line: 'Every build goes through Claude Code end-to-end; the next one is already underway.' },
     ],
   },
@@ -277,7 +277,7 @@ export const PROFILE = {
         decision: 'Offline-first: schedule, stays, flights, maps, budget and emergency info in one app, with OCR of the actual booking PDFs. No accounts, no sync server.',
         outcome: 'I used it every day of the trip.',
         stack: 'Next.js 16 · React 19 · Tesseract.js',
-        url: '',   // unlinked 2026-09-29: the live app needs no login and shows real booking codes — gate it before linking again
+        url: '', pill: 'Personal app',   // unlinked 2026-09-29: the live app needs no login and shows real booking codes — gate it before linking again
       },
       {
         id: 'agent-control', name: 'Agent Control', group: 'saas', kind: 'Agent guardrails', tag: 'Cyber security', year: 2026,

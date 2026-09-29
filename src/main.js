@@ -1093,7 +1093,7 @@ let curve = null;    // smooth spline through the camera positions
 const isPortrait = () => camera.aspect < 1;
 // "Compact" (2026-09-21): portrait, or a landscape phone (≤ 520 px tall). Both use the DOM
 // figures instead of the WebGL panels — in landscape the panels projected onto the words.
-const isCompact = () => isPortrait() || window.innerHeight < 520;
+const isCompact = () => isPortrait() || window.innerHeight <= 520;   // same line as the CSS `(max-height: 520px)`
 const usesPortrait = (b) => !!(b && b.portrait && !editMode && isPortrait());
 const bCam = (b) => (usesPortrait(b) ? b.portrait.cam : b.cam);
 const bLook = (b) => (usesPortrait(b) ? b.portrait.look : b.look);
@@ -2283,6 +2283,7 @@ if (tlTrack) {
 function setEdit(on) {
   editMode = on;
   if (isPortrait()) rebuildDerived();   // the editor always works on the desktop poses
+  if (panelsBuilt && isCompact()) rebuildPanels();   // compact screens carry 2-px stand-ins outside the editor
   editor.hidden = !on;
   timelineEl.hidden = !on;
   if (fxEl) fxEl.hidden = on;        // hide the FX panel in Director Mode (no overlap with the editor)

@@ -111,14 +111,19 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   as potential). `renderProject` emits the list twice: `.xl-flow`, titles only, in the
   text column (phones, narrow screens), and `.xl-strip`, cards with one-liners, as a
   sibling of the article that sits under the image panel from 1100 × 600 (`top: 65vh`,
-  from 48vw on the panel's side). Eight cards keep their one-liners only from 1300 × 820
-  — below that the two rows ran into the chevrons at 1440 × 790. Below 640 px tall on
-  a wider-than-phone window the flow list hides (the column is full there). Phones:
+  from `max(48vw, 6vw + 30rem)` on the panel's side, so it never reaches the text column;
+  `pointer-events: none`, it has no links and sits above the chevrons in z-order). One-liners
+  only where the cards clear the chevrons, from a measured 1100-1600 × 600-860 grid: eight
+  cards need 1360 × 820, three cards 640 px of height (720 below 1200 wide). Under 720 px
+  tall on a window too narrow for the strip the flow list hides (the column is full). Phones:
   PROBLEM / DECISION / the list are run-in labels on every project stop (each label +
   sentence is its own `<div>` inside the `<dl>` — Safari only balances real blocks),
-  and the three list stops show a 52 % screenshot (42 % under 690 px tall). Measured
-  2026-09-29: all seven project stops fit 402 × 711 and 390 × 664; at 375 × 629 four
-  still tuck 6-14 px under the bar (production overflowed by 70-175 px there). The
+  and the three list stops show a 52 % screenshot (42 % under 690 px tall). The under-690
+  portrait tier also shrinks the Hi portrait, How I Build's method lines and drops the build
+  log's commit counts; How I Build's top padding is `max(12.5vh, 6.1rem)` because the bar is a
+  fixed ~93 px. Measured 2026-09-29: all 13 stops fit 402 × 711 and 390 × 664; at 375 × 629
+  four project stops still tuck 6-14 px under the bar, and the iPhone SE (375 × 553) overflows
+  on five (production overflowed at every one of these sizes). The
   same audit fixed the gateway copy: Hono not Fastify, and "every agent I run goes
   through it" is a retired phrase (some apps only report usage; local calls skip it).
   Stack lines use `segments()`: an item never breaks inside, a line never starts with ·.
@@ -162,12 +167,20 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   a flight starts, so the threshold stays at 1.0 while any panel is still lit
   (`_panelLit`); About's photos used to flare solid white leaving for the
   Timeline. A `panels[]` cluster is gone 40 % into the hop.
+- **Shortest laptops (≤ 720 px of viewport, 2026-09-29 sweep):** at 1280 × 690 and 1366 × 657
+  the Timeline's Download CV pill sat 28-47 px under the bottom edge, How I Build's eyebrow
+  under the bar and the contact card's last rows under the chevrons; one `max-height: 720px`
+  tier tightens those three (desktop-width only). Seven laptop sizes 1024-1536 wide now clear
+  every stop.
 - **Per-stop entrances on phones (2026-09-17):** portrait + no-preference
   only, ≤600ms, one easing (`--ease-out`). Hi "develops" (blur/tint → colour),
   About slides in from both sides, How I Build lights the proof panel then
   deals the repo cards, project stops get a recipe by position among project
   stops (`PROJECT_REVEALS` in `panels.js` → `data-reveal` = scan / iris / deal
   / wipe / shutter — by position, never by project name). Desktop unchanged.
+  Scan and wipe start from a 1-px sliver, never a full clip (2026-09-29): Chrome won't
+  lazy-load a fully clipped image, and once 6aa7fa6 stopped the panel textures from
+  warming the cache, those screenshots only began downloading on arrival.
 - **Build log (2026-09-29; replaced the live layer):** the How I Build strip is
   this repo's own git history, read at build time by `scripts/buildlog.js`
   (`summarize()` node-tested) and baked in as `__BUILDLOG__` from
@@ -251,7 +264,8 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
 6. **Cursor Buddy** — animated panel right (`buddy.js`, no screenshot), macOS menu-bar agent, private repo (replaced Focus 2026-09-29).
 7. **Sabai** — image left, **no live link** (2026-09-29): the app needs no login
    and shows real booking codes and phone numbers, so `url` stays empty (guarded in
-   `tests/profile.test.js`) until Yarin gates it.
+   `tests/profile.test.js`) until Yarin gates it. Its pill reads "Personal app"
+   (`pill` in `profile.js`) — "Private build" wasn't true of a live app.
 8. **Agent Control** — image right, the cyber-security stop (live demo at
    agent-control-demo.vercel.app), **also** AeroCy.
 9. **Thesis Agent** — image left, private build (his dad's M.A. thesis advisor).
@@ -325,9 +339,11 @@ export tuned `BEATS` and paste into `DEFAULT_BEATS`.
 ### Perf tiers (all in `main.js`, top)
 - `IS_TOUCH` — DPR cap 1.25, nebula res 0.33 / fewer steps, halved star/node/link
   density, no water sim / bokeh, no CSS blur tweens.
-- Compact screens (`isCompact()`: portrait or < 520 px tall) get 2-px stand-in
+- Compact screens (`isCompact()`: portrait or ≤ 520 px tall — the same line as the CSS
+  `(max-height: 520px)`; at exactly 520 both the figures and the panels showed) get 2-px stand-in
   panel textures — no panel image fetch, draw or upload, since those screens only
-  show the DOM figures; crossing the compact line on resize rebuilds them.
+  show the DOM figures; crossing the compact line on resize rebuilds them, and
+  Director Mode swaps real textures in while it's open (`setEdit`).
 - `LOW_END` (touch + ≤4GB or ≤480px) — also skips the whole CSS3D layer.
 - **Adaptive governor** (touch only, one-way): fps EMA < 45 → tier 1 (smaller
   raymarch) → tier 2 (DPR 1, nebula every 3rd frame, bloom at 1/3 res).
@@ -339,9 +355,9 @@ export tuned `BEATS` and paste into `DEFAULT_BEATS`.
 ## Run
 ```
 npm install
-npm run dev      # http://localhost:5173  (DEV_TOOLS on → E/B/T/U/Y/A work)
+npm run dev      # http://localhost:5173  (DEV_TOOLS on → E/B/T/U/A work)
 npm run build    # runs the test suite, then vite build → dist/
-npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash, save, assets, domain, lab, buddy, buildlog (happy-dom for the DOM ones), 73 passing
+npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash, save, assets, domain, lab, buddy, buildlog (happy-dom for the DOM ones), 74 passing
 ```
 `.claude/launch.json` has a `void-dev` config for the browser preview.
 Offline-capable: fonts are self-hosted and the site makes no external requests. HMR can be flaky —

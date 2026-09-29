@@ -63,7 +63,7 @@ html, body {
   transition: opacity 0.4s ease;
 }
 #overlay h1 {
-  display: none;   /* hidden — the placed 3D "yarin" (Y panel) is the hero wordmark now */
+  display: none;   /* hidden — the particle wordmark (openingFX in main.js) is the Opening's name */
   font-family: var(--f);
   font-size: clamp(2rem, 7.2vw, 5.4rem);   /* mono runs ~30% wider than the old serif — size down, not out */
   font-weight: 500;
@@ -534,7 +534,6 @@ html, body {
   /* About: the stage (4:3) and the memorial (3:4) side by side at equal height — 16fr:9fr
      makes the heights match exactly (.75·16 = 1.333·9). */
   .stop-imgs { display: grid; grid-template-columns: 16fr 9fr; gap: .5rem; align-items: start; margin-bottom: 1rem; max-width: 34rem; }
-  .stop-project { justify-content: safe flex-start; }
   /* Hi and About are short columns; hugging the top left ~230-300 px of dead
      void under the last line. Centred they sit in the middle of the screen
      like every other stop. `safe` still falls back to the top if a small
@@ -582,7 +581,7 @@ html, body {
   .stop-project .project { transition-delay: .2s; }
   .stop-img.shot { position: relative; overflow: hidden; border-radius: 3px; }
   .stop-img.shot::after { content: ''; position: absolute; pointer-events: none; opacity: 0; }
-  [data-reveal="scan"] .stop-img.shot img { clip-path: inset(0 0 100% 0); transition: clip-path .55s linear; }
+  [data-reveal="scan"] .stop-img.shot img { clip-path: inset(0 0 calc(100% - 1px) 0); transition: clip-path .55s linear; }   /* a 1-px sliver, never zero: Chrome won't lazy-load a fully clipped image, so the scan ran over an empty box */
   [data-reveal="scan"] .stop-img.shot::after { left: 0; right: 0; top: 0; height: 2px; background: #4fd2ff; box-shadow: 0 0 12px #4fd2ff, 0 0 2px #fff; }
   .stop.in[data-reveal="scan"] .stop-img.shot img { clip-path: inset(0); }
   .stop.in[data-reveal="scan"] .stop-img.shot::after { animation: scanDown .55s linear forwards; }
@@ -592,7 +591,7 @@ html, body {
   [data-reveal="deal"] .stop-img.shot { overflow: visible; }
   [data-reveal="deal"] .stop-img.shot img { opacity: 0; transform: perspective(700px) translateY(28px) rotateX(14deg); transform-origin: center bottom; transition: opacity .35s ease, transform .6s var(--ease-out); }
   .stop.in[data-reveal="deal"] .stop-img.shot img { opacity: 1; transform: none; }
-  [data-reveal="wipe"] .stop-img.shot img { clip-path: inset(0 100% 0 0); transition: clip-path .55s var(--ease-out); }
+  [data-reveal="wipe"] .stop-img.shot img { clip-path: inset(0 calc(100% - 1px) 0 0); transition: clip-path .55s var(--ease-out); }   /* 1-px sliver — see scan */
   [data-reveal="wipe"] .stop-img.shot::after { top: 0; bottom: 0; left: 0; width: 2px; background: #9fd8ff; box-shadow: 0 0 12px #4fd2ff, 0 0 2px #fff; }
   .stop.in[data-reveal="wipe"] .stop-img.shot img { clip-path: inset(0); }
   .stop.in[data-reveal="wipe"] .stop-img.shot::after { animation: wipeAcross .55s var(--ease-out) forwards; }
@@ -734,6 +733,22 @@ html, body {
   .stop-build .proof { margin: .7rem 0; }
   .stop-build .proof-item .num { font-size: 2.2rem; }
 }
+/* The shortest laptops (≤ 720 px of viewport — 1280×690 MacBook Air, 1366×657; 2026-09-29 sweep):
+   the Timeline's Download CV pill sat 28-47 px under the bottom edge with its last row under the
+   chevrons, and How I Build's eyebrow slid under the bar. */
+@media (min-width: 720px) and (min-height: 560px) and (max-height: 720px) {
+  .stop-timeline { padding-top: 11vh; padding-bottom: 9vh; }
+  .stop-timeline .tl-title { font-size: 3rem; margin-bottom: .7rem; }
+  .tl-row { padding: .32rem 0; }
+  .tl-dot { top: .78rem; }
+  .tl-what { font-size: 1.1rem; }
+  .tl-line { font-size: .92rem; }
+  .stop-timeline .pill { margin-top: .8rem; }
+  .stop-build { padding-top: 10.5vh; padding-bottom: 6vh; }
+  .stop-build .method .line { font-size: 1.05rem; }
+  .stop-build .proof { margin: .5rem 0; }
+  .stop-build .proof-item .num { font-size: 1.9rem; }
+}
 
 /* 05 Projects — text block on the side opposite the WebGL image panel; image first, text 150ms later.
    On phones the text just sits at the bottom (the image lives above it in the 3D layer); the
@@ -769,8 +784,9 @@ html, body {
   .xl-flow { display: none; }
   .xl-strip { display: block; position: absolute; top: 65vh; width: min(41vw, 46rem); opacity: 0; transform: translateY(10px); transition: opacity .45s ease .3s, transform .45s var(--ease-out) .3s; }
   .stop.in .xl-strip { opacity: 1; transform: none; }
-  .stop-project[data-side="right"] .xl-strip { left: 48vw; }
-  .stop-project[data-side="left"] .xl-strip { right: 48vw; }
+  .stop-project[data-side="right"] .xl-strip { left: max(48vw, calc(6vw + 30rem)); }   /* the text column ends at 6vw + 29rem */
+  .stop-project[data-side="left"] .xl-strip { right: max(48vw, calc(6vw + 30rem)); }
+  #stops .xl-strip { pointer-events: none; }   /* no links in it; `.stop.in > *` would let it take clicks meant for the chevrons */
   .xl-strip ul { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin-top: .55rem; }
   .xl-strip.many { width: min(44vw, 50rem); }
   .xl-strip.many ul { grid-template-columns: repeat(4, 1fr); gap: .45rem; }
@@ -780,10 +796,13 @@ html, body {
   .xl-strip li span { display: block; margin-top: .2rem; font-size: .78rem; line-height: 1.4; color: #9fc2e0; text-wrap: balance; }
 }
 @media (min-width: 1100px) and (min-height: 600px) and (prefers-reduced-motion: reduce) { .xl-strip { transform: none; transition: opacity .2s ease; } }
-/* Short windows narrower than the strip (1024×600 and the like): the text column is full already */
-@media (min-width: 641px) and (min-height: 521px) and (max-height: 639px) { .xl-flow { display: none; } }
-/* Eight abilities in two rows only keep their one-liners where they fit above the chevrons */
-@media (min-width: 1100px) and (min-height: 600px) and (max-width: 1299px), (min-width: 1100px) and (min-height: 600px) and (max-height: 819px) { .xl-strip.many li span { display: none; } }
+/* Windows narrower than the strip and under 720 px tall (1024×700 and the like): the text column is full already */
+@media (min-width: 641px) and (min-height: 521px) and (max-height: 719px) { .xl-flow { display: none; } }
+/* One-liners only where the cards clear the chevrons (measured 2026-09-29 on a 1100-1600 × 600-860
+   grid): eight cards need 1360 × 820 — at 1300 wide the lines wrap once more and the rows ran 12 px
+   into the chevrons; three cards need 640 px of height, or 720 px below 1200 wide. */
+@media (min-width: 1100px) and (min-height: 600px) and (max-width: 1359px), (min-width: 1100px) and (min-height: 600px) and (max-height: 819px) { .xl-strip.many li span { display: none; } }
+@media (min-width: 1100px) and (min-height: 600px) and (max-height: 639px), (min-width: 1100px) and (max-width: 1199px) and (min-height: 600px) and (max-height: 719px) { .xl-strip li span { display: none; } }
 /* phones: the screenshot is a DOM figure in flow above the text (2026-09-17), so
    the block just needs tightening to keep the TEEPO / SHADIEZ stops (which carry
    an `also` row) inside the fold */
@@ -827,7 +846,7 @@ html, body {
   .xl-flow ul { display: inline; font-size: .86rem; line-height: 1.45; color: #d6e8f7; }
   .project.has-xl .stop-img.shot { max-width: 52%; }
   /* How I Build: method + proof + three repo cards ran past the fold at 844px */
-  .stop-build { padding-top: 12.5vh; padding-bottom: 11vh; }   /* the chevrons sit in the bottom ~10vh; keep the last card's links clear of them */
+  .stop-build { padding-top: max(12.5vh, 6.1rem); padding-bottom: 11vh; }   /* the chevrons sit in the bottom ~10vh; the bar is a fixed ~93 px, so 12.5vh alone slid the eyebrow under it */
   .stop-build .eyebrow { margin-bottom: .5rem; }
   .method .line { font-size: .92rem; margin-bottom: .25em; }
   .proof { grid-template-columns: repeat(3, 1fr); gap: .4rem; margin: .55rem 0; padding: .4rem .6rem; border: 1px solid rgba(159,216,255,.16); border-radius: 8px; background: rgba(8,16,26,.55); }   /* same glass as the repo cards: the dense core sits behind it on phones */
@@ -852,13 +871,17 @@ html, body {
 /* Shorter phones (iPhone 16e / mini class, < 690 px of Safari viewport): smaller screenshots keep
    every project stop between the bar and the chevrons (production overflowed there by 70-175 px).
    It sits after the phone block on purpose: same specificity, so source order decides. */
-@media (max-width: 640px) and (max-height: 689px) {
+@media (max-width: 640px) and (max-height: 689px) and (orientation: portrait) {
   .stop-img.shot { max-width: 58%; }
   .project.has-xl .stop-img.shot { max-width: 42%; }
   .stop-project .eyebrow { margin-bottom: .35rem; }
   .project .title { margin-bottom: .3rem; }
   .project dl > div { margin-bottom: .2rem; }
   .project .also { margin-top: .45rem; padding-top: .35rem; }
+  .stop-img.portrait { max-width: 12rem; }   /* Hi: the portrait's top slid 5 px under the bar at 390×664 */
+  .stop-build .method .line { font-size: .84rem; }   /* How I Build ran 28 px past its room at 390×664 — */
+  .stop-build .blog-side { display: none; }        /* — and the commit counts go too; the heatmap and the test badge stay */
+  .stop-build .proof { margin: .35rem 0; }
 }
 .group-label { position: absolute; top: 12vh; left: 6vw; }
 @media (min-width: 900px) {
@@ -921,6 +944,14 @@ html, body {
   .card .mail { font-size: 2.05rem; }
   .card .tel { font-size: 1.08rem; }
   .card .social { font-size: 1.02rem; }
+}
+@media (min-width: 900px) and (min-height: 560px) and (max-height: 720px) {   /* 1280×690 / 1366×657: the last card rows sat under the chevrons */
+  .finale { margin-bottom: .9rem; }
+  .finale-lead { font-size: 2.6rem; }
+  .card-row { padding: .75rem 1.8rem; }
+  .card-head { padding-top: 1.1rem; }
+  .card-name { font-size: 2.4rem; }
+  .card .mail { font-size: 1.7rem; }
 }
 
 /* one focus language for every control in the stops (the bar has its own below) */

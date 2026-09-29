@@ -69,6 +69,30 @@ test('abilities and potential stay short enough for the strip and the phone list
   }
 });
 
+// WebP header → [width, height]; VP8 (lossy), VP8L (lossless) and VP8X (extended), no dependencies
+function webpSize(buf) {
+  const kind = buf.toString('ascii', 12, 16);
+  if (kind === 'VP8X') return [1 + buf.readUIntLE(24, 3), 1 + buf.readUIntLE(27, 3)];
+  if (kind === 'VP8L') { const b = buf.readUInt32LE(21); return [1 + (b & 0x3fff), 1 + ((b >>> 14) & 0x3fff)]; }
+  if (kind === 'VP8 ') return [buf.readUInt16LE(26) & 0x3fff, buf.readUInt16LE(28) & 0x3fff];
+  throw new Error(`not a WebP (${kind})`);
+}
+
+test('a phone capture, its 5:8 image and its 5:8 panel stay together; every other preview is 16:10', () => {
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  for (const p of featured.filter((x) => x.img)) {
+    const [w, h] = webpSize(readFileSync(new URL(`../public${p.img}`, import.meta.url)));
+    if (p.phone) {
+      assert.ok(Math.abs(w / h - 0.625) < 0.01, `${p.id}: a phone capture ships 5:8 (is ${w}×${h})`);
+      const beat = main.split('\n').find((l) => l.includes(`id: '${p.id}'`) && l.includes('stop: \'project\''));
+      const size = beat && /p\.size = \[([\d.]+), ([\d.]+)\]/.exec(beat);
+      assert.ok(size && Math.abs(size[1] / size[2] - w / h) < 0.01, `${p.id}: its panel must share the capture's aspect, or the cover fit crops it`);
+    } else {
+      assert.ok(Math.abs(w / h - 1.6) < 0.05, `${p.id}: previews fill a 28×17.6 panel (is ${w}×${h}); a phone capture needs phone: true`);
+    }
+  }
+});
+
 test('ids are unique and the ids render.js hardcodes exist', () => {
   const ids = featured.map((p) => p.id);
   assert.equal(new Set(ids).size, ids.length);
