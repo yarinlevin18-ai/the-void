@@ -1,5 +1,10 @@
 # CONTENT.md — Phase A content lock ("The Void")
 
+> **Superseded for the flight lineup (2026-09-29):** the seven project stops are LLM Gateway ·
+> Cursor Buddy · Sabai · Agent Control (+ AeroCy) · Thesis Agent · Gate Opener · SHADIEZ
+> (+ SmartCut). `src/content/profile.js` and CLAUDE.md "The flight" are the source of truth;
+> the tables below are the August history.
+
 > The filled content table BUILD_PLAN Phase A requires. Drives Phase B wiring.
 > Status: **LOCKED & WIRED 2026-08-13** — Yarin confirmed Kiara's Club for
 > slot #4; Phase B content is in `DEFAULT_BEATS` (src/main.js, save v7).

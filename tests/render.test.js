@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { esc, renderHi, renderAbout, renderTimeline, renderBuild, renderProject, renderContact, renderLive, telHref } from '../src/render.js';
+import { esc, sentences, renderHi, renderAbout, renderTimeline, renderBuild, renderProject, renderContact, renderBuildLog, telHref } from '../src/render.js';
 import { PROFILE } from '../src/content/profile.js';
 
 test('esc escapes html', () => {
@@ -11,11 +11,19 @@ test('hi renders greeting, status and two lines, side left', () => {
   const h = renderHi(PROFILE);
   assert.ok(h.includes('data-side="left"'));
   assert.ok(h.includes(esc(PROFILE.hi.greeting)));
-  assert.ok(h.includes(esc(PROFILE.hi.status)));
+  for (const seg of PROFILE.hi.status.split(' · ')) assert.ok(h.includes(`<span class="seg">${esc(seg)}</span>`), seg);
   assert.equal((h.match(/class="line"/g) || []).length, 2);
 });
 
-test('about renders title, three paragraphs, side right, and the three photos as portrait-only figures', () => {
+test('sentences: one span per sentence, text kept whole', () => {
+  assert.equal(sentences('One. Two? Three!'), '<span class="sent">One.</span> <span class="sent">Two?</span> <span class="sent">Three!</span>');
+  assert.equal(sentences('One sentence, no break'), '<span class="sent">One sentence, no break</span>');
+  assert.equal(sentences('a < b'), '<span class="sent">a &lt; b</span>');
+  assert.equal(sentences('My dad’s M.A. thesis. B.A. student, e.g. at BGU. Done.'),
+    '<span class="sent">My dad’s M.A. thesis.</span> <span class="sent">B.A. student, e.g. at BGU.</span> <span class="sent">Done.</span>');
+});
+
+test('about renders title, three paragraphs, side right, and the two photos as portrait-only figures', () => {
   const h = renderAbout(PROFILE);
   assert.ok(h.includes('data-side="right"'));
   assert.equal((h.match(/class="para"/g) || []).length, 3);
@@ -52,7 +60,7 @@ test('build renders method, 3 proof numbers with data-n, and the gateway card', 
 
 test('project: public repo gets a repo link, private build gets the label and no repo', () => {
   const teepo = PROFILE.work.featured.find((p) => p.id === 'teepo');
-  const focus = PROFILE.work.featured.find((p) => p.id === 'focus');
+  const focus = PROFILE.work.featured.find((p) => p.id === 'thesis');   // a private build with no live link (Focus until 2026-09-29)
   const gateway = PROFILE.work.featured.find((p) => p.id === 'llm-gateway');
   const ht = renderProject(teepo, 'left');
   assert.ok(ht.includes('href="https://github.com/yarinlevin18-ai/TEEPO"'));
@@ -145,11 +153,24 @@ test('contact card carries the build stamp when one is injected', () => {
   assert.ok(!renderContact(PROFILE).includes('card-built'), 'no stamp without a build');
 });
 
-test('the live strip renders its frame with a cell per ring slot and the value hooks', () => {
-  const h = renderLive(8);
-  const ring = h.slice(h.indexOf('data-live-ring'), h.indexOf('live-kv'));
-  assert.equal((ring.match(/<i><\/i>/g) || []).length, 8);
-  for (const hook of ['data-live-label', 'data-live-ring', 'data-live-count', 'data-live-rate', 'data-live-top', 'data-live-feed']) assert.ok(h.includes(hook), hook);
-  assert.ok(h.includes('data-live-state="connecting"'));
-  assert.ok(renderBuild(PROFILE).includes('class="live"'), 'How I Build carries the strip');
+test('the build log renders a heatmap cell per day, the counts and the latest commits', () => {
+  const log = { first: '2026-06-21', today: '2026-06-24', commits: 5, activeDays: 2, streak: 1, tests: 9,
+    days: [3, 0, 0, 2], recent: [{ h: 'abc1234', d: '2026-06-24', s: 'fix <b>' }] };
+  const h = renderBuildLog(log);
+  const grid = h.slice(h.indexOf('blog-grid'), h.indexOf('blog-side'));
+  assert.equal((grid.match(/data-l="[0-4]"/g) || []).length, 4, 'one cell per day');
+  assert.equal((grid.match(/data-l="x"/g) || []).length, 0, '2026-06-21 is a Sunday: no padding');
+  assert.ok(grid.includes('data-l="2"') && grid.includes('data-l="1"'), '3 commits → level 2, 2 → level 1');
+  assert.ok(h.includes('9 tests passing'));
+  assert.ok(h.includes('fix &lt;b&gt;'), 'commit subjects are escaped');
+  assert.equal(renderBuildLog(null), '', 'no log, no strip');
+  assert.ok(renderBuild(PROFILE, log).includes('class="blog"'), 'How I Build carries the strip');
+  assert.ok(!renderBuild(PROFILE).includes('class="blog"'));
+});
+
+test('contact: the finale lead-in types per character but reads whole to screen readers', () => {
+  const h = renderContact(PROFILE);
+  assert.ok(h.includes(`<span class="sr-only">${esc(PROFILE.finale.lead)}</span>`));
+  assert.ok(h.includes(`<span class="sr-only">${esc(PROFILE.finale.line)}</span>`));
+  assert.equal((h.match(/style="--c:/g) || []).length, [...PROFILE.finale.lead].length + [...PROFILE.finale.line].length);
 });

@@ -29,7 +29,7 @@ export function initPanels({ beats, profile, root }) {
       sec.setAttribute('aria-label', [profile.about.eyebrow, ...profile.about.photos.map((x) => x.caption)].join(' · '));
     }
     else if (b.stop === 'timeline') sec.innerHTML = renderTimeline(profile);
-    else if (b.stop === 'build') sec.innerHTML = renderBuild(profile);
+    else if (b.stop === 'build') sec.innerHTML = renderBuild(profile, typeof __BUILDLOG__ !== 'undefined' ? __BUILDLOG__ : null);   // git-history strip from vite.config.js
     else if (b.stop === 'project') {
       const x = profile.work.featured.find((p) => p.id === b.id);
       if (!x) throw new Error(`panels: no featured project with id "${b.id}"`);

@@ -11,8 +11,8 @@ flight path. The **v18 flight** (2026-09-14) puts the person first: Hi → About
 → Timeline → How I Build → five project stops (SaaS first, then Landing pages)
 → Contact, each project stop pairing the existing WebGL image panel with a DOM
 text block from `profile.js`. v18 replaced the Hero/Intro/CV stops with Hi
-(portrait panel + greeting), About (three speaking-photo panels + story) and
-Timeline (dated rows on a rail, the two old hero screens floating beside it) —
+(portrait panel + greeting), About (speaking-photo panels + story) and
+Timeline (dated rows on a rail) —
 see `docs/superpowers/specs/2026-09-14-person-chapter-design.md` for the full
 design. v16 (2026-09-12) had already replaced v15's seven project hops: seven
 identical 1.35s hops flattened the rhythm, so AeroCy and SmartCut ride along as
@@ -92,7 +92,7 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   Safari's URL bar shortening the viewport, landed on the words. Verified in
   the iOS Simulator (iPhone 17, Safari) — the Chrome phone emulation never
   showed either problem, so phone checks go through the simulator now.
-- **Flight:** 13 stops (see below), section-snapping. Per-shot FOV + duration
+- **Flight:** 13 stops, seven of them projects (see below), section-snapping. Per-shot FOV + duration
   with a deliberate rhythm (Hero 2.1s breath · Hero→Intro 2.4s exhale · CV/How
   I Build 1.6s · project hops 1.35s · finale 3s held). `fitFov()` widens
   vertical FOV on portrait screens so composed shots don't crop. Quaternion-
@@ -128,36 +128,59 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   follow — and back to 1 during the flight. Eased in the render loop
   (`_dimV`, .45s down / .6s up; instant under reduced motion). The void stays
   the transition, the words own the stop. Body text is `#d6e8f7` on phones.
+- **Minimal void, no mouse tracking (2026-09-29, Yarin):** the cursor trail
+  (`cursor.js`), the threads that reached from nodes to the cursor and the
+  cursor stir are gone (`cursorDrive` 0); stars .45, nodes .55, links .45 of
+  the built density, link traffic and node flares halved. Don't bring cursor
+  effects back.
+- **Line breaks (2026-09-29, Yarin):** no sentence may drop a lone word onto
+  its own line. `render.js` `sentences()` puts each sentence of the Hi lines,
+  the About story and the Timeline lines in a `.sent` block (balanced), the Hi
+  status breaks only between its ` · ` items (`.seg`), and every other short
+  block in `#stops` is `text-wrap: balance`. Headings are left alone.
+- **Reduced motion (2026-09-29):** flights run at 0.55× duration, no warp
+  streaks, no camera parallax; the mouse parallax is desktop-only (on touch the
+  last swipe's point stuck as an offset). The Opening wordmark still shatters
+  around the pointer — the one cursor interaction left, by choice.
+- **Bloom across a flight (2026-09-29):** `index` jumps to the destination as
+  a flight starts, so the threshold stays at 1.0 while any panel is still lit
+  (`_panelLit`); About's photos used to flare solid white leaving for the
+  Timeline. A `panels[]` cluster is gone 40 % into the hop.
 - **Per-stop entrances on phones (2026-09-17):** portrait + no-preference
   only, ≤600ms, one easing (`--ease-out`). Hi "develops" (blur/tint → colour),
   About slides in from both sides, How I Build lights the proof panel then
   deals the repo cards, project stops get a recipe by position among project
   stops (`PROJECT_REVEALS` in `panels.js` → `data-reveal` = scan / iris / deal
   / wipe / shutter — by position, never by project name). Desktop unchanged.
-- **Live layer (2026-09-17, Bluesky since 2026-09-22, `src/live.js`):** the
-  one optional external request. A `WebSocket` on Bluesky's public Jetstream
-  (`wss://jetstream2.us-east.bsky.network/subscribe?wantedCollections=app.bsky.feed.post`,
-  no key; two more hosts in `STREAM_URLS` are tried in turn before the
-  fallback). **Posts only** — with likes/reposts/follows the firehose ran
-  ~170 events and ~90 KB a second in a 5 s sample, too much for a phone on
-  data; posts alone were ~20-25/s. **Never the text, never the author**:
-  `parseJetstream()` keeps language · kind (post/reply/quote) · length ·
-  embed (image/video/link) and `tests/live.test.js` asserts no post text or
-  DID leaves the parser — a stranger's words don't belong on a hiring page.
-  Every accepted post becomes a packet riding a network link (`livePackets`,
-  a soft-sprite `Points` layer following `driftedNode()`, the CPU mirror of
-  `DRIFT_GLSL`) and feeds a pure, node-tested model: ring buffer of the last
-  64, sliding-window rate over 10s, top-3 languages via a size-k min-heap
-  (`und` renders as "other"). `renderLive()` in `render.js` emits the strip
-  on How I Build (source · state, ring cells, counters, three feed rows);
-  `renderLiveStrip()` in `main.js` updates it ≤8Hz and only while the stop is
-  `.in`. No post within 6s (offline, blocked, no `WebSocket`) → a labelled
-  synthetic generator (`offline · simulated`) — the strip never claims a
-  source it doesn't have. A drop after going live reconnects through the
-  host list with the same guard. Wikipedia's recent-change stream was the
-  source 2026-09-17 → 09-22 (Yarin wanted something more striking). Phones:
-  32 ring cells, label tails (`.more`) and the feed hidden, top-k hidden,
-  TEEPO/SHADIEZ cards side by side so the block clears the chevrons.
+- **Build log (2026-09-29; replaced the live layer):** the How I Build strip is
+  this repo's own git history, read at build time by `scripts/buildlog.js`
+  (`summarize()` node-tested) and baked in as `__BUILDLOG__` from
+  `vite.config.js`: a GitHub-style heatmap since the first commit, commits /
+  days shipped / longest streak, the three latest commit headlines, and "N
+  tests passing". That claim is kept honest by `npm run build` running the test
+  suite first. Vercel clones shallow, so `read()` falls back to the committed
+  snapshot `src/content/buildlog.json` (a local build refreshes it — commit it).
+  The Bluesky Jetstream layer (`live.js`, the packets riding the links) is gone:
+  **the site makes no external requests at all.**
+- **Lab card (2026-09-29, `src/lab.js` + `src/labcard.js`):** on the Timeline,
+  desktop only (≥ 1100 × 600): the site's `--ease-out` as live code. Drag the
+  two control points (or arrow keys on them), a dot runs the curve, presets,
+  and a code tab that shows `lab.js`'s `cubicBezier` region verbatim via Vite
+  `?raw` — the code on screen is the code that runs. `[data-own-gestures]`
+  keeps touch drags on it from flying the camera. Its loop runs only while the
+  Timeline is open.
+- **Cursor Buddy is animated, not a screenshot (2026-09-29, `src/buddy.js`):**
+  a beat/featured entry with `anim: 'buddy'` gets a 16 s product loop drawn on
+  a canvas — a code editor, the macOS pointer, the Line-bot robot following it
+  (idle → listening bars → thinking → green "^^" answer bubble streaming "What
+  does this error mean?"). Shapes, colours and timings come from the Swift
+  source (GhostCursorShape, GhostPalette, GhostEngine, BuddyView). Desktop:
+  the panel texture is redrawn ≤ 30 fps at 1024 px while lit
+  (`tickAnimPanels`); phones: a `<canvas data-anim>` figure. Reduced motion:
+  one still frame with the answer.
+- **Finale lead-in (2026-09-29):** "That's the tour. / Have a role or a
+  project? Let's build it." types in per character above the contact card as
+  the door parts (`profile.finale`; screen readers get the whole sentence).
 - **Stops:** `src/panels.js` (`initPanels({ beats, profile, root })`) builds one
   `<section class="stop">` per beat from `profile.js` (hidden, `inert` +
   `aria-hidden`), shows/hides on arrival/departure, and runs one reveal recipe
@@ -178,7 +201,11 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   `window.history.replaceState`, an unrecognised one is left alone. There are
   no in-page anchors inside `#stops` any more (the Contact card has no "Back
   to the start"). With scripting off, a `<noscript><style>` in `<head>` hides the fixed
-  3D chrome so the skim path at the end of `<body>` is readable.
+  3D chrome so the skim path at the end of `<body>` is readable. Its Work list is
+  generated from `profile.js` in flight order at build time (`scripts/noscript.js`,
+  a Vite `transformIndexHtml` plugin filling `<!-- noscript:work -->`) — the hand
+  copy had drifted; `tests/noscript.test.js` also holds the JSON-LD and noscript
+  contact details to `profile.links`.
 - **Fixed bar:** `src/bar.js` — name + role (`profile.title`), availability
   dot, Work, About, details (phone `tel:`, LinkedIn, GitHub with inline SVG
   icons — from `profile.links`), Copy email.
@@ -194,31 +221,37 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
 
 ## The flight (DEFAULT_BEATS, `src/main.js`)
 0. **Opening** — wordmark decodes from particles (loader hands straight into it).
-1. **Hi** — portrait as a WebGL panel angled into the void (left), greeting +
-   status + two lines beside it (`profile.js` `hi`).
-2. **About** — three speaking photos as panels at different depths (right),
-   the story (command → stage → code) opposite (`profile.js` `about`).
+1. **Hi** — 4:5 portrait as a WebGL panel turned 8° into the void (left),
+   greeting + status + two lines beside it (`profile.js` `hi`).
+2. **About** — two photos side by side (right): FIDF stage 4:3 and the Nova
+   memorial 3:4; the story (command → stage → code) opposite (`profile.js` `about`).
 3. **Timeline** — dated rows on a glowing rail (`profile.js` `timeline`), the
-   two old hero screens (Shadiez landing jpg + SmartCut CRM iframe; static png
-   on touch since 3D-transformed iframes blank on iOS) floating beside it —
-   carries `screens: true`, the "Download CV" pill.
-4. **How I Build** — method (2–3 sentences), proof numbers count up once, repo
-   block (LLM Gateway lead card + TEEPO/SHADIEZ compact rows).
+   "Download CV" pill, and the lab card on the right (desktop). The two old hero screens beside it were removed
+   2026-09-29 (Yarin: "an old scrap"); no beat carries `screens` now.
+4. **How I Build** — the build-log strip, method (2–3 sentences), proof numbers
+   count up once, repo block (LLM Gateway lead card + TEEPO/SHADIEZ compact rows).
 5. **LLM Gateway** — project stop, image left, SaaS group label. The strongest
    screen leads the work.
-6. **Focus** — project stop, image right, private build (no live link).
-7. **Sabai** — project stop, image left.
-8. **TEEPO** — project stop, image right, Landing pages group label, **also** AeroCy.
-9. **SHADIEZ** — project stop, image left, **also** SmartCut.
-10. **Contact** — the door (2026-09-14): the network parts around the look
+6. **Cursor Buddy** — animated panel right (`buddy.js`, no screenshot), macOS menu-bar agent, private repo (replaced Focus 2026-09-29).
+7. **Sabai** — image left.
+8. **Agent Control** — image right, the cyber-security stop (live demo at
+   agent-control-demo.vercel.app), **also** AeroCy.
+9. **Thesis Agent** — image left, private build (his dad's M.A. thesis advisor).
+10. **Gate Opener** — image right, private build (geofenced gate PWA).
+11. **SHADIEZ** — image left, Landing pages group label, **also** SmartCut.
+    TEEPO left the flight 2026-09-29 but stays in the Timeline and How I Build.
+12. **Contact** — the door (2026-09-14): the network parts around the look
     axis (vertex-shader push, `uDoor`, R = 34), the nebula ember warms, and a
     contact card (name, role, mail, tel, GitHub · LinkedIn, build stamp)
     fades in once the door is ¾ open. No "Back to the start", no availability
     line (dropped 2026-09-14; `profile.contact` is gone). Camera tilts up.
 
-**Loader:** a 6–8 s Higgsfield loop of the void
-(`public/assets/loader/void-loop.mp4`, ≤ 2.5 MB, poster webp) plays under the
-constellation canvas (opacity .5); poster only under reduced motion. Spec:
+**Loader:** the poster of the Higgsfield void loop (`void-loop.webp`, 46 KB)
+sits under the constellation canvas as a still; reduced motion drops it. The
+clip itself (`public/assets/loader/void-loop.mp4`, 1.8 MB) is no longer fetched
+(2026-09-29): the loop fades out at 62 % of the loader, so it showed for ~190 ms
+on a warm localhost and rarely reached `canplay` over a real network, while
+Lighthouse mobile counted it as half the page. Spec:
 `docs/superpowers/specs/2026-09-14-contact-door-and-loader-design.md`.
 
 Project blocks lead with **Outcome** (display size, the line the eye lands on),
@@ -228,27 +261,27 @@ folds a second featured project in as a compact row under the links.
 ## Code map
 | File | Lines | What |
 |---|---|---|
-| `src/main.js` | ~3,300 | Scene, network, nebula, flight, Director Mode, perf tiers, save/migrate, void dimming, HUD, live packets + strip |
-| `src/live.js` | ~120 | Live layer: pure ring buffer / sliding-window rate / heap top-k, `parseJetstream` (Bluesky), `connectLive` with host fallback + simulator — node-tested |
+| `src/main.js` | ~3,300 | Scene, network, nebula, flight, Director Mode, perf tiers, save/migrate, void dimming, HUD, animated panels, lab mount |
+| `src/buddy.js` | ~190 | Cursor Buddy's product loop on a canvas (panel texture + phone figure), node-tested timeline |
+| `src/lab.js` / `src/labcard.js` | ~45 / ~115 | Timeline lab card: `cubicBezier` (node-tested) and the drag/loop/code-tab wiring |
+| `scripts/buildlog.js` | ~55 | Build-time git-history summary for the How I Build strip, node-tested; snapshot in `src/content/buildlog.json` |
 | `src/panels.js` | 96 | DOM stop layer: builds/shows/hides stops (inert + aria-hidden), count-up, print/copy |
-| `src/render.js` | ~140 | Pure HTML renderers (hi, about, timeline, build, project, contact, live strip) incl. the portrait-only `stop-img` figures, node-tested |
+| `src/render.js` | ~190 | Pure HTML renderers (hi, about, timeline + lab card, build + build log, project, contact + finale) incl. the portrait-only `stop-img` figures, node-tested |
 | `src/bar.js` | 53 | Fixed top bar: name + role, availability, Work, About, phone / LinkedIn / GitHub, Copy email |
 | `src/hash.js` | 28 | Deep-link resolver: fragment/anchor → stop index, prototype-free, node-tested |
 | `src/printcv.js` | 54 | Print-only CV (moved out of the old dossier.js) |
-| `src/content/profile.js` | 269 | **Single source of truth** for bio, CV, intro/method/proof, 7 featured + shipped/labs projects, links, status |
+| `src/content/profile.js` | 269 | **Single source of truth** for bio, CV, intro/method/proof, 10 featured (7 flight stops + AeroCy/SmartCut rows + TEEPO for How I Build) + shipped/labs projects, links, status |
 | `src/text3d.js` | 193 | Extruded 3D text (Source Code Pro, dev-only) |
-| `src/cursor.js` | 70 | Cursor light trail (native pointer, 2D canvas comet tail; off on touch / reduced motion) |
 | `src/style.css` | ~770 | All styling incl. @media phone layout + print CV |
 | `index.html` | ~410 | Shell, loader, editor panels, JSON-LD, noscript skim path |
-| `public/previews/*.webp` | | teepo · aerocy · shadiez · smartcut · llm-gateway · focus · sabai · kiaras-club (q82, 1400–1600 px wide; the panel canvas is 1024) |
-| `public/assets/hero/` | | Hero screens (SmartCut html + png, Shadiez webp) |
-| `public/assets/me/` | | portrait (beach, tight crop, 18×24 panel) + 3 About panels: FIDF stage 3:2 (tighter edit of the original, 24×16), Nova memorial at Re’im 3:4 (9.6×12.8, portrait), lectern detail 16:10 (native-res crop, 12×7.5). All regenerated 2026-09-16 from the originals in `~/.claude/uploads/…` with a mild grade (autocontrast, +8% contrast, +10% saturation, unsharp) — panels match the photo aspect and never overlap |
+| `public/previews/*.webp` | | teepo · aerocy · shadiez · smartcut · llm-gateway · sabai · agent-control · thesis · gate-opener · kiaras-club (1400–2400 px wide; panel canvases take a 1600 px long side on desktop, 1024 on touch). Cursor Buddy has none — `buddy.js` draws it |
+| `public/assets/me/` | | portrait 4:5 (1000×1250, centred, head to knees; 19.2×24 panel) + 2 About panels: FIDF stage 4:3 (logo + speaker, no black rig band; 18×13.5) and the Nova memorial at Re’im 3:4 (10.5×14). Re-cut 2026-09-29 from the originals in `~/.claude/uploads/…` (mild grade + unsharp, q88); the lectern shot was a crop of the stage and is gone. Panel textures keep the panel's aspect (long side 1600, 1024 on touch) — until 2026-09-29 the height was capped at 1024, so every portrait panel was a stretched square |
 
 Deps: `three` 0.169, `meshline`, `three.quarks`, `vite` 8. No React.
 
 ### Persistence / migrations
 Path + FX config persists in **localStorage** `voidConfig`, currently **save
-version 20**. Any save below 16 has its beat array replaced wholesale with
+version 21**. Any save below 16 has its beat array replaced wholesale with
 `DEFAULT_BEATS` (the shape changed too much to patch) while the visitor's
 global FX/speed/ease settings are kept; v17 (2026-09-12) then rewrites
 `/previews/*.jpg` → `.webp` in whatever beat array survived (the JPGs are
@@ -258,7 +291,10 @@ About / Timeline replace Hero / Intro / CV, beats gain `panels[]` and
 global-settings carve-out; v19 (2026-09-16) re-adopts only the About beat's
 `panels[]` (photo panels sized to their real aspect); v20 (2026-09-16) re-adopts
 the About `panels[]` (re-laid so the three never overlap) and the Hi `panel`
-(18×24). The v2–v14 patch migrations were
+(18×24); v21 (2026-09-29) — seven project stops, no Timeline screens, two About
+photos — wholesale re-adopts `DEFAULT_BEATS` and resets the minimal-void globals
+(`starFrac`, `nodeFrac`, `lineFrac`, `pulse`, `flare`, `cursorDrive`) from
+`FX_DEFAULTS`. The v2–v14 patch migrations were
 deleted on 2026-09-12: they only ever ran on beats the v14/v15 reset was about
 to discard. Any future
 `DEFAULT_BEATS` shape change needs its own migration step + version bump,
@@ -267,8 +303,7 @@ export tuned `BEATS` and paste into `DEFAULT_BEATS`.
 
 ### Perf tiers (all in `main.js`, top)
 - `IS_TOUCH` — DPR cap 1.25, nebula res 0.33 / fewer steps, halved star/node/link
-  density, no water sim / bokeh / cursor links, no CSS blur tweens, static
-  SmartCut capture.
+  density, no water sim / bokeh, no CSS blur tweens.
 - `LOW_END` (touch + ≤4GB or ≤480px) — also skips the whole CSS3D layer.
 - **Adaptive governor** (touch only, one-way): fps EMA < 45 → tier 1 (smaller
   raymarch) → tier 2 (DPR 1, nebula every 3rd frame, bloom at 1/3 res).
@@ -281,11 +316,11 @@ export tuned `BEATS` and paste into `DEFAULT_BEATS`.
 ```
 npm install
 npm run dev      # http://localhost:5173  (DEV_TOOLS on → E/B/T/U/Y/A work)
-npm run build    # dist/
-npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash, save, assets, domain live (happy-dom for the DOM ones), 65 passing
+npm run build    # runs the test suite, then vite build → dist/
+npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash, save, assets, domain, lab, buddy, buildlog (happy-dom for the DOM ones), 67 passing
 ```
 `.claude/launch.json` has a `void-dev` config for the browser preview.
-Offline-capable: fonts are self-hosted; the only external request is the optional Bluesky Jetstream socket (`src/live.js`), which falls back to a labelled simulation. HMR can be flaky —
+Offline-capable: fonts are self-hosted and the site makes no external requests. HMR can be flaky —
 hard-refresh if a change doesn't show.
 
 ## Open work (authoritative checklist in BUILD_PLAN.md Phase H)
@@ -328,7 +363,9 @@ hard-refresh if a change doesn't show.
 - Gone for good (2026-09-12 review): the neon wave ribbon, `freeRoam`, the
   `onTint`/`data-tint` hover channel. Don't reintroduce dead channels.
 - Every `DEFAULT_BEATS` change ships with a save migration + version bump
-  (`tests/save.test.js` fails if `save()`'s version lags the newest guard).
+  (`tests/save.test.js` fails if `save()`'s version lags the newest guard, and
+  pins a fingerprint of the `DEFAULT_BEATS` block per save version — edit a beat
+  and it fails until you bump, migrate and re-pin).
 - **No root-font multiplier for phones.** `applyRootFont()` once scaled the
   root to 13.6 px under 640 px, which put every rem label at 8–9 px
   (Lighthouse: 20 % legible). Phone sizing lives in `style.css`; the

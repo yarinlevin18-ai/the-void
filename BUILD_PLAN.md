@@ -236,6 +236,31 @@ Spec: `docs/superpowers/specs/2026-09-14-contact-door-and-loader-design.md`.
   the per-hop bulges (`[avoid]`). Recomputed on every beat / panel rebuild.
 - Tests 50 passing; save version unchanged (18).
 
+## Phase M — Launch adjustments ✅ (2026-09-29, save v21)
+Yarin's ten-point review before publishing:
+- [x] Mouse tracking removed: cursor trail (`cursor.js`), cursor threads, node stir.
+- [x] Minimal void: stars .45 / nodes .55 / links .45, traffic and flares halved.
+- [x] Cursor Buddy replaces Focus; TEEPO's stop becomes Agent Control (+ AeroCy),
+      Thesis Agent, Gate Opener. TEEPO stays in the Timeline and How I Build.
+      Previews: Agent Control from the live demo; Thesis and Gate Opener captured from
+      scratch copies with placeholder data only (no real env, no real thesis content).
+- [x] SHADIEZ text slid onto its panel: the "also" row stretched the column; every
+      project column is now `min(29rem, 100%)` (≥ 54 px clear at 1280×800).
+- [x] Timeline: the two old hero screens (and `public/assets/hero/`) are gone; rows larger.
+- [x] About: the lectern duplicate removed, stage re-cropped 4:3, both photos sharp —
+      panel textures had a 1024 height cap that stretched every portrait panel.
+- [x] About → Timeline: bloom held while panels are lit (the photos flared white).
+- [x] Portrait re-cropped 4:5 and turned 8° (was 15°).
+- [x] One sentence per line, no lone words (`sentences()`, `text-wrap: balance`).
+- [x] Lighthouse mobile: loader clip desktop-only (1.8 MB), `.bar-role` 9.9 → 12 px.
+Second round (same day):
+- [x] Timeline lab card: the site's easing as live, draggable code (`lab.js`/`labcard.js`).
+- [x] How I Build: the Bluesky strip → this repo's build log (git heatmap, counts, latest
+      commits, tests passing); the live layer is gone, so no external requests remain.
+- [x] Cursor Buddy: an animated product loop (`buddy.js`) instead of a screenshot.
+- [x] Finale: a typed lead-in above the contact card.
+- [x] New captures for Sabai, the Agent Control landing page, SHADIEZ.
+
 ## Open work (2026-09-12) — in priority order
 1. ~~Camera authoring for stops 2–11~~ ✅ 2026-09-12 — desktop shots baked
    into `DEFAULT_BEATS`; phones get a derived portrait pose per project stop

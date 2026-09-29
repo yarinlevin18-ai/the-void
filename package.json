@@ -6,7 +6,7 @@
   "description": "An interactive 3D 'void you fly through' portfolio. See PLAN.md.",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/buildlog.js --write && node --test tests/*.test.js && vite build",
     "preview": "vite preview",
     "test": "node --test tests/*.test.js"
   },

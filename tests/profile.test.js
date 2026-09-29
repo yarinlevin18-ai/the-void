@@ -10,7 +10,7 @@ test('hi, about and timeline carry the person chapter', () => {
   assert.ok(PROFILE.hi.status.includes('AI-native developer'));
   assert.equal(PROFILE.hi.lines.length, 2);
   assert.equal(PROFILE.about.paragraphs.length, 3);
-  assert.equal(PROFILE.about.photos.length, 3);
+  assert.equal(PROFILE.about.photos.length, 2);
   assert.ok(PROFILE.timeline.rows.length >= 5);
   for (const r of PROFILE.timeline.rows) { assert.ok(r.when); assert.ok(r.what); assert.ok(r.line); }
   assert.equal(PROFILE.hero, undefined); assert.equal(PROFILE.intro, undefined); assert.equal(PROFILE.cvStop, undefined);
@@ -29,14 +29,15 @@ test('method and proof are present, proof has exactly 3 numbers', () => {
   for (const p of PROFILE.proof) { assert.equal(typeof p.n, 'number'); assert.ok(p.label); }
 });
 
-test('featured projects: 4 landing then 3 saas, in spec order', () => {
-  assert.deepEqual(featured.map((p) => p.id), ['teepo', 'aerocy', 'shadiez', 'smartcut', 'llm-gateway', 'focus', 'sabai']);
-  assert.deepEqual(featured.map((p) => p.group), ['landing', 'landing', 'landing', 'landing', 'saas', 'saas', 'saas']);
+test('featured projects: 4 landing then 6 saas, in spec order', () => {
+  assert.deepEqual(featured.map((p) => p.id), ['teepo', 'aerocy', 'shadiez', 'smartcut', 'llm-gateway', 'cursor-buddy', 'sabai', 'agent-control', 'thesis', 'gate-opener']);
+  assert.deepEqual(featured.map((p) => p.group), ['landing', 'landing', 'landing', 'landing', 'saas', 'saas', 'saas', 'saas', 'saas', 'saas']);
 });
 
 test('every featured project has problem/decision/outcome, image, tint, stack', () => {
   for (const p of featured) {
-    for (const k of ['problem', 'decision', 'outcome', 'img', 'tint', 'stack']) assert.ok(p[k], `${p.id} missing ${k}`);
+    for (const k of ['problem', 'decision', 'outcome', 'tint', 'stack']) assert.ok(p[k], `${p.id} missing ${k}`);
+    assert.ok(p.img || p.anim, `${p.id} needs a screenshot or an animation`);
     assert.match(p.tint, /^#[0-9a-f]{6}$/i);
   }
 });
@@ -45,7 +46,7 @@ test('repo links only on public repos; private builds flagged', () => {
   for (const p of featured) {
     if (p.private) assert.equal(p.repo, undefined, `${p.id} is private but has a repo link`);
   }
-  assert.equal(featured.find((p) => p.id === 'focus').url, '');
+  for (const id of ['cursor-buddy', 'thesis', 'gate-opener']) assert.equal(featured.find((p) => p.id === id).url, '', `${id} is a private build with no live link`);
 });
 
 test('contact block', () => {
@@ -67,7 +68,8 @@ test('public entries have live url and repo; every img matches its id', () => {
       if (p.offline) assert.equal(p.url, '', `${p.id} offline url`); else assert.match(p.url, /^https:\/\//, `${p.id} url`);
       assert.match(p.repo, /^https:\/\/github\.com\//, `${p.id} repo`);
     }
-    assert.equal(p.img, `/previews/${p.id}.webp`, `${p.id} img`);
+    if (p.anim) assert.equal(p.img, '', `${p.id}: an animated stop ships no screenshot`);
+    else assert.equal(p.img, `/previews/${p.id}.webp`, `${p.id} img`);
   }
 });
 
@@ -77,9 +79,11 @@ test('every project id DEFAULT_BEATS hardcodes exists in the profile', () => {
   const body = arr.slice(0, arr.indexOf('\n];'));
   const ids = [...body.matchAll(/\bid: '([a-z-]+)'/g)].map((m) => m[1]);
   const also = [...body.matchAll(/\balso: '([a-z-]+)'/g)].map((m) => m[1]);
-  assert.equal(ids.length, 5, 'five project stops');
+  assert.equal(ids.length, 7, 'seven project stops');
   assert.equal(also.length, 2, 'two folded-in projects');
-  assert.equal(new Set([...ids, ...also]).size, featured.length, 'every featured project is reachable in the flight');
+  // TEEPO left the flight 2026-09-29 but stays featured for the How I Build repo cards
+  const reach = new Set([...ids, ...also, PROFILE.buildStop.lead, ...PROFILE.buildStop.rows]);
+  assert.equal(reach.size, featured.length, 'every featured project is reachable in the flight or the How I Build cards');
   for (const id of [...ids, ...also]) assert.ok(featured.map((p) => p.id).includes(id), id);
 });
 
@@ -87,7 +91,7 @@ test('buildStop ids exist in featured and every featured preview file is on disk
   const ids = featured.map((p) => p.id);
   assert.ok(ids.includes(PROFILE.buildStop.lead), PROFILE.buildStop.lead);
   for (const r of PROFILE.buildStop.rows) assert.ok(ids.includes(r), r);
-  for (const p of featured) assert.ok(existsSync(new URL(`../public${p.img}`, import.meta.url)), p.img);
+  for (const p of featured) if (p.img) assert.ok(existsSync(new URL(`../public${p.img}`, import.meta.url)), p.img);
 });
 
 // Claims that were retired in the 2026-09-14 wording rework. They must not

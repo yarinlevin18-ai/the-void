@@ -12,12 +12,11 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { createText3D, defaultText } from './text3d.js';
-import { initCursorTrail } from './cursor.js';
 import { PROFILE } from './content/profile.js';
 import { initPanels } from './panels.js';
+import { initLab } from './labcard.js';
+import { drawBuddy } from './buddy.js';
 import { initBar } from './bar.js';
-import { createLiveModel, connectLive } from './live.js';
-import { esc } from './render.js';
 import { resolveHash } from './hash.js';
 import { mountPrintCV } from './printcv.js';
 let panels = null, bar = null;   // assigned at bootstrap, after the scene exists
@@ -35,7 +34,7 @@ const isTextEntry = (el) => el instanceof HTMLTextAreaElement || (el instanceof 
 // and the render loop reads them every frame, so every effect is adjustable.
 const FX = {
   dofBlur: 0.003, dofAperture: 0.0004,        // depth of field — lighter blur (cheaper fill-rate, gentler)
-  starFrac: 0.85, nodeFrac: 1, lineFrac: 1, nebFrac: 1,   // density of each void layer (0..1) — also affects the published build
+  starFrac: 0.45, nodeFrac: 0.55, lineFrac: 0.45, nebFrac: 1,   // density of each void layer (0..1) — also affects the published build (minimal pass 2026-09-29: was .85 / 1 / 1)
   panelDimFloor: 0.1, panelLightRange: 300,   // section panels: idle opacity + light-up falloff
   colorIntensity: 0.85, colorReach: 200,      // per-chapter color world (restraint pass: slightly under full saturation)
   warpStrength: 0.16, warpLength: 0.1,        // warp streaks
@@ -45,9 +44,9 @@ const FX = {
   uiHud: true, uiHint: true, uiScale: 1,      // UX panel state
   nebSpd: 0.6, nebWarp: 1.4, nebHue: 0.35, nebEmber: 0.06, nebVig: true, nebGlow: 0.35,   // nebula climate + inner glow (restraint: teal family, ember nearly out)
   vignette: 0.45, grain: 0.02,                                                 // final frame grade (three-lab post constants: offset .3 / darkness .6)
-  pulse: 1, flare: 1, breath: 1.1, breathRoll: 0.4,                            // signs of life: link traffic, node flares, idle camera sway
+  pulse: 0.5, flare: 0.5, breath: 1.1, breathRoll: 0.4,                        // signs of life: link traffic, node flares, idle camera sway (halved 2026-09-29, minimal pass)
   lightning: false, glowSpots: false,                                          // OFF by default (restraint pass) — the network is the one busy layer
-  lightInt: 1, lightReach: 280, lightRate: 3, glowBright: 1, glowFlick: 1, cursorDrive: 0.6,   // lightning + glow + cursor-reactivity controls
+  lightInt: 1, lightReach: 280, lightRate: 3, glowBright: 1, glowFlick: 1, cursorDrive: 0,   // lightning + glow + cursor-reactivity controls (cursor reactivity off since 2026-09-29: the void no longer tracks the mouse)
   waterStr: 0.18, waterRad: 0.018, waterAtt: 0.992, waterDisp: 0.22, waterSheen: 1.0,         // water swipe (APPROVED tuning — see water.md)
   openFit: 0.3, openSize: 1.05, openGlow: 0.36, openForm: 1.2, openShatterR: 5, openPush: 1.7, openSpring: 0.028, openColor: '#9fd8ff',   // Frame 1 opening particles (glow 0.36 — additive overlap + bloom saturate fast; 0.55 still fused the letterforms)
 };
@@ -57,6 +56,7 @@ const fxEl = document.querySelector('#fxpanel');
 // section and blend over the flight. The toggles below stay global.
 const KEYED = ['dofBlur', 'dofAperture', 'panelDimFloor', 'panelLightRange', 'colorIntensity', 'colorReach', 'bloomStrength', 'nebula']; // warp is global (a transition effect), edited in the FX/TX panels
 const curFX = { ...FX };                       // resolved live values the render loop reads
+const FX_DEFAULTS = { ...FX };                 // shipped values, before load() lays a visitor's save over FX — migrations reset keys from here
 const beatFX = (i, k) => (beats[i] && beats[i].fx && beats[i].fx[k] != null) ? beats[i].fx[k] : FX[k];
 function ensureBeatFX(b) { const src = b.fx || {}; const out = {}; for (const k of KEYED) out[k] = (src[k] != null) ? src[k] : FX[k]; b.fx = out; }
 function resolveFX() {
@@ -106,6 +106,7 @@ let _lastBeatIdx = 0, voidWarp = 0;                // warp burst on chapter chan
 let _flash = 0, _nextFlash = 2.5;                  // nebula lightning strikes
 let _cVel = 0, _cVelRaw = 0, _flickCD = 0, _pPX = null, _pPY = null;   // smoothed cursor velocity
 const _cN = new THREE.Vector2(9, 9), _cWorld = new THREE.Vector3();    // pointer NDC + world-ray scratch
+const _FAR = new THREE.Vector2(9, 9);   // 'no pointer': the void stopped reacting to the mouse (2026-09-29)
 const _pc = new THREE.Vector3();                                      // panel-corner projection (water rect)
 const _wUV = new THREE.Vector2(-9, -9);                               // pointer in 0..1 uv (water sim drop)
 const PREFERS_REDUCED = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -383,11 +384,10 @@ const heroCluster = (() => {
     cards.push({ id: spec.id, el, obj, dim: el ? el.querySelector('.dim') : null, baseScale: WORLD_W / spec.fw, enter: spec.enter || 0, liss: spec.liss, tilt: spec.tilt, focus: spec.focus0 || 0, _f: -1, _o: -1 });
   }
   // fw = native CSS resolution (rendered big, scaled DOWN in 3D → crisp, not upscaled-blurry); iframe at 1:1 native.
-  addScreen({ id: 'card_shadiez',  kind: 'img',    src: 'assets/hero/shadiez-landing.webp', fw: 920, cap: 'Shadiez · Landing Page', enter: 0, tilt: 1, focus0: 1, liss: { ax: 1.2, ay: 0.8, sp: 0.4, ph: 0 } });
-  // 3D-transformed LIVE iframes blank/jank on iOS Safari — desktop only.
-  // TODO: capture assets/hero/smartcut-crm.png and re-add as kind:'img' for touch.
-  if (!IS_TOUCH) addScreen({ id: 'card_smartcut', kind: 'iframe', src: 'assets/hero/smartcut-crm.html', fw: 800, fh: 513, iw: 800, ih: 513, cap: 'SmartCut · Booking CRM', enter: 0.12, tilt: -1, focus0: 0, liss: { ax: 1.5, ay: 1.0, sp: 0.36, ph: 1.7 } });
-  else addScreen({ id: 'card_smartcut', kind: 'img', src: 'assets/hero/smartcut-crm.png', fw: 800, cap: 'SmartCut · Booking CRM', enter: 0.12, tilt: -1, focus0: 0, liss: { ax: 1.5, ay: 1.0, sp: 0.36, ph: 1.7 } });   // touch: static capture — 3D-transformed iframes blank on iOS
+  // 2026-09-29: the two screens left the Timeline (Yarin: "an old scrap") and no beat
+  // carries `screens` any more, so nothing is built or fetched. The layer stays for
+  // Director Mode; an addScreen({ id, kind: 'img', src, fw, cap, … }) call here brings one back
+  // (the old Shadiez / SmartCut specs and their public/assets/hero/ files are in git history).
   // --- anchor the cluster in the Hero beat's camera frame ---
   const C = new THREE.Vector3(), ff = new THREE.Vector3(), rt = new THREE.Vector3(), uu = new THREE.Vector3(), zc = new THREE.Vector3();
   const baseQ = new THREE.Quaternion(), basis = new THREE.Matrix4();
@@ -830,74 +830,6 @@ function buildNetwork() {
   return { N, L, nodes, lines, pgeo, lgeo, pmat, lmat, update, setTint, setWarp, setDoor, setDim, base, amp, fre, pha, aColor, pairs };
 }
 
-// ---- Cursor links (ENVIRONMENT.md Layer 3) — the network reaches toward the
-//  cursor: up to K thin threads from nearby nodes to a point along the cursor
-//  ray, brightening with pointer speed and melting away when idle. Deliberately
-//  NOT a glowing cursor blob (BACKGROUND.md lock) — no endpoint sprite, just
-//  faint filaments. CPU cost: re-derive the K nodes' drift + project ~900
-//  points once per frame (same math the demo ran for every node every frame).
-const cursorLinks = (() => {
-  if (IS_TOUCH) return { update: () => {} };   // no cursor exists on touch — skip the geometry + per-frame projection entirely
-  const K = 8, NDC_R = 0.30;
-  const pos = new Float32Array(K * 6), col = new Float32Array(K * 8);
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  geo.setAttribute('color', new THREE.BufferAttribute(col, 4));
-  const mat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 1, depthWrite: false, blending: THREE.AdditiveBlending });
-  const obj = new THREE.LineSegments(geo, mat);
-  obj.renderOrder = -5; obj.frustumCulled = false; obj.visible = false;
-  scene.add(obj);
-  const _v = new THREE.Vector3(), _anchor = new THREE.Vector3();
-  const near = [];                              // scratch: { d, x, y, z }
-  let strength = 0;
-  function update(t, active, ptN, vel, driftOn) {
-    const net = network;
-    // links live while the pointer is in the scene, swell with its speed
-    const target = (active && ptN.x > -2 && ptN.x < 2) ? Math.min(1, 0.42 + vel * 0.9) : 0;
-    strength += (target - strength) * 0.10;
-    obj.visible = strength > 0.02 && !PREFERS_REDUCED && !!net;
-    if (!obj.visible) return;
-    near.length = 0;
-    const { base, amp, fre, pha, aColor, N } = net;
-    let meanDepth = 0;
-    for (let i = 0; i < N; i++) {
-      const o = i * 3;
-      const x = base[o] + driftOn * amp[o] * Math.sin(t * fre[o] + pha[o]);
-      const y = base[o + 1] + driftOn * amp[o + 1] * Math.sin(t * fre[o + 1] + pha[o + 1]);
-      const z = base[o + 2] + driftOn * amp[o + 2] * Math.sin(t * fre[o + 2] + pha[o + 2]);
-      _v.set(x, y, z).project(camera);
-      if (_v.z < 0 || _v.z > 1) continue;                     // behind the camera / past far
-      const dx = _v.x - ptN.x, dy = _v.y - ptN.y, d = Math.sqrt(dx * dx + dy * dy);
-      if (d > NDC_R) continue;
-      near.push({ d, x, y, z, i });
-    }
-    near.sort((a, b) => a.d - b.d);
-    const n = Math.min(K, near.length);
-    // anchor just in front of the picked cluster so the threads have real length
-    for (let k = 0; k < n; k++) { _v.set(near[k].x, near[k].y, near[k].z); meanDepth += camera.position.distanceTo(_v); }
-    meanDepth = n ? (meanDepth / n) * 0.82 : 150;
-    _anchor.set(ptN.x, ptN.y, 0.5).unproject(camera).sub(camera.position).normalize();
-    _anchor.multiplyScalar(meanDepth).add(camera.position);
-    for (let k = 0; k < K; k++) {
-      const p6 = k * 6, c8 = k * 8;
-      if (k < n) {
-        const nd = near[k], co = nd.i * 3;
-        const a = Math.min(0.85, strength * Math.pow(1 - nd.d / NDC_R, 0.6));   // nearest = brightest
-        pos[p6] = _anchor.x; pos[p6 + 1] = _anchor.y; pos[p6 + 2] = _anchor.z;
-        pos[p6 + 3] = nd.x; pos[p6 + 4] = nd.y; pos[p6 + 5] = nd.z;
-        col[c8] = aColor[co]; col[c8 + 1] = aColor[co + 1]; col[c8 + 2] = aColor[co + 2]; col[c8 + 3] = 0; // cursor end: transparent
-        col[c8 + 4] = aColor[co]; col[c8 + 5] = aColor[co + 1]; col[c8 + 6] = aColor[co + 2]; col[c8 + 7] = a; // node end: lit
-      } else {
-        for (let m = 0; m < 6; m++) pos[p6 + m] = 0;
-        for (let m = 0; m < 8; m++) col[c8 + m] = 0;
-      }
-    }
-    geo.attributes.position.needsUpdate = true;
-    geo.attributes.color.needsUpdate = true;
-  }
-  return { update };
-})();
-
 // ---- Default path (used until the user edits / loads saved) -----------------
 const mkPanel = (x, y, z, w, h, rot = [0, 0, 0]) => ({ pos: [x, y, z], size: [w, h], rot, billboard: false });
 // v15 flight (2026-09-08): thirteen stops. The Opening and Hero cameras are the
@@ -942,26 +874,29 @@ const VOID_FX = { panelDimFloor: 0, panelLightRange: 26 };   // shared by every 
 const DEFAULT_BEATS = [
   /* 0 */ { name: 'Opening', cam: [-56, 2, 120], look: [-11, 59, 42], up: [0, 1, 0], fov: 25, dur: 1.4, desc: '', img: '', link: '', fx: { bloomStrength: 0.65 }, panel: null },
   // v18 (2026-09-14): person chapter — Hi / About / Timeline replace Hero / Intro / CV.
-  /* 1 */ { name: 'Hi', stop: 'hi', side: 'left', cam: [1, 53, 33], look: [1, 53, -67], up: [0, 1, 0], fov: 48, dur: 2.1, desc: '', img: '/assets/me/portrait.webp', link: '', fx: { ...VOID_FX }, panel: (() => { const p = P(1, 53, 33, 'left'); p.size = [18, 24]; p.pos[1] = 52; return p; })() },
+  /* 1 */ { name: 'Hi', stop: 'hi', side: 'left', cam: [1, 53, 33], look: [1, 53, -67], up: [0, 1, 0], fov: 48, dur: 2.1, desc: '', img: '/assets/me/portrait.webp', link: '', fx: { ...VOID_FX }, panel: (() => { const p = P(1, 53, 33, 'left'); p.size = [19.2, 24]; p.pos[1] = 52; p.rot = [0, 8, 0]; return p; })() },   // v21: 4:5 portrait crop, turned closer to the camera
   /* 2 */ { name: 'About', stop: 'about', side: 'right', ease: 'easeOut', cam: [6, 12, 5], look: [6, 12, -95], up: [0, 1, 0], fov: 48, dur: 2.4, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null,
            panels: [
-             // v20 (2026-09-16): three panels that never overlap — stage 3:2 (24×16) top,
-             // lectern 16:10 (12×7.5) bottom-left, memorial 3:4 (9.6×12.8, portrait) bottom-right. Each keeps
-             // its photo's real aspect so nothing is cropped by the panel.
-             { img: '/assets/me/speaking-1.webp', ...(() => { const p = P(6, 12, 5, 'right'); p.size = [24, 16]; p.pos[1] = 17; return p; })() },
-             { img: '/assets/me/speaking-2.webp', ...mkPanel(29.5, 1.5, -37, 9.6, 12.8, [0, -16, 0]) },
-             { img: '/assets/me/speaking-3.webp', ...mkPanel(12.5, 1, -35, 12, 7.5, [0, -8, 0]) },
+             // v21 (2026-09-29): two panels side by side — the lectern shot was a crop of
+             // the stage shot, so it's gone. Stage 4:3 (18×13.5), memorial 3:4 (10.5×14).
+             // Each keeps its photo's real aspect so nothing is cropped by the panel.
+             { img: '/assets/me/speaking-1.webp', ...mkPanel(11, 12, -40, 18, 13.5, [0, -8, 0]) },
+             { img: '/assets/me/speaking-2.webp', ...mkPanel(26.5, 12, -40, 10.5, 14, [0, -12, 0]) },
            ] },
-  /* 3 */ { name: 'Timeline', stop: 'timeline', screens: true, cam: [-8, 8, -21], look: [26, 20, -71], up: [0, 1, 0], fov: 60, dur: 1.6, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null },
+  /* 3 */ { name: 'Timeline', stop: 'timeline', cam: [-8, 8, -21], look: [26, 20, -71], up: [0, 1, 0], fov: 60, dur: 1.6, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null },
   /* 4 */ { name: 'How I Build', stop: 'build', cam: [7, 6, -45], look: [-14, 18, -95], up: [0, 1, 0], fov: 58, dur: 1.6, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null },
-  // v16 (2026-09-12): five project stops, SaaS first. AeroCy and SmartCut ride
-  // along as `also` rows on TEEPO and SHADIEZ instead of owning a hop each.
+  // v21 (2026-09-29): seven project stops. Cursor Buddy replaces Focus; TEEPO's
+  // stop becomes three (Agent Control, Thesis Agent, Gate Opener) — TEEPO stays in
+  // the Timeline and the How I Build cards. AeroCy rides along on Agent Control
+  // (both security), SmartCut on SHADIEZ, which now opens the Landing pages group.
   /* 5 */ { name: 'LLM Gateway', stop: 'project', id: 'llm-gateway', side: 'left', groupLabel: 'SaaS', cam: [4, 3, -115], look: [4, 3, -215], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/llm-gateway.webp', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -115, 'left') },
-  /* 6 */ { name: 'Focus', stop: 'project', id: 'focus', side: 'right', cam: [-4, 3, -185], look: [-4, 3, -285], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/focus.webp', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -185, 'right') },
+  /* 6 */ { name: 'Cursor Buddy', stop: 'project', id: 'cursor-buddy', side: 'right', cam: [-4, 3, -185], look: [-4, 3, -285], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '', anim: 'buddy', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -185, 'right') },
   /* 7 */ { name: 'Sabai', stop: 'project', id: 'sabai', side: 'left', cam: [4, 3, -255], look: [4, 3, -355], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/sabai.webp', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -255, 'left') },
-  /* 8 */ { name: 'TEEPO', stop: 'project', id: 'teepo', also: 'aerocy', side: 'right', groupLabel: 'Landing pages', cam: [-4, 3, -325], look: [-4, 3, -425], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/teepo.webp', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -325, 'right') },
-  /* 9 */ { name: 'SHADIEZ', stop: 'project', id: 'shadiez', also: 'smartcut', side: 'left', cam: [4, 3, -395], look: [4, 3, -495], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/shadiez.webp', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -395, 'left') },
-  /* 10 */ { name: 'Contact', stop: 'contact', cam: [0, 49, -420], look: [1, 290, -420], up: [0, 0, -1], fov: 52, dur: 3, desc: '', img: '', link: '', panel: null },
+  /* 8 */ { name: 'Agent Control', stop: 'project', id: 'agent-control', also: 'aerocy', side: 'right', cam: [-4, 3, -325], look: [-4, 3, -425], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/agent-control.webp', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -325, 'right') },
+  /* 9 */ { name: 'Thesis Agent', stop: 'project', id: 'thesis', side: 'left', cam: [4, 3, -395], look: [4, 3, -495], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/thesis.webp', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -395, 'left') },
+  /* 10 */ { name: 'Gate Opener', stop: 'project', id: 'gate-opener', side: 'right', cam: [-4, 3, -465], look: [-4, 3, -565], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/gate-opener.webp', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -465, 'right') },
+  /* 11 */ { name: 'SHADIEZ', stop: 'project', id: 'shadiez', also: 'smartcut', side: 'left', groupLabel: 'Landing pages', cam: [4, 3, -535], look: [4, 3, -635], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/shadiez.webp', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -535, 'left') },
+  /* 12 */ { name: 'Contact', stop: 'contact', cam: [0, 49, -560], look: [1, 290, -560], up: [0, 0, -1], fov: 52, dur: 3, desc: '', img: '', link: '', panel: null },
 ];
 // Live indices into `beats` (not DEFAULT_BEATS) — Director Mode can reorder /
 // add / delete stops, so these are recomputed after load() and on every commit().
@@ -1090,6 +1025,16 @@ function load() {
           for (const b of beats) if (b.stop === 'hi' && hi) b.panel = structuredClone(hi.panel);
           migrated = true;
         }
+        if (!(d.version >= 21)) {
+          // v21 (2026-09-29): seven project stops (Cursor Buddy, Agent Control, Thesis
+          // Agent, Gate Opener in; Focus and the TEEPO stop out), no Timeline screens,
+          // two About photos, 4:5 portrait — wholesale re-adopt. The minimal-void pass
+          // and the end of mouse tracking also reset those globals to the shipped values;
+          // every other global FX / speed / ease setting stays.
+          beats = structuredClone(DEFAULT_BEATS);
+          for (const k of ['starFrac', 'nodeFrac', 'lineFrac', 'pulse', 'flare', 'cursorDrive']) FX[k] = FX_DEFAULTS[k];
+          migrated = true;
+        }
         beats.forEach(backfillBeat); // bring older saves up to the current schema
         if (migrated) save();
         return;
@@ -1101,7 +1046,7 @@ function load() {
 }
 function save() {
   const g = {}; for (const k of GLOBAL_KEYS) g[k] = FX[k]; g.ease = txEaseName;
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 20 })); }
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 21 })); }
   catch (e) { console.warn('[save]', e); }   // private mode / quota: never let a failed write abort the boot
 }
 // push the global (saved) FX/UX/transition state into the live scene + DOM
@@ -1257,7 +1202,7 @@ function getImage(url) {
   imgCache.set(url, rec);
   const im = new Image();
   im.crossOrigin = 'anonymous';
-  im.onload = () => { rec.img = im; rec.status = 'ok'; rebuildPanels(); renderAllThumbs(); };
+  im.onload = () => { rec.img = im; rec.status = 'ok'; refreshPanelsFor(url); renderAllThumbs(); };
   im.onerror = () => { rec.status = 'error'; };
   im.src = url;
   return null;
@@ -1272,9 +1217,13 @@ function drawImageCover(ctx, img, x, y, w, h) {
 function drawPanelCanvas(b) {
   // Panels are pure artifacts: the screenshot IS the card, full-bleed, no text —
   // the kinetic caption owns every word and the pill button owns the CTA.
-  // 1024px wide: at 70 world-units these quads fill half the screen, and 512
-  // upscaled read soft next to the crisp DOM type.
-  const W = 1024, H = clamp(Math.round(W * (b.panel.size[1] / b.panel.size[0])), 96, 1024);
+  // At 70 world-units these quads fill half the screen; 512 upscaled read soft
+  // next to the crisp DOM type.
+  // The long side sets the size and the short side follows the panel's aspect:
+  // H used to be clamped to 1024 while W stayed 1024, so every portrait panel
+  // (Hi, the memorial) got a square canvas stretched onto a tall mesh (2026-09-29).
+  const LONG = IS_TOUCH ? 1024 : 1600, ar = b.panel.size[0] / b.panel.size[1];
+  const W = ar >= 1 ? LONG : Math.round(LONG * ar), H = ar >= 1 ? Math.max(96, Math.round(LONG / ar)) : LONG;
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d');
   ctx.fillStyle = 'rgba(8,16,26,0.93)'; ctx.fillRect(0, 0, W, H);   // near-opaque: the next beat's panel must not ghost through
@@ -1302,7 +1251,57 @@ function drawPanelCanvas(b) {
   ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(79,210,255,0.5)'; ctx.strokeRect(2, 2, W - 4, H - 4);
   return cv;
 }
+// Animated panels (2026-09-29): a beat with `anim: 'buddy'` shows Cursor Buddy's
+// product loop (buddy.js) instead of a screenshot. Its canvas is redrawn at ≤ 30 fps
+// while the panel is lit (tickAnimPanels), at 1024 px so the upload stays cheap.
+const animPanels = [];
+function drawAnimCanvas(b, cv, sec) {
+  const ctx = cv.getContext('2d');
+  drawBuddy(ctx, cv.width, cv.height, sec);
+  ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(79,210,255,.5)'; ctx.strokeRect(2, 2, cv.width - 4, cv.height - 4);
+}
+function makeAnimCanvas(b) {
+  const W = 1024, H = Math.round(W * (b.panel.size[1] / b.panel.size[0]));
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  drawAnimCanvas(b, cv, PREFERS_REDUCED ? 11 : 0);   // reduced motion: one still frame, the answer on screen
+  return cv;
+}
+let _animLast = 0;
+function paintAnimFigure(sec) {             // phones: the DOM figure in the open stop
+  const fig = document.querySelector('#stops .stop.in canvas[data-anim="buddy"]');
+  if (!fig || !fig.offsetWidth) return;
+  const w = Math.round(fig.offsetWidth * Math.min(2, window.devicePixelRatio || 1)), h = Math.round(w * 17.6 / 28);
+  const resized = fig.width !== w;
+  if (resized) { fig.width = w; fig.height = h; }
+  if (PREFERS_REDUCED && !resized && fig.dataset.painted) return;   // reduced motion: one still frame, repainted only on resize
+  drawBuddy(fig.getContext('2d'), fig.width, fig.height, PREFERS_REDUCED ? 11 : sec);
+  fig.dataset.painted = '1';
+}
+function tickAnimPanels(now) {
+  if (now - _animLast < 33) return;          // ≤ 30 fps
+  _animLast = now;
+  paintAnimFigure(now / 1000);
+  if (PREFERS_REDUCED) return;               // the panel canvases already hold their still frame
+  for (const a of animPanels) {
+    if (!a.mesh.visible || a.mesh.material.opacity <= 0.01) continue;
+    drawAnimCanvas(a.b, a.cv, now / 1000); a.tex.needsUpdate = true;
+  }
+}
+// The animation comes from profile.js by project id (like the chapter tints), not only
+// from the saved beat: a browser holding an older v21 save still gets the loop.
+const animFor = (b) => b.anim || (b.id && PROFILE.work.featured.find((p) => p.id === b.id)?.anim) || '';
 function makePanelMesh(b, i) {
+  if (animFor(b) === 'buddy') {
+    const cv = makeAnimCanvas(b), tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.NoColorSpace; tex.anisotropy = 4;
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(b.panel.size[0], b.panel.size[1]), new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide }));
+    mesh.position.set(...b.panel.pos);
+    const rot = b.panel.rot || [0, 0, 0];
+    mesh.rotation.set(rot[0] * Math.PI / 180, rot[1] * Math.PI / 180, rot[2] * Math.PI / 180);
+    mesh.userData = { type: 'panel', i }; mesh.renderOrder = 2;
+    animPanels.push({ b, cv, tex, mesh });
+    return mesh;
+  }
   const tex = new THREE.CanvasTexture(drawPanelCanvas(b));
   tex.colorSpace = THREE.NoColorSpace; tex.anisotropy = 4;   // no sRGB decode: the composer has no OutputPass (nothing re-encodes), so a decoded photo hit the screen linear and crushed — raw values land 1:1 (2026-09-16)
   const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide });
@@ -1310,12 +1309,26 @@ function makePanelMesh(b, i) {
   mesh.position.set(...b.panel.pos);
   const rot = b.panel.rot || [0, 0, 0];
   mesh.rotation.set(rot[0] * Math.PI / 180, rot[1] * Math.PI / 180, rot[2] * Math.PI / 180);
-  mesh.userData = { type: 'panel', i };
+  mesh.userData = { type: 'panel', i, src: b };   // src: the (pseudo-)beat it was drawn from, for refreshPanelsFor
   mesh.renderOrder = 2;                       // panels render in front of the background network
   return mesh;
 }
+// An image finished loading: redraw only the panels that show it (2026-09-29). Every
+// load used to rebuild and re-upload every panel — ~90 canvas draws behind the loader.
+function refreshPanelsFor(url) {
+  if (!panelsBuilt) return;                   // not built yet: the first build reads the cache
+  for (const m of [...panelMeshes, ...extraPanelMeshes]) {
+    const b = m && m.userData.src;
+    if (!b || (b.img !== url && b.img2 !== url)) continue;
+    const old = m.material.map, tex = new THREE.CanvasTexture(drawPanelCanvas(b));
+    tex.colorSpace = THREE.NoColorSpace; tex.anisotropy = 4;
+    m.material.map = tex; m.material.needsUpdate = true; if (old) old.dispose();
+    renderer.initTexture(tex);                // upload now, behind the loader, not on first sight
+  }
+}
 const extraPanelMeshes = [];   // v18: a beat's `panels[]` cluster (About's photos) — not index-aligned; disposed with the rest
 function disposePanels() {
+  animPanels.length = 0;
   for (const m of [...panelMeshes, ...extraPanelMeshes]) {
     if (!m) continue;
     m.geometry.dispose(); if (m.material.map) m.material.map.dispose(); m.material.dispose();
@@ -1652,7 +1665,7 @@ function goTo(i) {
   index = n; lastNav = performance.now();
   // start a timed flight into the new section (per-shot duration, scaled by speed)
   const target = index / Math.max(1, lastIdx());
-  const dur = (beats[index]?.dur ?? DEF_DUR) / Math.max(0.05, speedMul);
+  const dur = (beats[index]?.dur ?? DEF_DUR) / Math.max(0.05, speedMul) * (PREFERS_REDUCED ? 0.55 : 1);   // reduced motion: shorter hops
   // per-beat easing (beat.ease) overrides the global transition curve
   tween = { from: progress, to: target, t: 0, dur: Math.max(0.15, dur), ease: EASINGS[beats[index]?.ease] || null };
 }
@@ -1691,6 +1704,7 @@ const FLICK_VEL = 0.45;   // px/ms
 let _tX = 0, _tY = 0, _tT = 0, _tAxis = null, _tFired = false, _tPrevY = 0;
 window.addEventListener('touchstart', (e) => {
   if (e.touches.length !== 1) { _tAxis = 'multi'; return; }
+  if (e.target instanceof Element && e.target.closest('[data-own-gestures]')) { _tAxis = 'multi'; return; }   // the Timeline lab's handles drag; they must not fly the camera
   _tX = e.touches[0].clientX; _tY = e.touches[0].clientY; _tPrevY = _tY;
   _tT = performance.now(); _tAxis = null; _tFired = false;
 }, { passive: true });
@@ -1891,6 +1905,7 @@ function commit(msg) {
   // an unknown stop/id typed in the editor must not be able to break commit/undo/save.
   try {
     panels = initPanels({ beats, profile: PROFILE, root: document.querySelector('#stops') });
+    mountLab();
   } catch (e) { console.warn('[panels]', e); flash('Panels: ' + e.message); }
   reattach(); pushHistory(); save(); if (msg) flash(msg);
 }
@@ -2334,8 +2349,10 @@ function applyResize(full) {
   renderer.setSize(window.innerWidth, window.innerHeight);
   if (composer) composer.setSize(window.innerWidth, window.innerHeight);
   if (css3d) css3d.renderer.setSize(window.innerWidth, window.innerHeight);
-  if (!full) return;
+  // composer.setSize just resized every pass to full resolution — re-apply the governor's
+  // bloom divisor on the height-only path too (iOS URL bar), or bloom ran 6-9× the pixels
   if (bloom) bloom.setSize((window.innerWidth / bloomDiv) | 0, (window.innerHeight / bloomDiv) | 0);
+  if (!full) return;
   livingVoid.nebMat.uniforms.uA.value = window.innerWidth / window.innerHeight;
   livingVoid.sizeRT();                            // keep the half-res raymarch target in sync
   if (water) water.sizeSim();
@@ -2371,7 +2388,9 @@ try {
 // ---- Water swipe — GPU wave-equation sim refracting the scene, per-section ----
 //  (ported 1:1 from demo-water-trail.html). Half-float ping-pong sim; the final
 //  composer pass refracts the rendered scene by the wave gradient. Calm = passthrough.
-if (composer && !PREFERS_REDUCED && !IS_TOUCH) try {   // cursor-driven — pointless and pricey on touch
+// Built only if a section asks for it (2026-09-29): no shipped beat sets `water`, and the
+// sim + its full-screen pass cost every desktop frame while doing nothing (code review).
+if (composer && !PREFERS_REDUCED && !IS_TOUCH && beats.some((b) => b.water)) try {   // cursor-driven — pointless and pricey on touch
   const SIM = 0.5;
   const wq = new THREE.PlaneGeometry(2, 2), wOrtho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
   let simA, simB;
@@ -2806,91 +2825,22 @@ function nearestBeat(getPoint) {
   }
   return [bi, bd];
 }
-// ---- Live layer (2026-09-17, Bluesky since 2026-09-22): the public Jetstream firehose flows through the void.
-//  Every accepted event spawns a packet that rides one link of the data network
-//  (CPU copy of the vertex drift so it tracks the endpoints exactly) and feeds the
-//  strip on How I Build: ring buffer · sliding-window rate · heap top-k (live.js).
-//  Connects once the loader lifts; falls back to labelled synthetic events when
-//  the stream can't be reached, so the site never depends on it.
-const LIVE_MAX = 48;
-const liveModel = createLiveModel({ ring: 64, window: 10000, k: 3 });
-let liveConn = null, liveState = 'connecting', livePackets = null, liveEl = null, liveDirty = false, _liveLast = 0;
-function initLivePackets() {
-  if (!network || livePackets) return;
-  const pos = new Float32Array(LIVE_MAX * 3);
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const c = document.createElement('canvas'); c.width = c.height = 32;   // soft round sprite — a bare Points square reads as a pixel block on phones
-  const g = c.getContext('2d'), grad = g.createRadialGradient(16, 16, 0, 16, 16, 16);
-  grad.addColorStop(0, 'rgba(255,255,255,1)'); grad.addColorStop(0.35, 'rgba(191,240,255,.9)'); grad.addColorStop(1, 'rgba(191,240,255,0)');
-  g.fillStyle = grad; g.fillRect(0, 0, 32, 32);
-  const map = new THREE.CanvasTexture(c); map.colorSpace = THREE.NoColorSpace;
-  const mat = new THREE.PointsMaterial({ size: IS_TOUCH ? 4.2 : 3.4, map, color: 0xbff0ff, transparent: true, opacity: 0.95, sizeAttenuation: true, depthWrite: false, blending: THREE.AdditiveBlending });
-  const pts = new THREE.Points(geo, mat); pts.renderOrder = -5; pts.frustumCulled = false;
-  scene.add(pts);
-  livePackets = { pos, geo, pts, slots: Array.from({ length: LIVE_MAX }, () => null), next: 0 };
-  for (let i = 0; i < LIVE_MAX; i++) pos[i * 3 + 1] = -9999;   // parked
-}
-const _pa = new THREE.Vector3(), _pb = new THREE.Vector3();
-function driftedNode(i, t, out) {              // mirrors DRIFT_GLSL for one node
-  const on = (FX.driftOn && !PREFERS_REDUCED) ? 1 : 0, b = network.base, A = network.amp, F = network.fre, P = network.pha, j = i * 3;
-  out.set(b[j] + on * A[j] * Math.sin(t * F[j] + P[j]), b[j + 1] + on * A[j + 1] * Math.sin(t * F[j + 1] + P[j + 1]), b[j + 2] + on * A[j + 2] * Math.sin(t * F[j + 2] + P[j + 2]));
-}
-function spawnPacket() {
-  if (!livePackets || !network.pairs.length || document.hidden) return;
-  const k = Math.floor(Math.random() * (network.pairs.length / 2));
-  const a = network.pairs[k * 2], b = network.pairs[k * 2 + 1];
-  const s = livePackets.next; livePackets.next = (s + 1) % LIVE_MAX;
-  livePackets.slots[s] = { a: Math.random() < 0.5 ? a : b, b: Math.random() < 0.5 ? b : a, t: 0, dur: 0.9 + Math.random() * 0.9 };
-}
-function updateLivePackets(t, dt) {
-  if (!livePackets) return;
-  const pos = livePackets.pos;
-  let any = false;
-  for (let i = 0; i < LIVE_MAX; i++) {
-    const p = livePackets.slots[i];
-    if (!p) continue;
-    p.t += dt / p.dur;
-    if (p.t >= 1) { livePackets.slots[i] = null; pos[i * 3 + 1] = -9999; any = true; continue; }
-    driftedNode(p.a, t, _pa); driftedNode(p.b, t, _pb);
-    const e = p.t < 0.5 ? 2 * p.t * p.t : 1 - Math.pow(-2 * p.t + 2, 2) / 2;   // ease in-out along the link
-    pos[i * 3] = _pa.x + (_pb.x - _pa.x) * e; pos[i * 3 + 1] = _pa.y + (_pb.y - _pa.y) * e; pos[i * 3 + 2] = _pa.z + (_pb.z - _pa.z) * e;
-    any = true;
-  }
-  if (any) livePackets.geo.attributes.position.needsUpdate = true;
-}
-function onLiveEvent(evt) {
-  liveModel.push(evt);
-  spawnPacket();
-  liveDirty = true;
-}
-function startLive() {
-  if (liveConn || editMode) return;
-  initLivePackets();
-  liveEl = document.querySelector('#stops .live');
-  liveConn = connectLive({ onEvent: onLiveEvent, onState: (st) => { liveState = st; liveDirty = true; } });
-}
-const _lang = (s) => (s === 'und' ? 'other' : s);   // ISO 639 "undetermined" — a post with no declared language
-const _liveRow = (e) => `<span class="src">${esc(_lang(e.source))}</span> · ${e.kind} · <span class="add">${e.chars} chars</span>${e.embed ? ` · ${e.embed}` : ''}`;   // language · kind · length · embed — never the text, never the author
-function renderLiveStrip(now) {                 // ≤ 8 Hz, and only while the strip is on screen
-  if (!liveEl || !liveDirty || now - _liveLast < 125) return;
-  const sec = liveEl.closest('.stop'); if (!sec || !sec.classList.contains('in')) return;
-  _liveLast = now; liveDirty = false;
-  liveEl.dataset.liveState = liveState;
-  liveEl.querySelector('[data-live-label]').textContent = liveState === 'live' ? 'live' : liveState === 'simulated' ? 'offline · simulated' : 'connecting';
-  liveEl.querySelector('[data-live-count]').textContent = `${liveModel.filled()} / ${liveModel.size}`;
-  liveEl.querySelector('[data-live-rate]').textContent = liveModel.rate(now).toFixed(1);
-  const top = liveModel.topK();
-  liveEl.querySelector('[data-live-top]').textContent = top.length ? top.map((x) => `${_lang(x.source)} ${x.count}`).join(' · ') : '—';
-  const cells = liveEl.querySelector('[data-live-ring]').children, filled = liveModel.filled(), head = (liveModel.head - 1 + liveModel.size) % liveModel.size;
-  for (let i = 0; i < cells.length; i++) { const on = i < filled; cells[i].className = i === head ? 'head' : on ? 'on' : ''; }
-  const feed = liveEl.querySelector('[data-live-feed]');
-  const rows = liveModel.recent(3);
-  feed.innerHTML = rows.map((e) => `<div>${_liveRow(e)}</div>`).join('');
-}
 
+// The Timeline's lab card (2026-09-29, labcard.js): its demo loop runs only while
+// the Timeline stop is open and the card is laid out (desktop).
+let lab = null, labEl = null;
+function mountLab() {
+  lab?.destroy();
+  labEl = document.querySelector('#stops .lab');
+  lab = labEl ? initLab(labEl, { reduced: PREFERS_REDUCED }) : null;
+}
+function tickLab() {
+  if (!lab) return;
+  if (!editMode && labEl.offsetWidth && labEl.closest('.stop')?.classList.contains('in')) lab.start(); else lab.stop();
+}
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.05); // seconds since last frame (clamped for tab-switches)
+  tickLab(); tickAnimPanels(performance.now());
   elapsed += dt;
   const t = elapsed;
   perfGovern(dt);
@@ -2911,7 +2861,8 @@ function animate() {
     const i1 = clamp(i0 + 1, 0, lastIdx());
     const f = seg - i0;
     pathPoint(progress, cp);           // straight or curved per `smooth`
-    const mx = mouse.x * 3, my = mouse.y * 3;
+    const par = (IS_TOUCH || PREFERS_REDUCED) ? 0 : 3;   // desktop-only parallax: on touch the last swipe's point stuck as an offset
+    const mx = mouse.x * par, my = mouse.y * par;
     camera.position.set(cp.x + mx, cp.y - my, cp.z);
     camera.quaternion.copy(beatQuats[i0]).slerp(beatQuats[i1], f);
     // ---- Idle breath — the void is never perfectly still --------------------
@@ -2944,9 +2895,7 @@ function animate() {
   // per-section nebula density (keyframed) is applied in the dim block below, scaled by _dimV
   livingVoid.update(t);                      // advance nebula + starfield time
   if (gradePass) { gradePass.uniforms.uTime.value = t; gradePass.uniforms.uDark.value = FX.vignette; gradePass.uniforms.uGrain.value = FX.grain; }
-  if (network) network.update(t, (FX.driftOn && !PREFERS_REDUCED) ? 1 : 0, _cN, _cVel * FX.cursorDrive);   // data network: drift + cursor stir
-  updateLivePackets(t, dt); renderLiveStrip(performance.now());
-  cursorLinks.update(t, !editMode && FX.cursorDrive > 0, _cN, _cVel * FX.cursorDrive, (FX.driftOn && !PREFERS_REDUCED) ? 1 : 0);   // Layer 3: the network reaches toward the cursor
+  if (network) network.update(t, (FX.driftOn && !PREFERS_REDUCED) ? 1 : 0, _FAR, 0);   // data network: drift (the cursor stir and near-pointer glow are gone)
   meteors.update(dt, !editMode && index === 0);   // falling stars on the start frame only
   {                                          // Frame 2 — the grouped Hero cluster (assets parallax to cursor + scroll)
     const heroOn = !editMode && !!beats[index]?.screens && !isCompact();   // v18: the Timeline beat carries the two live screens; portrait screens keep the rows readable
@@ -3009,6 +2958,7 @@ function animate() {
 
   // panels: billboard to face the camera, and light up as the camera arrives
   const _pIdx = progress * Math.max(1, lastIdx());   // continuous stop index, for the per-stop clusters
+  let _panelLit = 0;                                 // brightest panel this frame — bloom stays lifted while any photo is on screen
   for (let i = 0, n = panelMeshes.length + extraPanelMeshes.length; i < n; i++) {
     const extra = i >= panelMeshes.length;
     const m = extra ? extraPanelMeshes[i - panelMeshes.length] : panelMeshes[i];
@@ -3017,20 +2967,24 @@ function animate() {
     if (editMode) { m.material.opacity = 1; m.visible = true; m.scale.setScalar(1); }
     else {
       let a = clamp(1 - (camera.position.distanceTo(m.position) - 90) / curFX.panelLightRange, 0, 1); // near = lit
-      if (extra) a *= clamp(1 - Math.abs(_pIdx - m.userData.i), 0, 1);   // a `panels[]` cluster belongs to one stop: fade with it, never bleed into the neighbours
+      if (extra) a *= clamp(1 - 2.5 * Math.abs(_pIdx - m.userData.i), 0, 1);   // a `panels[]` cluster belongs to one stop: gone 40 % into the hop (2026-09-29: at 1× the About photos swept across the whole flight to the Timeline)
       else a *= clamp(2 - 2 * Math.abs(_pIdx - i), 0, 1);      // a stop's own panel: full from halfway through the hop in, fully off at any neighbour (the next stop's panel, 115 units on, used to ghost through at ≈ 4 %)
       if (isCompact()) a = 0;   // portrait and landscape-phone screens show the imagery as DOM figures in the stop (render.js, 2026-09-17): the WebGL panel rendered soft through the touch DPR cap and sat on the words under Safari's URL bar
       // An unlit panel is invisible, floor or not (2026-09-16): the Opening's default
       // floor of .1 left the Hi portrait ghosting under the wordmark.
       m.material.opacity = a > 0 ? curFX.panelDimFloor + (1 - curFX.panelDimFloor) * a : 0;
       m.visible = m.material.opacity > 0;
+      if (m.material.opacity > _panelLit) _panelLit = m.material.opacity;
       m.scale.setScalar(0.92 + 0.08 * a);
     }
   }
   fxMaybeSync();                              // FX panel mirrors the focused section's keyframe
 
-  hudBeat.textContent = editMode ? 'Director mode' : (beats[index]?.name ?? '');
-  hudProgress.textContent = (editMode ? (sel + 1) : (index + 1)) + ' / ' + beats.length;
+  {                                          // aria-live region: write only on change (it was rewritten 60×/s)
+    const name = editMode ? 'Director mode' : (beats[index]?.name ?? ''), prog = (editMode ? (sel + 1) : (index + 1)) + ' / ' + beats.length;
+    if (hudBeat.textContent !== name) hudBeat.textContent = name;
+    if (hudProgress.textContent !== prog) hudProgress.textContent = prog;
+  }
   if (hudRail) {
     const last = Math.max(1, beats.length - 1);
     hudRail.style.transform = `scaleX(${editMode ? (sel / last) : (index / last)})`;
@@ -3080,7 +3034,7 @@ function animate() {
       pos[o + 3] = p.x - _dir.x * len; pos[o + 4] = p.y - _dir.y * len; pos[o + 5] = p.z - _dir.z * len;
     }
     geo.attributes.position.needsUpdate = true;
-    mat.opacity = editMode ? 0 : clamp((camSpeed - 12) / 120, 0, FX.warpStrength);
+    mat.opacity = (editMode || PREFERS_REDUCED) ? 0 : clamp((camSpeed - 12) / 120, 0, FX.warpStrength);   // no streaks under reduced motion
   }
 
   if (index !== _lastBeatIdx) { voidWarp = Math.max(voidWarp, 0.9); _lastBeatIdx = index; } // warp burst on chapter change
@@ -3091,10 +3045,13 @@ function animate() {
   // the threshold makes bloom paint a blurred copy of the panel over itself —
   // that WAS the "blurry panel". Screenshots top out at exactly 1.0; the
   // additive node cores exceed it (half-float target), so they still glow.
-  // Loop-side so DEFAULT_BEATS / save version stay put.
+  // Loop-side so DEFAULT_BEATS / save version stay put. `index` jumps to the
+  // destination the moment a flight starts, so the threshold also holds at 1.0
+  // while any panel is still lit — leaving About for the Timeline (no panel)
+  // dropped it to .22 under two full-bright photos and they flared white (2026-09-29).
   if (bloom) {
     const nb = beats[index];   // any stop showing a photo/screenshot panel (Hi, About, projects), not just projects
-    bloom.threshold = !editMode && nb && (nb.panel || (nb.panels && nb.panels.length)) ? 1.0 : 0.22;
+    bloom.threshold = !editMode && ((nb && (nb.panel || (nb.panels && nb.panels.length))) || _panelLit > 0.01) ? 1.0 : 0.22;
     bloom.strength = curFX.bloomStrength + voidWarp * 0.5;   // gentler transition flare (restraint pass)
   }
   if (bokeh) bokeh.enabled = !(editMode);   // DOF only in play; bloom stays on in all modes
@@ -3110,8 +3067,8 @@ function animate() {
     nm.uFlashReach.value = 1.0 / Math.max(1, FX.lightReach * FX.lightReach);
     nm.uCrackle.value = FX.lightRate * 4.0;
   }
-  { const su = livingVoid.spots.material.uniforms;        // glow spots react to the cursor + controls
-    su.uPtN.value.copy(_cN); su.uVel.value = _cVel; su.uDrive.value = FX.cursorDrive; su.uBright.value = FX.glowBright; su.uFlick.value = FX.glowFlick; }
+  { const su = livingVoid.spots.material.uniforms;        // glow spots: brightness + flicker controls (no pointer since 2026-09-29)
+    su.uPtN.value.copy(_FAR); su.uVel.value = 0; su.uDrive.value = 0; su.uBright.value = FX.glowBright; su.uFlick.value = FX.glowFlick; }
   // raymarch the volumetric nebula into its half-res target (camera-driven fly-through).
   // Phones skip frames only while PARKED (a slow drift can't show a 16ms hold) —
   // in flight the parallax moves fast and a held frame reads as judder, so the
@@ -3144,7 +3101,7 @@ function animate() {
   }
   if (composer) composer.render(); else renderer.render(scene, camera);
   firstFrameDone = true;                     // loader gates its 100% on this — no black-frame pop on slow devices
-  if (css3d) css3d.renderer.render(css3d.scene, camera);   // live HTML assets layer (SmartCut iframe), synced to the camera
+  if (css3d && css3d.scene.children.length) css3d.renderer.render(css3d.scene, camera);   // live HTML assets layer, synced to the camera — skipped while empty (no beat carries screens since 2026-09-29)
   if (PROF) {
     const now = performance.now();
     if (_pf.last) { _pf.t += now - _pf.last; _pf.n++; }
@@ -3162,7 +3119,6 @@ function animate() {
 // (panels, warp states) otherwise hit exactly when the first flight starts.
 try { renderer.compile(scene, camera); } catch (e) { console.warn('[precompile]', e); }
 animate();
-initCursorTrail();   // native pointer + a short cyan light tail (skipped on coarse pointers / reduced motion)
 // ---- The v15 DOM layer: one content block per stop + the fixed bar ----------
 const BUILT = typeof __BUILT__ !== 'undefined' ? __BUILT__ : null;   // vite.config.js `define` — the build date
 mountPrintCV(PROFILE, BUILT);
@@ -3173,6 +3129,7 @@ try {
   console.error('[panels]', e);
   panels = { show() {}, hide() {}, el() { return null; } };
 }
+mountLab();
 // hash deep links: #work #about #cv #contact #top → the matching stop (src/hash.js
 // owns the table). A hash on first load jumps straight there (no flight); later
 // changes fly. A hash we handled is cleared so the URL never pins a stale
@@ -3206,22 +3163,18 @@ bar = initBar({ profile: PROFILE, onWork: () => goTo(WORK_INDEX), onAbout: () =>
 //  the viewer (lab departure curve: leave with gravity) into the opening shot.
 (() => {
   const ld = document.querySelector('#loader');
-  if (!ld) { loaderDone = true; startLive(); showPhoneNote(); return; }
+  if (!ld) { loaderDone = true; showPhoneNote(); return; }
   const pctEl = document.querySelector('#ld-pct'), labEl = document.querySelector('#ld-label');
   const markEl = document.querySelector('#ld-mark'), ticksEl = document.querySelector('#ld-ticks');
   const cv = document.querySelector('#ld-canvas'), overlay = document.querySelector('#overlay');
   const RM = PREFERS_REDUCED;
-  // the Higgsfield void loop under the constellation: poster paints at once, the
-  // video fades in when it can play; refused autoplay just leaves the poster.
+  // The Higgsfield void loop's poster under the constellation, as a still (2026-09-29).
+  // The clip itself (public/assets/loader/void-loop.mp4, 1.8 MB) is no longer fetched:
+  // the loop fades out at 62 % of the loader, so it was on screen for ~190 ms on a warm
+  // localhost and rarely even reached `canplay` over a real network (code review).
+  // Reduced motion drops the element, as before.
   const loop = document.querySelector('#ld-loop');
-  if (loop) {
-    if (RM) { try { loop.pause(); } catch {} loop.remove(); }
-    else {
-      const on = () => loop.classList.add('on');
-      if (loop.readyState >= 3) on(); else loop.addEventListener('canplay', on, { once: true });
-      loop.play?.().catch(() => {});
-    }
-  }
+  if (loop) { if (RM) loop.remove(); else loop.classList.add('on'); }
 
   // the wordmark: one <i> per slot, scrambling until progress reaches it
   const WORD = 'YARIN LEVIN', SCRAM = '#*+=-<>/|01[]{}';
@@ -3310,7 +3263,7 @@ bar = initBar({ profile: PROFILE, onWork: () => goTo(WORK_INDEX), onAbout: () =>
     draw(p, 0, ts / 1000);
     if (raw < 1 || !firstFrameDone || !openingFX.formed()) { requestAnimationFrame(step); return; }
     // ---- exit: the lattice warps past the viewer, the panel falls away -------
-    ld.classList.add('done'); loaderDone = true; startLive(); showPhoneNote();
+    ld.classList.add('done'); loaderDone = true; showPhoneNote();
     if (overlay) overlay.classList.add('revealed');
     const doneAt = ts;
     (function out(ts2) {

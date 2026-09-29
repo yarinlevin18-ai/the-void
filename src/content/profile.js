@@ -46,6 +46,11 @@ export const PROFILE = {
   },
 
   // stop 01 "Hi" — portrait panel left, greeting right. (2026-09-14 person chapter)
+  // stop 12 "Contact" — the lead-in types in as the door opens, above the card (2026-09-29).
+  finale: {
+    lead: 'That’s the tour.',
+    line: 'Have a role or a project? Let’s build it.',
+  },
   hi: {
     greeting: 'Hi, I’m Yarin Levin.',
     status: 'AI-native developer · B.A. student at Ben-Gurion · open to work',
@@ -55,7 +60,7 @@ export const PROFILE = {
     ],
     portrait: '/assets/me/portrait.webp',
   },
-  // stop 02 "About" — three speaking photos right, story left. Captions feed the noscript path only.
+  // stop 02 "About" — two speaking photos right, story left. Captions feed the noscript path only.
   about: {
     eyebrow: 'About',
     title: 'Command, then a stage, then code.',
@@ -67,10 +72,9 @@ export const PROFILE = {
     photos: [
       { src: '/assets/me/speaking-1.webp', caption: 'On stage for FIDF' },
       { src: '/assets/me/speaking-2.webp', caption: 'Nova memorial, Re’im' },
-      { src: '/assets/me/speaking-3.webp', caption: 'At the lectern' },
     ],
   },
-  // stop 03 "Timeline" — dated rows on a rail; the two hero screens float beside it.
+  // stop 03 "Timeline" — dated rows on a rail (the two hero screens beside it left 2026-09-29).
   // ⏳ months are Yarin's guesses to confirm; the shape does not change.
   timeline: {
     eyebrow: 'Coding experience',
@@ -189,7 +193,8 @@ export const PROFILE = {
     ],
   },
 
-  // The work — three tiers. featured = the 7 flight stops, each with a full
+  // The work — three tiers. featured = the flight's project stops (plus TEEPO, which lives on in
+  // the Timeline and the How I Build repo cards since 2026-09-29), each with a full
   // problem/decision/outcome writeup; shipped and labs are the index (dossier
   // "full index" + in-world work hub), each a shorter what/built summary.
   work: {
@@ -241,12 +246,13 @@ export const PROFILE = {
         url: 'https://shaar-ai-landing.vercel.app',
       },
       {
-        id: 'focus', name: 'Focus', group: 'saas', kind: 'WIP-capped board', tag: 'SaaS · private build', year: 2026,
-        tint: '#4fd2ff', img: '/previews/focus.webp', private: true,
-        problem: 'I kept starting projects while the last three sat half-finished.',
-        decision: 'A board with one capped lane: at most three active projects, enforced in the CLI, the API and the dashboard.',
-        outcome: 'The tool I plan my own work in.',
-        stack: 'Node · SQLite · Astro dashboard',
+        id: 'cursor-buddy', name: 'Cursor Buddy', group: 'saas', kind: 'macOS AI assistant', tag: 'Native app', year: 2026,
+        tint: '#4fd2ff', img: '', anim: 'buddy', private: true,   // no screenshot: buddy.js draws the product loop
+        animAlt: 'Cursor Buddy demo: the robot follows the macOS pointer, listens, thinks, and answers “What does this error mean?” beside the cursor',
+        problem: 'Asking an AI about what was on my screen meant a screenshot, a new tab, and pasting the answer back.',
+        decision: 'A menu-bar agent that sees the screen and acts in Mac apps, safety first: real-click-only approvals and a sandboxed terminal.',
+        outcome: 'Hold a key, ask by voice or text, and the answer lands beside the cursor.',
+        stack: 'Swift 6 · SwiftUI · Claude API · whisper.cpp · MCP',
         url: '',
       },
       {
@@ -258,8 +264,36 @@ export const PROFILE = {
         stack: 'Next.js 16 · React 19 · Tesseract.js',
         url: 'https://thailand-trip-app-phi.vercel.app',
       },
+      {
+        id: 'agent-control', name: 'Agent Control', group: 'saas', kind: 'Agent guardrails', tag: 'Cyber security', year: 2026,
+        tint: '#9fd8ff', img: '/previews/agent-control.webp', private: true,
+        problem: 'Businesses want AI agents, but not ones that move money or leak personal data on a prompt’s say-so.',
+        decision: 'Guardrails the admin sets and the connector enforces, personal data scrubbed before any model call, an append-only audit log.',
+        outcome: 'A working demo: four agents, four roles, every action on the record.',
+        stack: 'Next.js · Hebrew RTL · role-based access',
+        url: 'https://agent-control-demo.vercel.app',
+      },
+      {
+        id: 'thesis', name: 'Thesis Agent', group: 'saas', kind: 'AI research advisor', tag: 'Private build', year: 2026,
+        tint: '#eab04e', img: '/previews/thesis.webp', private: true,
+        problem: 'My dad’s M.A. thesis needed an advisor that knows his chapters and never invents a source.',
+        decision: 'Claude reads every upload into a source card; the advisor cites only that library and marks every gap for him to fill.',
+        outcome: 'Live and verified end to end: every citation comes from his own library.',
+        stack: 'Next.js · Supabase · Claude API · Vitest',
+        url: '',
+      },
+      {
+        id: 'gate-opener', name: 'Gate Opener', group: 'saas', kind: 'Geofenced web app', tag: 'Private build', year: 2026,
+        tint: '#3fc978', img: '/previews/gate-opener.webp', private: true,
+        problem: 'Opening the family gate meant stopping the car and finding an app, every single time.',
+        decision: 'No open button: a geofence state machine that GPS drift can’t fire twice, and gate tokens encrypted server-side.',
+        outcome: 'Pulling up to the gate is the trigger.',
+        stack: 'Next.js · Supabase · TypeScript · PWA',
+        url: '',
+      },
     ],
     shipped: [
+      { name: 'Focus', what: 'WIP-capped project board — at most three active projects, enforced in the CLI, the API and the dashboard.', built: 'Node, SQLite, Astro dashboard. Left the flight 2026-09-29 for Cursor Buddy.', year: 2026 },
       { name: 'Worldiez', what: 'Automated YouTube Shorts pipeline — clip in, branded 9:16 short out, scheduled to YouTube.', built: 'FFmpeg prep, Remotion compositions, Postiz scheduling, agent-orchestrated.', year: 2026 },
       { name: 'Mentorship', what: 'Shared app for a mentor and mentee — sessions, summaries, homework.', built: 'Next.js 16 Server Actions + Supabase Postgres, role-per-device.', year: 2026 },
       { name: 'dira-lease', what: 'Hebrew-RTL landing page that ranks apartment-sublease leads.', built: 'Next.js + Framer Motion, three-step funnel into Google Sheets.', year: 2026 },

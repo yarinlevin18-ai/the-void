@@ -307,8 +307,6 @@ html, body {
   transform: translateX(-50%); pointer-events: none;
 }
 
-/* ---- Cursor light trail (src/cursor.js) — under the stops, over the void ---- */
-.cursor-trail { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
 
 /* ---- FX control panel (B) ---- */
 #fxpanel {
@@ -478,6 +476,13 @@ html, body {
 
 /* ---- v15 flight stops: one DOM block per beat, revealed on arrival ---- */
 #stops { position: fixed; inset: 0; z-index: 3; pointer-events: none; }
+/* Line breaks (2026-09-29): no sentence ends with one word dropped onto a line of its own.
+   render.js wraps short statements one sentence per .sent block and a " · " list in
+   .seg items that break only between each other; every other short block is
+   balanced ("pretty" only rescues a single lone word, so "to 700." stayed behind). */
+#stops .sent { display: block; text-wrap: balance; }
+#stops .seg { white-space: nowrap; }
+#stops :is(p, dd, .tl-line, .also-line, .stack) { text-wrap: balance; }
 .stop {
   position: absolute; left: 0; right: 0; top: 0; bottom: 0;
   display: flex; flex-direction: column; justify-content: safe center;
@@ -505,7 +510,7 @@ html, body {
 .hi, .about { max-width: 34rem; }
 .hi .greeting, .about .about-title { font-family: var(--f-display); font-weight: 800; font-stretch: 78%; font-size: clamp(2rem, 6vw, 4.2rem); line-height: .95; letter-spacing: -0.02em; color: #eaf4ff; margin: 0 0 .8rem; }
 .hi .status { font-family: var(--f-mono); font-weight: 700; font-size: .75rem; letter-spacing: .14em; text-transform: uppercase; color: #4fd2ff; margin-bottom: 1.4rem; }
-.hi .line { font-family: var(--f-display); font-weight: 500; font-stretch: 90%; font-size: clamp(1.15rem, 2.4vw, 1.8rem); line-height: 1.25; color: #eaf4ff; max-width: 28ch; margin: 0 0 .5em; }
+.hi .line { font-family: var(--f-display); font-weight: 500; font-stretch: 90%; font-size: clamp(1.15rem, 2.4vw, 1.8rem); line-height: 1.25; color: #eaf4ff; max-width: 34ch; margin: 0 0 .5em; }
 .about .para { font-size: clamp(.95rem, 1.5vw, 1.05rem); line-height: 1.55; color: #b8d4ea; max-width: 46ch; margin: 0 0 .9em; }
 .hi .greeting, .hi .line, .about .about-title, .about .para { opacity: 0; transform: translateY(12px); transition: opacity .45s ease, transform .45s cubic-bezier(.22,1,.36,1); transition-delay: calc(var(--i) * 60ms); }
 .stop.in .hi .greeting, .stop.in .hi .line, .stop.in .about .about-title, .stop.in .about .para { opacity: 1; transform: none; }
@@ -525,11 +530,12 @@ html, body {
   .stop-img img { display: block; width: 100%; height: auto; border: 1px solid rgba(159,216,255,.38); border-radius: 3px; box-shadow: 0 0 28px rgba(79,210,255,.14), 0 12px 30px rgba(0,0,0,.45); background: #06101c; }
   .stop-img.portrait { max-width: 13.5rem; margin-bottom: 1.4rem; }
   .stop-img.shot { max-width: 70%; margin-bottom: .6rem; }
-  .stop-img.shot img { max-height: 30vh; width: auto; max-width: 100%; }   /* a tall capture (Sabai) at 70% width pushed the pills under the chevrons */
-  /* About: the stage (3:2) and the memorial (3:4) side by side at equal height — 2fr:1fr makes
-     the heights match exactly. The lectern detail is a crop of the stage shot, so phones skip it. */
-  .stop-imgs { display: grid; grid-template-columns: 2fr 1fr; gap: .5rem; align-items: start; margin-bottom: 1rem; max-width: 34rem; }
-  .stop-imgs .small:last-child { display: none; }
+  .stop-img.shot img { max-height: 30vh; width: auto; max-width: 100%; }
+  .stop-img.anim { width: min(100%, calc(30vh * 28 / 17.6)); }   /* cap by height through the width, so the canvas keeps its aspect (landscape phones squashed it) */
+  .stop-img.anim canvas { display: block; width: 100%; aspect-ratio: 28 / 17.6; border: 1px solid rgba(159,216,255,.38); border-radius: 3px; box-shadow: 0 0 28px rgba(79,210,255,.14), 0 12px 30px rgba(0,0,0,.45); background: #0b0f16; }   /* a tall capture (Sabai) at 70% width pushed the pills under the chevrons */
+  /* About: the stage (4:3) and the memorial (3:4) side by side at equal height — 16fr:9fr
+     makes the heights match exactly (.75·16 = 1.333·9). */
+  .stop-imgs { display: grid; grid-template-columns: 16fr 9fr; gap: .5rem; align-items: start; margin-bottom: 1rem; max-width: 34rem; }
   .stop-project { justify-content: safe flex-start; }
   /* Hi and About are short columns; hugging the top left ~230-300 px of dead
      void under the last line. Centred they sit in the middle of the screen
@@ -595,36 +601,38 @@ html, body {
   .stop.in[data-reveal="shutter"] .stop-img.shot img { opacity: 1; filter: none; }
 }
 
-/* ---- Live strip (2026-09-17): the real event stream's accounting on How I Build ---- */
-.live { margin: .2rem 0 1.1rem; max-width: 60rem; border: 1px solid rgba(79,210,255,.28); border-radius: 8px; background: rgba(6,12,20,.72); padding: .6rem .8rem .55rem; font-family: var(--f-mono); font-weight: 700; font-size: .75rem; letter-spacing: .06em; color: #9fc2e0; }
-.live-hd { display: flex; justify-content: space-between; gap: .8rem; align-items: baseline; text-transform: uppercase; letter-spacing: .14em; color: #4fd2ff; margin-bottom: .45rem; }
-.live-state { display: inline-flex; align-items: center; gap: .4rem; color: #7fa8c8; }
-.live-state i { width: 7px; height: 7px; border-radius: 50%; background: #7fa8c8; }
-.live[data-live-state="live"] .live-state { color: #3fc978; } .live[data-live-state="live"] .live-state i { background: #3fc978; box-shadow: 0 0 8px #3fc978; animation: liveDot 1.6s ease-in-out infinite; }
-.live[data-live-state="simulated"] .live-state { color: #eab04e; } .live[data-live-state="simulated"] .live-state i { background: #eab04e; }
-@keyframes liveDot { 50% { opacity: .35; } }
-.live-ring { display: grid; grid-template-columns: repeat(64, 1fr); gap: 2px; margin: .2rem 0 .5rem; }
-.live-ring i { height: 6px; border-radius: 1px; background: rgba(79,210,255,.14); transition: background .25s ease, box-shadow .25s ease; }
-.live-ring i.on { background: #4fd2ff; box-shadow: 0 0 5px #4fd2ff; }
-.live-ring i.head { background: #eaf4ff; box-shadow: 0 0 8px #9fd8ff; transition: none; }
-.live-kv { display: grid; grid-template-columns: auto 1fr auto 1fr auto 1fr; gap: .25rem .6rem; align-items: baseline; text-transform: uppercase; }
-.live-kv b { color: #eaf4ff; font-variant-numeric: tabular-nums; text-transform: none; letter-spacing: .04em; }
-.live-kv b[data-live-top] { white-space: nowrap; }   /* cumulative counts reach 4-5 digits at ~20 posts/s — keep the three on one line */
-.live-feed { margin-top: .45rem; padding-top: .4rem; border-top: 1px solid rgba(159,216,255,.12); height: calc(4.95em + .4rem + 1px); overflow: hidden;   /* three rows at 1.65 line-height + the padding/border that border-box folds in (was 3.3em, which sliced the third row in half) */ line-height: 1.65; color: #9fc2e0; font-weight: 400; letter-spacing: .02em; text-transform: none; white-space: nowrap; }
-.live-feed div { overflow: hidden; text-overflow: ellipsis; }
-.live-feed .src { color: #4fd2ff; } .live-feed .add { color: #3fc978; } .live-feed .del { color: #eab04e; }
-@media (prefers-reduced-motion: reduce) { .live[data-live-state="live"] .live-state i { animation: none; } .live-ring i { transition: none; } }
-@media (max-width: 640px), (max-height: 520px) {   /* phones, and landscape phones: the desktop counter grid wrapped in Safari landscape */
-  .live { margin-bottom: .6rem; padding: .45rem .6rem .4rem; }
-  .live .more { display: none; }   /* header and labels drop their tails so each row stays one line */
-  .live-hd { margin-bottom: .25rem; white-space: nowrap; }
-  .live-ring { grid-template-columns: repeat(32, 1fr); margin: .15rem 0 .3rem; }
-  .live-ring i { height: 5px; }
-  .live-ring i:nth-child(n+33) { display: none; }   /* 32 cells fit a phone; the buffer stays 64 */
-  .live-kv { grid-template-columns: auto auto 1fr auto; gap: .2rem .45rem; white-space: nowrap; }
-  .live-kv span:nth-child(5), .live-kv b:nth-child(6) { display: none; }   /* top-k is desktop depth */
-  .live-kv b:nth-child(4) { text-align: right; }
-  .live-feed { display: none; }   /* the ring + counters are the phone story; the feed needs desktop height */
+/* ---- Build log (2026-09-29; replaced the Bluesky live strip): this repo's git history ----
+   Heatmap left, counts + latest commits right on desktop; heatmap + counts on phones. */
+.blog { margin: .2rem 0 1.1rem; max-width: 60rem; border: 1px solid rgba(79,210,255,.28); border-radius: 8px; background: rgba(6,12,20,.72); padding: .6rem .8rem .65rem; font-family: var(--f-mono); font-weight: 700; font-size: .75rem; letter-spacing: .06em; color: #9fc2e0; }
+.blog-hd { display: flex; justify-content: space-between; gap: .8rem; align-items: baseline; text-transform: uppercase; letter-spacing: .14em; color: #4fd2ff; margin-bottom: .55rem; }
+.blog-state { display: inline-flex; align-items: center; gap: .4rem; color: #3fc978; white-space: nowrap; }
+.blog-state i { width: 7px; height: 7px; border-radius: 50%; background: #3fc978; box-shadow: 0 0 8px #3fc978; }
+.blog-body { display: grid; grid-template-columns: auto 1fr; gap: .4rem 1.4rem; align-items: start; }
+.blog-grid { display: grid; grid-template-rows: repeat(7, 11px); grid-auto-columns: 11px; grid-auto-flow: column; gap: 3px; }
+.blog-grid i { border-radius: 2px; background: rgba(79,210,255,.09); opacity: 0; transform: scale(.4); transition: opacity .25s ease, transform .3s var(--ease-out, ease); transition-delay: calc(var(--w) * 26ms + 120ms); }
+.blog-grid i[data-l="x"] { visibility: hidden; }
+.blog-grid i[data-l="1"] { background: rgba(79,210,255,.35); }
+.blog-grid i[data-l="2"] { background: rgba(79,210,255,.62); }
+.blog-grid i[data-l="3"] { background: #4fd2ff; box-shadow: 0 0 5px rgba(79,210,255,.7); }
+.blog-grid i[data-l="4"] { background: #eaf4ff; box-shadow: 0 0 8px #9fd8ff; }
+.stop.in .blog-grid i { opacity: 1; transform: none; }
+.blog-kv { display: grid; grid-template-columns: repeat(4, auto 1fr); gap: .25rem .6rem; align-items: baseline; text-transform: uppercase; }
+.blog-kv b { color: #eaf4ff; font-variant-numeric: tabular-nums; text-transform: none; letter-spacing: .04em; white-space: nowrap; }
+.blog-feed { margin-top: .45rem; padding-top: .4rem; border-top: 1px solid rgba(159,216,255,.12); line-height: 1.65; color: #9fc2e0; font-weight: 400; letter-spacing: .02em; white-space: nowrap; min-width: 0; }
+.blog-feed div { overflow: hidden; text-overflow: ellipsis; }
+.blog-feed .h { color: #4fd2ff; }
+.blog-side { min-width: 0; }
+@media (max-width: 1100px) { .blog-kv { grid-template-columns: repeat(2, auto 1fr); } }
+@media (prefers-reduced-motion: reduce) { .blog-grid i { opacity: 1; transform: none; transition: none; } }
+@media (max-width: 640px), (max-height: 520px) {   /* phones and landscape phones: heatmap + counts, no feed */
+  .blog { margin-bottom: .5rem; padding: .4rem .6rem .4rem; }
+  .blog .more { display: none; }
+  .blog-hd { margin-bottom: .3rem; white-space: nowrap; }
+  .blog-body { grid-template-columns: 1fr; gap: .3rem; }
+  .blog-grid { grid-template-rows: repeat(7, 3px); grid-auto-columns: 1fr; gap: 2px; }
+  .blog-kv { grid-template-columns: repeat(2, auto 1fr); gap: .15rem .45rem; }
+  .blog-kv > :nth-child(n+5) { display: none; }   /* commits + days shipped: one row, so the repo cards still clear the chevrons */
+  .blog-feed { display: none; }
 }
 
 /* 03 Timeline — rows on a rail that grows top to bottom; dots light with their row */
@@ -641,6 +649,52 @@ html, body {
 .tl-line { display: block; font-size: .82rem; color: #9fc2e0; line-height: 1.45; }
 .stop-timeline .pill { margin-top: 1.2rem; align-self: flex-start; }
 @media (min-width: 720px) { .tl-row { grid-template-columns: 6rem 1fr; } }
+/* Lab card (2026-09-29): the site's easing as live code, right of the Timeline rows.
+   Desktop only — at phone sizes the rows already fill the screen. */
+.lab { display: none; }
+@media (min-width: 1100px) and (min-height: 600px) {
+  .stop-timeline .timeline { max-width: min(56rem, calc(88vw - min(28rem, 33vw) - 4rem)); }
+  .lab { display: block; position: absolute; right: 6vw; top: 50%; width: min(28rem, 33vw); transform: translateY(-46%);
+    border: 1px solid rgba(79,210,255,.28); border-radius: 10px; background: rgba(6,12,20,.78); padding: .8rem .9rem .85rem;
+    font-family: var(--f-mono); font-weight: 700; font-size: .75rem; letter-spacing: .06em; color: #9fc2e0;
+    opacity: 0; transition: opacity .5s ease .25s, transform .55s var(--ease-out, cubic-bezier(.22,1,.36,1)) .25s; }
+  .stop.in .lab { opacity: 1; transform: translateY(-50%); }
+  .lab-hd { display: flex; justify-content: space-between; align-items: center; gap: .6rem; text-transform: uppercase; letter-spacing: .14em; color: #4fd2ff; margin-bottom: .7rem; }
+  .lab-tabs { display: inline-flex; border: 1px solid rgba(79,210,255,.3); border-radius: 999px; overflow: hidden; }
+  .lab button { font: inherit; letter-spacing: .1em; text-transform: uppercase; color: #9fc2e0; background: none; border: 0; cursor: pointer; }
+  .lab-tabs button { padding: .3rem .7rem; }
+  .lab-tabs button[aria-selected="true"] { background: rgba(79,210,255,.18); color: #eaf4ff; }
+  .lab-view { display: none; }
+  .lab[data-view="play"] .lab-play, .lab[data-view="code"] .lab-code { display: block; }
+  .lab-plot { position: relative; height: clamp(170px, 27vh, 240px); margin: .2rem 1.2rem 0; }
+  .lab-plot canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .lab-h { position: absolute; left: -9px; top: -9px; width: 18px; height: 18px; padding: 0; border-radius: 50% !important; background: #06101c !important; border: 2px solid #eaf4ff !important; box-shadow: 0 0 10px rgba(79,210,255,.8); cursor: grab !important; touch-action: none; }
+  .lab-h:active { cursor: grabbing !important; }
+  .lab-h:focus-visible { outline: 2px solid #4fd2ff; outline-offset: 3px; }
+  .lab-track { position: relative; height: 12px; margin: .9rem 1.2rem .7rem; border-radius: 999px; background: rgba(79,210,255,.1); }
+  .lab-track i { position: absolute; left: 0; top: 0; width: 12px; height: 12px; border-radius: 50%; background: #eaf4ff; box-shadow: 0 0 10px #4fd2ff; }
+  .lab-presets { display: flex; flex-wrap: wrap; gap: .4rem; justify-content: center; }
+  .lab-presets button { padding: .35rem .7rem; border: 1px solid rgba(79,210,255,.28) !important; border-radius: 999px; }
+  .lab-presets button[aria-pressed="true"] { border-color: #4fd2ff !important; color: #eaf4ff; background: rgba(79,210,255,.14); }
+  .lab-code { margin: 0; min-height: calc(clamp(170px, 27vh, 240px) + 4.8rem); overflow: hidden; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-weight: 400; font-size: .75rem; line-height: 1.38; letter-spacing: 0; color: #cfe8ff; white-space: pre; tab-size: 2; }
+  .lab-call { display: block; margin-top: .75rem; padding-top: .6rem; border-top: 1px solid rgba(159,216,255,.14); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-weight: 400; font-size: .78rem; letter-spacing: 0; color: #eaf4ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+@media (min-width: 1100px) and (min-height: 600px) and (prefers-reduced-motion: reduce) { .lab { transition: none; } }
+
+/* Desktop (2026-09-29): the two hero screens that floated beside the rows are gone,
+   so the Timeline owns the frame — larger rows, a wider column. */
+@media (min-width: 900px) and (min-height: 560px) {
+  .timeline { max-width: 56rem; }
+  .tl-row { grid-template-columns: 7.5rem 1fr; padding: .85rem 0; }
+  .tl-dot { top: 1.3rem; }
+  .tl-when { font-size: .8rem; padding-top: .2rem; }
+  .tl-what { font-size: 1.25rem; }
+  .tl-line { font-size: 1.02rem; }
+}
+@media (min-width: 900px) and (min-height: 560px) and (max-height: 820px) {   /* 1366×768: the Download CV pill sat 32 px off the bottom edge */
+  .tl-row { padding: .55rem 0; }
+  .tl-dot { top: 1rem; }
+}
 @media (prefers-reduced-motion: reduce) { .timeline::before, .tl-row, .tl-dot, .hi .greeting, .hi .line, .about .about-title, .about .para { transition: none; } }
 
 /* 04 How I Build — method as Intro; proof counts up (JS); repo cards lift on hover */
@@ -675,7 +729,7 @@ html, body {
      and the longest project stop by 6 px. */
   .stop-timeline, .stop-project { padding-top: 15vh; padding-bottom: 10vh; }
   .stop-build { padding-top: 9vh; padding-bottom: 6.5vh; }
-  .stop-build .live { margin-bottom: .5rem; }
+  .stop-build .blog { margin-bottom: .5rem; }
   .stop-build .method .line { font-size: 1.15rem; margin-bottom: .35em; }
   .stop-build .proof { margin: .7rem 0; }
   .stop-build .proof-item .num { font-size: 2.2rem; }
@@ -754,11 +808,30 @@ html, body {
   .stop-project { justify-content: safe center; }
   .stop-project[data-side="left"]  .project { margin-left: auto; margin-right: 0; }   /* image panel sits left → text right */
   .stop-project[data-side="right"] .project { margin-right: auto; margin-left: 0; }
+  /* One column width for every project stop (2026-09-29): the width used to follow the
+     content, so SHADIEZ's SmartCut "also" row stretched its column to the 34rem cap and,
+     text being right-aligned against a left panel, the words slid onto the screenshot
+     (6 px clear at 1280×800, where every other stop kept ≥ 59 px). */
+  .stop-project .project { width: min(29rem, 100%); }
 }
 
 /* 10 Contact — the door hands over a card. `.open` is set by main.js once the
    door tween passes 0.75; the rows then rise with a 60ms stagger. */
 .stop-contact { justify-content: safe center; align-items: center; text-align: center; }
+/* Finale lead-in (2026-09-29): types in one character at a time on arrival, while the
+   door parts; the card follows at ¾ open. A caret blinks at the end of the line. */
+.finale { margin-bottom: 1.6rem; }
+.finale-lead { margin: 0 0 .35rem; font-family: var(--f-display); font-weight: 800; font-stretch: 78%; font-size: clamp(2rem, 5.6vw, 3.6rem); line-height: 1; letter-spacing: -0.02em; color: #eaf4ff; }
+.finale-line { margin: 0; font-family: var(--f-display); font-weight: 500; font-stretch: 90%; font-size: clamp(1.1rem, 2.2vw, 1.5rem); line-height: 1.3; color: #bfe3ff; }
+.finale [aria-hidden] > span { opacity: 0; transition: opacity .06s linear; }
+.stop-contact.in .finale [aria-hidden] > span { opacity: 1; transition-delay: calc(var(--c) * 22ms + 200ms); }
+.finale-line::after { content: ""; display: inline-block; width: .55em; height: 1.05em; margin-left: .12em; vertical-align: -.15em; background: #4fd2ff; opacity: 0; }
+.stop-contact.in .finale-line::after { animation: finale-caret 1s steps(1) 1.6s infinite; }
+@keyframes finale-caret { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .finale [aria-hidden] > span, .stop-contact.in .finale [aria-hidden] > span { opacity: 1; transition: none; }
+  .stop-contact.in .finale-line::after { animation: none; }
+}
 .card {
   width: 100%; max-width: 30rem; border: 1px solid rgba(79,210,255,.28); border-radius: 10px;
   background: rgba(6,20,28,.55); color: #eaf4ff; overflow: hidden;
@@ -820,7 +893,7 @@ html, body {
 /* details (2026-09-17): role under the name, phone · LinkedIn · GitHub as compact links */
 #bar .bar-id { display: flex; flex-direction: column; gap: .05rem; margin-right: auto; min-width: 0; }
 #bar .bar-id .bar-name { margin-right: 0; line-height: 1.1; }
-#bar .bar-role { font-size: .62rem; letter-spacing: .14em; color: #4fd2ff; line-height: 1.2; white-space: nowrap; }
+#bar .bar-role { font-size: .75rem; letter-spacing: .08em; color: #4fd2ff; line-height: 1.2; white-space: nowrap; }
 #bar .bar-details { display: inline-flex; align-items: center; gap: .1rem; }
 #bar .bar-details a { display: inline-flex; align-items: center; color: #cfe8ff; text-decoration: none; padding: .5rem .45rem; border-radius: 999px; white-space: nowrap; }
 #bar .bar-details a:hover { color: #eaf4ff; background: rgba(159,216,255,.08); }
