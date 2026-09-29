@@ -1,6 +1,7 @@
-// noscript.js — the no-JavaScript skim path's Work list, generated from profile.js in
-// flight order (2026-09-29). The hand-copied list drifted: it still showed Focus and
-// none of the four new project stops. vite.config.js swaps it in at the marker.
+// noscript.js — the no-JavaScript skim path's Work list (from profile.js in flight order,
+// 2026-09-29) and its Timeline rows (2026-09-30). The hand copies drifted: the list still
+// showed Focus and none of the four new project stops, and the Timeline kept a stale
+// counter. vite.config.js swaps them in at the markers.
 import { readFileSync } from 'node:fs';
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -32,12 +33,18 @@ export function alsoLine(profile) {
   return `Also: ${names(profile.work.shipped)} and the labs: ${names(profile.work.labs)}.`;
 }
 
+// One <li> per profile.timeline row, counter row included.
+export function timelineList(profile) {
+  return profile.timeline.rows.map((r) => `          <li>${esc(r.when)} — ${esc(r.what)}: ${esc(r.line)}</li>`).join('\n');
+}
+
 export function noscriptPlugin(root, profile) {
   return {
     name: 'noscript-work',
     transformIndexHtml(html) {
       const list = workList(profile, flightOrder(readFileSync(`${root}/src/main.js`, 'utf8')));
-      return html.replace(/ *<!-- noscript:work[^>]*-->/, list).replace(/<!-- noscript:also[^>]*-->/, alsoLine(profile));
+      return html.replace(/ *<!-- noscript:work[^>]*-->/, list).replace(/<!-- noscript:also[^>]*-->/, alsoLine(profile))
+        .replace(/ *<!-- noscript:timeline[^>]*-->/, timelineList(profile));
     },
   };
 }

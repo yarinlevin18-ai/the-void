@@ -1,6 +1,6 @@
 // owner.js — the owner's mark on everything the build ships (2026-09-29, Yarin: "make sure
 // that everything is watermarked to my name"). profile.js is the only source. The page
-// already names him in its head, the contact card and the print CV; this plugin covers the
+// already carries the name in its head, the contact card and the print CV; this plugin covers the
 // files a visitor can open on their own:
 //   - a /*! banner */ on every JS and CSS file (minifiers keep /*! comments; this runs after them)
 //   - an HTML comment at the top of index.html, and the copyright line of the no-JS path

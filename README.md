@@ -1,8 +1,8 @@
 # The Void
 
 Yarin Levin's portfolio: a 3D flight through a living data network. Each stop
-tells part of the story: who he is, how he builds, seven projects, and how to
-reach him. Built by directing Claude Code end to end.
+tells part of the story: the person, the way of building, seven projects, and
+how to get in touch. Built by directing Claude Code end to end.
 
 **Live:** https://yarinlevin.com (until the domain goes live:
 https://the-void-khaki-pi.vercel.app)

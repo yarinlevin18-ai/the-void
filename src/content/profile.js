@@ -13,7 +13,7 @@ export const PROFILE = {
     line: 'AI-native developer. Student position, part-time — available now.',
     short:
       'AI-native developer: I write the spec, direct Claude Code through the ' +
-      'build, and ship it myself. Since April 2026: 17 products built, 7 live, ' +
+      'build, and ship it myself. Since April 2026: 21 products built, 7 live, ' +
       'one paid client site — client e-commerce, a Hebrew-RTL study platform with ' +
       'real auth and a Chrome-extension scraper, an LLM gateway, this 3D portfolio. ' +
       'Before code: four years of IDF command and a year of public speaking across ' +
@@ -36,6 +36,12 @@ export const PROFILE = {
       'I study Politics & Government and Entrepreneurship at Ben-Gurion ' +
       'University and I’m looking for a part-time student position building ' +
       'with AI, where the bar is high and the feedback is honest.',
+    // Search results and share cards: index.html's description, og:, twitter: and JSON-LD
+    // copies are held to this line by tests/noscript.test.js. ≤ 160 characters, the
+    // title already says "AI-native developer", and it names the tour's stops in order.
+    meta:
+      'I direct Claude Code end-to-end and ship: an LLM gateway, a macOS AI assistant, ' +
+      'AI-agent guardrails, client sites. Available now for a part-time student role.',
   },
 
   status: {
@@ -85,7 +91,7 @@ export const PROFILE = {
       { when: 'Jun 2026', what: 'AeroCy', line: 'The company’s live bilingual site, shipped in days.' },
       { when: 'Jul 2026', what: 'TEEPO', line: 'Hebrew-RTL study platform, live with real auth.' },
       { when: 'Aug 2026', what: 'LLM Gateway', line: 'Model routing, a spend cap and agent policies.' },
-      { when: 'Now', what: '17 built, 7 live', line: 'Every build goes through Claude Code end-to-end; the next one is already underway.' },
+      { when: 'Now', what: '21 built, 7 live', line: 'Every build goes through Claude Code end-to-end; the next one is already underway.' },
     ],
   },
 
@@ -97,9 +103,12 @@ export const PROFILE = {
       'Each project leaves behind a lab: the easing curves, transitions and patterns get extracted so the next build starts further ahead.',
     ],
   },
-  // Confirmed by Yarin 2026-09-14. Only true numbers ship.
+  // Only true numbers ship. Yarin's 2026-09-14 count (17 / 7) was exactly this rule:
+  // built = every project in work.featured + work.shipped, plus this site; live = the ones
+  // with a public link, plus this site (Sabai runs but stays unlinked, so it doesn't count).
+  // Recounted 2026-09-30 after the four new project stops; tests/profile.test.js recounts.
   proof: [
-    { n: 17, label: 'products built since April 2026' },
+    { n: 21, label: 'products built since April 2026' },
     { n: 7, label: 'live on the web today' },
     { n: 1, label: 'paid client site in production' },
   ],

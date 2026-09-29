@@ -252,11 +252,15 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   `window.history.replaceState`, an unrecognised one is left alone. There are
   no in-page anchors inside `#stops` any more (the Contact card has no "Back
   to the start"). With scripting off, a `<noscript><style>` in `<head>` hides the fixed
-  3D chrome so the skim path at the end of `<body>` is readable. Its Work list is
-  generated from `profile.js` in flight order at build time (`scripts/noscript.js`,
-  a Vite `transformIndexHtml` plugin filling `<!-- noscript:work -->`) — the hand
-  copy had drifted; `tests/noscript.test.js` also holds the JSON-LD and noscript
-  contact details to `profile.links`.
+  3D chrome so the skim path at the end of `<body>` is readable. Its Work list and
+  its Timeline rows are generated from `profile.js` at build time
+  (`scripts/noscript.js`, a Vite `transformIndexHtml` plugin filling
+  `<!-- noscript:work -->` in flight order and `<!-- noscript:timeline -->`) — the
+  hand copies had drifted, the Timeline's with a stale counter; `tests/noscript.test.js`
+  also holds the JSON-LD and noscript contact details to `profile.links`, and the
+  head's four description copies (`description`, `og:`, `twitter:`, JSON-LD) to
+  `profile.bio.meta` (≤ 160 characters; since 2026-09-30 it names the tour's stops —
+  it used to lead with TEEPO and the client sites).
 - **Fixed bar:** `src/bar.js` — name + role (`profile.title`), availability
   dot, Work, About, details (phone `tel:`, LinkedIn, GitHub with inline SVG
   icons — from `profile.links`), Copy email.
@@ -432,7 +436,13 @@ hard-refresh if a change doesn't show.
 2. ~~Confirm the three proof numbers~~ confirmed 2026-09-14 with the wording
    rework (spec `docs/superpowers/specs/2026-09-14-wording-rework-design.md`):
    the term is "AI-native developer" everywhere, every claim is checkable, and
-   `tests/profile.test.js` blocks the retired phrases.
+   `tests/profile.test.js` blocks the retired phrases. **Recounted 2026-09-30:
+   21 built, 7 live** (was 17 / 7). Yarin's 09-14 numbers were exactly this rule:
+   built = every project in `work.featured` + `work.shipped`, plus this site; live =
+   the ones with a public link, plus this site (all seven answered 200 on 09-30;
+   Sabai runs but stays unlinked, so it doesn't count). The four stops added 09-29
+   made it 21. `tests/profile.test.js` recounts the proof counters, `bio.short` and
+   the Timeline row, so adding a project fails the build until the copy follows.
 3. ~~X handle~~ dropped 2026-09-22 — no X link anywhere; `tests/profile.test.js` keeps `links.x` out.
 4. ~~SmartCut redeploy~~ decided 2026-09-22: **GitHub only, permanently**.
    `url: '', offline: true` in `profile.js` is the final shape (the SHADIEZ

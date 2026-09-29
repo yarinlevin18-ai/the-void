@@ -152,3 +152,15 @@ test('retired claims do not appear in the profile or index.html', () => {
     assert.ok(!html.includes(phrase), `index.html contains "${phrase}"`);
   }
 });
+
+// The counters went stale once (17 / 7 stayed up after four project stops were added on
+// 2026-09-29). Recount them the way Yarin's 2026-09-14 numbers were counted: every project
+// the site lists, plus this site; live = the ones it links, plus this site.
+test('the proof counters count what the site lists', () => {
+  const all = [...PROFILE.work.featured, ...PROFILE.work.shipped];
+  const built = all.length + 1, live = all.filter((x) => x.url).length + 1;
+  assert.equal(PROFILE.proof[0].n, built, 'products built');
+  assert.equal(PROFILE.proof[1].n, live, 'live on the web');
+  assert.ok(PROFILE.bio.short.includes(`${built} products built, ${live} live`), 'bio.short');
+  assert.ok(PROFILE.timeline.rows.some((r) => r.what === `${built} built, ${live} live`), 'the Timeline row');
+});
