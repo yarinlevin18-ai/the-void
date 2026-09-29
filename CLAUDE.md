@@ -304,6 +304,9 @@ export tuned `BEATS` and paste into `DEFAULT_BEATS`.
 ### Perf tiers (all in `main.js`, top)
 - `IS_TOUCH` — DPR cap 1.25, nebula res 0.33 / fewer steps, halved star/node/link
   density, no water sim / bokeh, no CSS blur tweens.
+- Compact screens (`isCompact()`: portrait or < 520 px tall) get 2-px stand-in
+  panel textures — no panel image fetch, draw or upload, since those screens only
+  show the DOM figures; crossing the compact line on resize rebuilds them.
 - `LOW_END` (touch + ≤4GB or ≤480px) — also skips the whole CSS3D layer.
 - **Adaptive governor** (touch only, one-way): fps EMA < 45 → tier 1 (smaller
   raymarch) → tier 2 (DPR 1, nebula every 3rd frame, bloom at 1/3 res).

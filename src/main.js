@@ -1214,7 +1214,14 @@ function drawImageCover(ctx, img, x, y, w, h) {
   else { sw = img.width; sh = sw / br; sx = 0; sy = (img.height - sh) / 2; }
   ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
 }
+// Compact screens (phones, portrait windows) never show the WebGL panels — the stops
+// carry DOM figures there — so their textures are 2-px stand-ins: no image fetch, no
+// 1024-px draw, no upload (2026-09-29; Lighthouse mobile counted ~1 MB of panel images
+// and a row of 50-85 ms draw tasks). A resize across the compact line rebuilds them.
+const panelStandIn = () => { const cv = document.createElement('canvas'); cv.width = cv.height = 2; return cv; };
+let _panelsCompact = isCompact();
 function drawPanelCanvas(b) {
+  if (isCompact() && !editMode) return panelStandIn();
   // Panels are pure artifacts: the screenshot IS the card, full-bleed, no text —
   // the kinetic caption owns every word and the pill button owns the CTA.
   // At 70 world-units these quads fill half the screen; 512 upscaled read soft
@@ -1261,6 +1268,7 @@ function drawAnimCanvas(b, cv, sec) {
   ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(79,210,255,.5)'; ctx.strokeRect(2, 2, cv.width - 4, cv.height - 4);
 }
 function makeAnimCanvas(b) {
+  if (isCompact() && !editMode) return panelStandIn();   // phones animate the DOM figure instead
   const W = 1024, H = Math.round(W * (b.panel.size[1] / b.panel.size[0]));
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   drawAnimCanvas(b, cv, PREFERS_REDUCED ? 11 : 0);   // reduced motion: one still frame, the answer on screen
@@ -2339,6 +2347,7 @@ function applyResize(full) {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   if ((isPortrait() && !editMode) !== _derivedPortrait) rebuildDerived();   // rotate → swap desktop/portrait poses
+  if (isCompact() !== _panelsCompact) { _panelsCompact = isCompact(); if (panelsBuilt) rebuildPanels(); }   // crossed the compact line: real textures or stand-ins
   if (full) {
     // pixel ratio BEFORE setSize — the ratio only reaches the drawing buffer on
     // the next setSize, and the composer keeps its own copy that must match
