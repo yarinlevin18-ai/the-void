@@ -10,7 +10,9 @@ const eyebrow = (t) => `<div class="eyebrow">${esc(t)}</div>`;
 // Portrait screens show a stop's imagery as a DOM <img> in flow above the text
 // (2026-09-17): the WebGL panels render soft through the touch tier's 1.25× DPR
 // cap and, with Safari's URL bar shortening the viewport, landed on the words.
-// CSS hides these figures on landscape screens, where the WebGL panels take over.
+// CSS hides these figures on wide screens, where the WebGL panels take over. The
+// words after a figure sit in one .stop-txt block (2026-09-30), so a landscape
+// phone can put the figure beside them instead of above.
 const figure = (src, alt, cls) => src ? `<figure class="stop-img ${cls}"><img src="${escAttr(src)}" alt="${escAttr(alt)}" loading="lazy" decoding="async"></figure>` : '';
 
 // One sentence per line (2026-09-29): a short statement wraps at its sentence
@@ -26,10 +28,12 @@ export function renderHi(p) {
   const lines = p.hi.lines.map((l, i) => `<p class="line" style="--i:${i + 1}">${sentences(l)}</p>`).join('');
   return `<article class="hi" data-side="left">
     ${figure(p.hi.portrait, p.hi.portraitAlt || p.name || 'Portrait', 'portrait')}
+    <div class="stop-txt">
     ${eyebrow('Hello')}
     <h2 class="greeting" style="--i:0">${esc(p.hi.greeting)}</h2>
     <div class="status">${segments(p.hi.status)}</div>
     ${lines}
+    </div>
   </article>`;
 }
 
@@ -39,9 +43,11 @@ export function renderAbout(p) {
   const photos = (p.about.photos || []).map((x, i) => figure(x.src, x.caption, i === 0 ? 'lead' : 'small')).join('');
   return `<article class="about" data-side="right">
     ${photos ? `<div class="stop-imgs">${photos}</div>` : ''}
+    <div class="stop-txt">
     ${eyebrow(p.about.eyebrow)}
     <h2 class="about-title" style="--i:0">${esc(p.about.title)}</h2>
     ${paras}
+    </div>
   </article>`;
 }
 
@@ -154,6 +160,7 @@ export function renderProject(x, side, also = null) {
     </div>` : '';
   return `<article class="project${xItems?.length ? ' has-xl' : ''}" data-side="${escAttr(side)}">
     ${x.anim ? `<figure class="stop-img shot anim"><canvas data-anim="${escAttr(x.anim)}" role="img" aria-label="${escAttr(x.animAlt || `${x.name} — animated demo`)}"></canvas></figure>` : figure(x.img, `${x.name} — screenshot`, x.phone ? 'shot phone' : 'shot')}
+    <div class="stop-txt">
     ${eyebrow(`${x.kind} · ${x.tag}`)}
     <h2 class="title">${esc(x.name)}</h2>
     <p class="outcome">${esc(x.outcome)}</p>
@@ -163,6 +170,7 @@ export function renderProject(x, side, also = null) {
     </dl>${xl('xl-flow')}
     <div class="stack">${segments(x.stack)}</div>
     <div class="links">${live}${repo}${privateRepo}</div>${alsoRow}
+    </div>
   </article>${xl(`xl-strip${xItems?.length > 4 ? ' many' : ''}`)}`;
 }
 

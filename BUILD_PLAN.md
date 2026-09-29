@@ -304,6 +304,23 @@ Wrap-up review (same day, two independent reviewers + a 13-stop sweep):
 - [ ] Yarin: gate the Sabai app (the public repo's history still has its URL).
 - [ ] Yarin: buy yarinlevin.com before sharing the link — share previews point there.
 
+## Phase N — Wrap-up follow-through ✅ (2026-09-30)
+Yarin: "go for 3-5" (copy check, repo tidy, small and sideways phones).
+- [x] Counters recounted by the rule Yarin's 09-14 numbers followed (every listed project
+      plus this site; live = linked, plus this site): 21 built, 7 live. All seven live
+      links answer; a test recounts them in the proof row, the bio and the Timeline.
+- [x] The search / share description names the tour (`profile.bio.meta`, four copies held
+      to it); the no-JS Timeline is generated from `profile.js`.
+- [x] Repo root: 16 demo pages and 2 font specimens → `sketches/`; the two `.code-workspace`
+      files untracked and gitignored. The June slash commands in `.claude/commands/` are
+      stale (sandbox-protected, left for Yarin to archive).
+- [x] Phones: a portrait frame that clears the bar, small-phone and iPhone SE tiers, and a
+      landscape layout (figure beside the words, one-row bar, ▲▼ bottom-right). Every stop
+      fits every swept size; short laptops (1366 × 657) fixed too.
+- [x] iOS double-tap on ▼ no longer zooms the page; the contact card no longer clips its
+      © row on short screens.
+- [ ] Safari landscape + iPhone SE simulator check (needs Yarin's OK in the panel).
+
 ## Open work (2026-09-12) — in priority order
 1. ~~Camera authoring for stops 2–11~~ ✅ 2026-09-12 — desktop shots baked
    into `DEFAULT_BEATS`; phones get a derived portrait pose per project stop

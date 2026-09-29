@@ -1,7 +1,7 @@
 # CLAUDE.md — context for "The Void" portfolio
 
 Read this first. It captures the locked decisions and where everything lives so
-you can pick up the build with full context. Last synced to code: **v22 — wrap-up review + owner's mark, 2026-09-29**.
+you can pick up the build with full context. Last synced to code: **v22 — wrap-up review + owner's mark (2026-09-29); every phone size, landscape included, and the recounted counters (2026-09-30)**.
 
 ## What this is
 A 3D, scroll-driven portfolio for **Yarin Levin — AI-native developer**. The
@@ -83,9 +83,8 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   `style.css` shows under `@media (orientation: portrait)` **or `(max-height:
   520px)`** — landscape phones count too (2026-09-21, `isCompact()` in
   `main.js`: the panels projected onto the words at 874×402 and the hero
-  screens sat on the Timeline rows; landscape gets the same figures, smaller;
-  the bar drops the availability text + link labels and the live strip uses
-  its phone layout there too — Safari's landscape safe areas leave ~750 px).
+  screens sat on the Timeline rows). Since 2026-09-30 landscape phones have their
+  own layout — the figure beside the words, not above them (see **Phone sizes**).
   The WebGL
   version rendered soft through the touch tier's 1.25× DPR cap and, with
   Safari's URL bar shortening the viewport, landed on the words. Verified in
@@ -101,7 +100,7 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
 - **Inputs:** wheel · ↑/↓/Space · touch swipe (one section per swipe). Everything
   funnels through `goTo(i)` with a 300ms cooldown. No free-roam, no hotkeys
   legend. Visitor chrome (2026-09-17, reviewer feedback): the fixed bar, two
-  chevrons bottom-centre (`#hud-up/#hud-down` → `goTo(index ∓ 1)`, the down
+  chevrons bottom-centre (bottom-right and stacked on a landscape phone) (`#hud-up/#hud-down` → `goTo(index ∓ 1)`, the down
   one pulses once on the Opening) and a 2px progress hairline along the
   bottom edge (`#hud-rail`, `scaleX(index/last)`). The stop name + count
   survive only in an `sr-only` `aria-live` region — no visible page counter.
@@ -134,9 +133,8 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   and the three list stops show a 52 % screenshot (42 % under 690 px tall). The under-690
   portrait tier also shrinks the Hi portrait, How I Build's method lines and drops the build
   log's commit counts; How I Build's top padding is `max(12.5vh, 6.1rem)` because the bar is a
-  fixed ~93 px. Measured 2026-09-29: all 13 stops fit 402 × 711 and 390 × 664; at 375 × 629
-  four project stops still tuck 6-14 px under the bar, and the iPhone SE (375 × 553) overflows
-  on five (production overflowed at every one of these sizes). The
+  fixed 94 px. Since 2026-09-30 every stop fits every phone size, the iPhone SE and landscape
+  included (see **Phone sizes**). The
   same audit fixed the gateway copy: Hono not Fastify, and "every agent I run goes
   through it" is a retired phrase (some apps only report usage; local calls skip it).
   Stack lines use `segments()`: an item never breaks inside, a line never starts with ·.
@@ -334,18 +332,47 @@ folds a second featured project in as a compact row under the links.
 | `scripts/buildlog.js` | ~55 | Build-time git-history summary for the How I Build strip, node-tested; snapshot in `src/content/buildlog.json`. Dates are UTC (`TZ=UTC`, `format-local`), like `today`; the heatmap shows the last 26 weeks, the counts stay all-time |
 | `scripts/owner.js` / `scripts/stamp.js` | ~60 / ~170 | The owner's mark: bundle banners, humans.txt, the no-JS notice / XMP + EXIF in every image (see Owner's mark) |
 | `src/panels.js` | 96 | DOM stop layer: builds/shows/hides stops (inert + aria-hidden), count-up, print/copy |
-| `src/render.js` | ~190 | Pure HTML renderers (hi, about, timeline + lab card, build + build log, project + abilities / potential list, contact + finale) incl. the portrait-only `stop-img` figures, node-tested |
+| `src/render.js` | ~210 | Pure HTML renderers (hi, about, timeline + lab card, build + build log, project + abilities / potential list, contact + finale) incl. the portrait-only `stop-img` figures, node-tested |
 | `src/bar.js` | 53 | Fixed top bar: name + role, availability, Work, About, phone / LinkedIn / GitHub, Copy email |
 | `src/hash.js` | 28 | Deep-link resolver: fragment/anchor → stop index, prototype-free, node-tested |
 | `src/printcv.js` | 54 | Print-only CV (moved out of the old dossier.js) |
 | `src/content/profile.js` | 269 | **Single source of truth** for bio, CV, intro/method/proof, 10 featured (7 flight stops + AeroCy/SmartCut rows + TEEPO for How I Build) + shipped/labs projects, links, status |
-| `src/style.css` | ~770 | All styling incl. @media phone layout + print CV |
+| `src/style.css` | ~1,200 | All styling incl. the phone tiers (portrait, small, SE, landscape — last in the file) + print CV |
 | `index.html` | ~410 | Shell, loader, editor panels, JSON-LD, noscript skim path |
 | `public/previews/*.webp` | | teepo · aerocy · shadiez · smartcut · llm-gateway · sabai · agent-control · thesis · gate-opener · kiaras-club (1400–2400 px wide, except gate-opener: a 1000×1600 phone capture; panel canvases take a 1600 px long side on desktop, 1024 on touch). Cursor Buddy has none — `buddy.js` draws it |
 | `public/assets/me/` | | portrait 4:5 (1000×1250, centred, head to knees; 19.2×24 panel) + 2 About panels: FIDF stage 4:3 (logo + speaker, no black rig band; 18×13.5) and the Nova memorial at Re’im 3:4 (10.5×14). Re-cut 2026-09-29 from the originals in `~/.claude/uploads/…` (mild grade + unsharp, q88); the lectern shot was a crop of the stage and is gone. Panel textures keep the panel's aspect (long side 1600, 1024 on touch) — until 2026-09-29 the height was capped at 1024, so every portrait panel was a stretched square |
 
 Deps: `three` 0.169 and `vite` 8 (+ `happy-dom` for tests). No React.
 `meshline` and `three.quarks` were never imported and left on 2026-09-29.
+
+### Phone sizes (2026-09-30, Yarin: "go for" the wrap-up items)
+Every stop now fits between the bar and the chevrons at every size swept (Chrome, true
+viewports): portrait 360 × 640, 375 × 553 (iPhone SE), 375 × 629, 390 × 664, 402 × 714,
+440 × 790; landscape 640 × 360, 667 × 320 / 331, 750 × 340, 874 × 370, 932 × 400; desktop
+1024 × 700 up to 1920 × 1080, incl. 1366 × 657 and 1280 × 690. Safari (iPhone 17 Pro) checked.
+- **Portrait frame:** phone stops start at `max(12.5vh, 14px + 5.5rem)` and end at
+  `max(…vh, 4rem)`: the bar ends at 94 px, and 12.5vh (69-79 px on short phones) let a
+  full stop slide its first line under it.
+- **Small phones** (≤ 640 px tall): smaller portrait and photos, the proof counters one line
+  each, and the stack line leaves the three stops that carry a list. **iPhone SE** (≤ 600):
+  screenshots become a 13.5vh strip, the stack line and the abilities / potential list go,
+  the Timeline's CV pill joins its title row, an Also row keeps one line ("Also · AeroCy").
+  How I Build's lines and project outcomes lost the 30ch desktop measure on every phone.
+- **Landscape phones** (`(orientation: landscape) and (max-height: 520px)`, last in
+  `style.css`, guarded by `tests/css.test.js`): the figure beside the words — render.js
+  wraps each stop's words in one `.stop-txt` after the figure; `data-side` still names the
+  picture's side — the bar one row (name and role side by side), ▲▼ stacked bottom-right
+  in a 4.4rem lane, the Timeline rows in two columns with the CV pill beside the title, How
+  I Build in a method | log + proof grid over one row of repo cards, Contact's lead-in
+  beside the card. The abilities / potential list hides there, as on 1024 × 700. Under
+  720 px wide (the SE on its side) the picture column narrows, the stack line and the
+  role in the bar go. Stacked, these stops ran 150-800 px past the fold.
+- **Short laptops** (≤ 720 px tall) got smaller heatmap cells, no commit feed and a
+  tighter project frame (1366 × 657 ran 8-20 px off before, production included).
+- Two bugs on the way: two quick taps on ▼ zoomed the page in iOS Safari
+  (`touch-action: manipulation` on `html`, buttons and links; pinch-zoom still works),
+  and on a short screen the contact card (`overflow: hidden`, so a flex item may shrink)
+  clipped its © row instead of letting the stop scroll (`flex-shrink: 0`).
 
 ### Owner's mark (2026-09-29, Yarin: "make sure that everything is watermarked to my name")
 Every file the site ships names him, all from `profile.js`:
@@ -422,7 +449,7 @@ export tuned `BEATS` and paste into `DEFAULT_BEATS`.
 npm install
 npm run dev      # http://localhost:5173  (DEV_TOOLS on → E/B/T/U/A work)
 npm run build    # runs the test suite, then vite build → dist/
-npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash, save, assets, domain, lab, buddy, buildlog, owner, stamp, css (happy-dom for the DOM ones), 93 passing
+npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash, save, assets, domain, lab, buddy, buildlog, owner, stamp, css (happy-dom for the DOM ones), 98 passing
 npm run stamp    # the owner's name into any new image under public/ (the test suite fails until it's done)
 npx vite preview --host   # the production build with vercel.json's headers (CSP) — `void-preview` in .claude/launch.json
 ```
@@ -451,8 +478,9 @@ hard-refresh if a change doesn't show.
    visitor text ≥ 4.5:1 on the void), Lighthouse mobile 2026-09-12 (after
    WebP + label fix): perf 84–88 / a11y 100 / best-practices 100 / SEO 100,
    100 % legible text, 610 KiB total. Still to do on a physical phone.
-   **Landscape phones** overflow on every project stop (measured 2026-09-29 at
-   874 × 370: 160-215 px past the fold, production included) — needs its own layout.
+   ~~Landscape phones~~ got their own layout 2026-09-30 (they overflowed 150-800 px
+   on every stop); Safari landscape and the SE simulator still want a look, the
+   Chrome sweep passes (see **Phone sizes**).
 6. ~~Custom domain~~ decided 2026-09-14: **yarinlevin.com**, bought through
    Vercel (Settings → Domains; `www` redirects to the apex). Code, canonical,
    OG, JSON-LD, robots, sitemap and `links.site` already point there;
@@ -490,7 +518,17 @@ hard-refresh if a change doesn't show.
 - Verify on a phone before pushing — mobile has been the recurring regression.
   Use the iOS Simulator (Safari on iPhone 17 via the `Claude_Code_iOS_Simulator`
   tool; `xcode-select` is set) rather than Chrome's 390×844 emulation, which
-  hid both the soft-panel and the panel-on-text bugs of 2026-09-17.
+  hid both the soft-panel and the panel-on-text bugs of 2026-09-17. Safari sets
+  the stop text a little wider than Chrome (How I Build had 5 pt where Chrome
+  measured 19 px), so leave Chrome-measured fits some slack. The simulator runs
+  headless: it can't be rotated from here, and each new device (the SE was added
+  2026-09-30) asks Yarin for access in the simulator panel.
+- **Measure desktop sizes on `[::1]` or the LAN IP, never `localhost:5173`:** the
+  Playwright browser keeps an 80 % zoom for that origin, so a "1366×657" run there
+  lays out at 1707×821 (found 2026-09-30; earlier desktop fits measured there were
+  optimistic). Mobile-emulated contexts ignore it. `.playwright-mcp/phones.js`
+  (gitignored) is the stop-fit sweep: every stop against the bar and the chevrons
+  per viewport.
 - `sketches/` holds the June–July `demo-*.html` pages and the two font specimens
   (moved out of the repo root 2026-09-30) — scratch/reference, not part of the
   shipped site; `main.js` comments point there where a shader was ported. The seven

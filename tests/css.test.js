@@ -43,3 +43,13 @@ test('reduced motion drops entrance transforms but keeps the ones that place thi
   assert.ok(killers.length > 0, 'the reduced-motion rule that resets stop transforms is still there');
   for (const sel of killers) for (const keep of ['.lab', '.tl-dot']) assert.ok(sel.includes(':not(') && sel.includes(keep), `${sel.trim()} must spare ${keep}`);
 });
+
+// The landscape-phone tier (2026-09-30) overrides the width tiers by source order, so it must stay
+// last: a block added after it would win over it on a phone held sideways, unmeasured.
+test('the landscape-phone tier stays at the end of style.css', () => {
+  const at = css.indexOf('@media (orientation: landscape) and (max-height: 520px) {');
+  assert.ok(at > 0, 'the tier is there');
+  const after = [...css.slice(at).matchAll(/@media[^{]+\{/g)].map((m) => m[0].replace(/\s+/g, ' ').trim());
+  assert.deepEqual(after, ['@media (orientation: landscape) and (max-height: 520px) {', '@media (orientation: landscape) and (max-height: 520px) and (max-width: 719px) {']);
+  assert.ok(/#hud \.hud-arrows \{[^}]*flex-direction: column/.test(css.slice(at)), 'the chevrons stand in their own lane on the right');
+});

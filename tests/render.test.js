@@ -43,6 +43,25 @@ test('hi and project carry their imagery as a portrait-only figure with alt text
   assert.ok(renderProject({ ...teepo, phone: true }, 'left').includes(`class="stop-img shot phone"`), 'a phone capture gets the shorter phone figure');
 });
 
+// Landscape phones (2026-09-30) put the picture beside the words: the article's children are
+// the figure(s) and one .stop-txt block holding every word, in that order.
+test('hi, about and project keep their words in one .stop-txt block after the picture', () => {
+  const teepo = PROFILE.work.featured.find((p) => p.id === 'teepo');
+  const also = PROFILE.work.featured.find((p) => p.id === 'smartcut');
+  for (const [name, h, first, last] of [
+    ['hi', renderHi(PROFILE), 'class="eyebrow"', 'class="line"'],
+    ['about', renderAbout(PROFILE), 'class="eyebrow"', 'class="para"'],
+    ['project', renderProject(teepo, 'left', also), 'class="eyebrow"', 'class="also"'],
+  ]) {
+    const art = h.slice(0, h.indexOf('</article>'));
+    const txt = art.indexOf('<div class="stop-txt">');
+    assert.equal(art.split('class="stop-txt"').length, 2, `${name}: one .stop-txt`);
+    assert.ok(txt > art.indexOf('class="stop-img'), `${name}: the picture comes first`);
+    assert.ok(art.indexOf(first) > txt && art.lastIndexOf(last) > txt, `${name}: every word sits inside it`);
+    assert.ok(/<\/div>\s*$/.test(art), `${name}: .stop-txt closes last`);
+  }
+});
+
 test('timeline renders one row per entry, a dot each, and the print pill', () => {
   const h = renderTimeline(PROFILE);
   assert.equal((h.match(/class="tl-row"/g) || []).length, PROFILE.timeline.rows.length);
