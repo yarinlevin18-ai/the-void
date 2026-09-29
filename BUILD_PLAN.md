@@ -276,6 +276,34 @@ Third round (same day):
 - [x] Gateway copy audit: Hono not Fastify; "every agent I run goes through it" retired.
 - [ ] Landscape phones: every project stop overflows (pre-existing).
 
+Wrap-up review (same day, two independent reviewers + a 13-stop sweep):
+- [x] Owner's mark on every shipped file: page metadata + JSON-LD, contact card, print
+      CV footer, no-JS path, console; `/*!` banners on JS/CSS, `/humans.txt`,
+      `/licenses.txt` (three.js's MIT notice had been stripped); XMP + EXIF in all 15
+      images (`npm run stamp`, pixels untouched); `LICENSE`, `package.json` author.
+- [x] Headers: CSP (`default-src 'self'`) + nosniff / referrer / permissions / frame /
+      COOP; hashed build files cached a year. Verified under `vite preview` in Chrome and
+      Safari: no violations on any stop.
+- [x] No WebGL 2 → the skim path, not a loader stuck at 0 %.
+- [x] Inputs: pinch / Ctrl+wheel zooms instead of flying; the keys keep flying after a
+      mouse click (Space after ▲ used to fly backwards); tall stops read first by wheel,
+      keys and touch, and a gesture that scrolled never flies.
+- [x] Reduced motion: the lab card and its handles keep their place; no star stream,
+      twinkle, meteors, warp swell or loader zoom.
+- [x] Contact door eases shut where it opened; no wordmark dent after a touch; square
+      windows count as portrait (CSS agrees); Director undo keys are dev-only.
+- [x] Print CV: no repeated role, the date never breaks, contact details are links.
+- [x] Copy email: per-element timers, screen-reader announcement, mail client opens if
+      the copy fails. Pills that aren't links stop looking clickable; lab tabs show focus.
+- [x] Every stop has an h2; the page h1 is sr-only instead of `display: none`.
+- [x] Desktop Abilities / Potential strip animates (`--ease-out` was undefined there).
+- [x] Build log in UTC (a 00-03h Israel commit fell off the heatmap), capped at 26 weeks.
+- [x] Nebula shader skips the dead cursor-lightning term (a noise() per raymarch step).
+- [x] Unused `meshline`, `three.quarks`, the 1.8 MB loader clip and three dead selectors
+      are gone; the no-JS "Also" line is generated from `profile.js`; README rewritten.
+- [ ] Yarin: gate the Sabai app (the public repo's history still has its URL).
+- [ ] Yarin: buy yarinlevin.com before sharing the link — share previews point there.
+
 ## Open work (2026-09-12) — in priority order
 1. ~~Camera authoring for stops 2–11~~ ✅ 2026-09-12 — desktop shots baked
    into `DEFAULT_BEATS`; phones get a derived portrait pose per project stop

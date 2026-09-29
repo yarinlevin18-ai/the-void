@@ -85,17 +85,20 @@ export function renderTimeline(p) {
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const shortDate = (d) => { const [, m, day] = String(d).split('-'); return `${+day} ${MON[+m - 1] || ''}`; };
 const level = (n) => (n <= 0 ? 0 : n <= 2 ? 1 : n <= 5 ? 2 : n <= 10 ? 3 : 4);
+export const BLOG_WEEKS = 26;
 export function renderBuildLog(log) {
   if (!log || !Array.isArray(log.days) || !log.days.length) return '';
   const lead = new Date(`${log.first}T00:00:00Z`).getUTCDay();   // pad the first week so rows are weekdays
-  const cells = [...Array(lead).fill(-1), ...log.days];
-  const cols = Math.ceil(cells.length / 7);
+  const all = [...Array(lead).fill(-1), ...log.days];
+  // The last 26 weeks at most: at 11 px a week the desktop grid would otherwise keep
+  // widening into the counts beside it. The counts stay all-time.
+  const cells = all.slice(Math.max(0, Math.ceil(all.length / 7) - BLOG_WEEKS) * 7);
   const grid = cells.map((n, i) => `<i data-l="${n < 0 ? 'x' : level(n)}" style="--w:${Math.floor(i / 7)}"${n > 0 ? ` title="${n} commit${n > 1 ? 's' : ''}"` : ''}></i>`).join('');
   const rows = (log.recent || []).map((c) => `<div><span class="h">${esc(c.h)}</span> · ${esc(shortDate(c.d))} · ${esc(c.s)}</div>`).join('');
   return `<div class="blog">
     <div class="blog-hd"><span>Build log<span class="more"> · this site, from its own git history</span></span><span class="blog-state"><i></i><b>${esc(log.tests)} tests passing</b></span></div>
     <div class="blog-body">
-      <div class="blog-grid" style="--cols:${cols}" role="img" aria-label="${esc(log.commits)} commits on ${esc(log.activeDays)} days since ${esc(shortDate(log.first))}">${grid}</div>
+      <div class="blog-grid" role="img" aria-label="${esc(log.commits)} commits on ${esc(log.activeDays)} days since ${esc(shortDate(log.first))}">${grid}</div>
       <div class="blog-side">
         <div class="blog-kv"><span>commits</span><b>${esc(log.commits)}</b><span>days shipped</span><b>${esc(log.activeDays)}</b><span>longest streak</span><b>${esc(log.streak)} days</b><span>since</span><b>${esc(shortDate(log.first))}</b></div>
         <div class="blog-feed">${rows}</div>
@@ -112,7 +115,8 @@ export function renderBuild(p, log = null) {
   if (!lead) throw new Error(`renderBuild: no featured project "${p.buildStop.lead}"`);
   const rows = p.buildStop.rows.map((id) => { const x = byId(id); if (!x) throw new Error(`renderBuild: no featured project "${id}"`); return x; });
   const link = (href, label) => href ? `<a href="${escAttr(href)}" target="_blank" rel="noopener">${label} ↗</a>` : '';
-  return `${eyebrow('How I build')}
+  // The stop's only heading (every other stop has an h2 title), styled as its eyebrow.
+  return `<h2 class="eyebrow">How I build</h2>
     ${renderBuildLog(log)}
     <div class="method">${method}</div>
     <div class="proof">${proof}</div>
@@ -180,6 +184,11 @@ export function renderContact(p, built = null) {
   // Screen readers get the sentence whole; the per-character spans are hidden from them.
   const typed = (t, from) => [...t].map((ch, i) => `<span style="--c:${from + i}">${esc(ch)}</span>`).join('');
   const f = p.finale || {};
+  // The owner's mark (2026-09-29): © year + name on the last row, then the build stamp.
+  // Two .seg spans, so a narrow card breaks between them, never inside one.
+  const year = built && built.iso ? built.iso.slice(0, 4) + ' ' : '';
+  const stamp = built && built.label ? ` <span class="seg">Updated <time datetime="${escAttr(built.iso || '')}">${esc(built.label)}</time></span>` : '';
+  const owner = `<span class="seg">© ${year}${esc(p.name)}${stamp ? ' ·' : ''}</span>`;
   const lead = f.lead ? `<div class="finale">
       <p class="finale-lead"><span class="sr-only">${esc(f.lead)}</span><span aria-hidden="true">${typed(f.lead, 0)}</span></p>
       ${f.line ? `<p class="finale-line"><span class="sr-only">${esc(f.line)}</span><span aria-hidden="true">${typed(f.line, [...f.lead].length + 4)}</span></p>` : ''}
@@ -190,6 +199,6 @@ export function renderContact(p, built = null) {
       <a class="card-row mail" style="--i:1" href="mailto:${escAttr(l.email)}" data-copy-email>${esc(l.email)}<small>click to copy</small></a>
       ${tel ? `<a class="card-row tel" style="--i:2" href="${escAttr(tel)}">${esc(l.phone)}</a>` : ''}
       <div class="card-row social" style="--i:3">${social}</div>
-      ${built && built.label ? `<div class="card-row card-built" style="--i:4">Updated <time datetime="${escAttr(built.iso || '')}">${esc(built.label)}</time></div>` : ''}
+      <div class="card-row card-built" style="--i:4">${owner}${stamp}</div>
     </article>`;
 }

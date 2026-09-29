@@ -112,6 +112,7 @@ test('copy email: swallows the mailto only when the clipboard write succeeds', a
   click(a);
   await tick();
   assert.equal(small.textContent, 'Copy failed');
+  assert.equal(window.location.href, `mailto:${PROFILE.links.email}`, 'a failed copy still opens the mail client');
   await tick(1900);
   assert.equal(small.textContent, original);
 });

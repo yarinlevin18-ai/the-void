@@ -1,0 +1,13 @@
+Copyright © 2026 Yarin Levin. All rights reserved.
+
+The Void (https://yarinlevin.com) is the work of Yarin Levin: its code, design,
+text and images. The source is public so it can be read and evaluated. No
+license is granted to copy, modify, redistribute or reuse any part of it
+without written permission from the author (yarinlevin18@gmail.com).
+
+Third-party components keep their own licenses:
+
+- three.js: MIT License, © 2010-2024 three.js authors. The full text ships
+  with the site at /licenses.txt, generated at build time.
+- Bricolage Grotesque, Schibsted Grotesk and Doto: SIL Open Font License 1.1,
+  in public/fonts/*-OFL.txt.

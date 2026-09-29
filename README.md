@@ -1,45 +1,41 @@
-# The Void — Interactive 3D Portfolio
+# The Void
 
-An experimental, navigable 3D "void you fly through" that showcases Yarin's work
-(landing pages & SaaS CRM builds). The experience itself is the proof of skill.
+Yarin Levin's portfolio: a 3D flight through a living data network. Each stop
+tells part of the story: who he is, how he builds, seven projects, and how to
+reach him. Built by directing Claude Code end to end.
 
-See **[PLAN.md](./PLAN.md)** for the full concept, decisions, and roadmap.
+**Live:** https://yarinlevin.com (until the domain goes live:
+https://the-void-khaki-pi.vercel.app)
 
-## Run it locally
+## Stack
 
-You need [Node.js](https://nodejs.org) installed (you have it ✅).
+Vanilla JavaScript, [three.js](https://threejs.org) and [Vite](https://vite.dev),
+with no framework. The fonts are self-hosted and the site makes no external
+requests; its Content-Security-Policy (`vercel.json`) keeps it that way.
 
-```bash
-npm install      # one time — downloads Three.js + Vite
-npm run dev      # starts the local dev server
-```
-
-Then open the URL it prints (usually **http://localhost:5173**).
-You should see the title over a dark field of glowing points — **drag to look
-around, scroll to zoom**. That confirms everything works (Phase 2 ✅).
-
-## Other commands
+## Run it
 
 ```bash
-npm run build    # bundle for production into /dist
-npm run preview  # preview the production build locally
+npm install
+npm run dev      # http://localhost:5173
+npm test         # the node --test suites
+npm run build    # runs the tests, then builds dist/
+npm run stamp    # writes the owner's name into any new image under public/
 ```
 
-## Project structure
+## Where things live
 
-```
-index.html        # entry page + HTML overlay
-src/main.js       # the Three.js scene (the void) — heavily commented
-src/style.css     # base styling + overlay
-PLAN.md           # living plan / roadmap
-```
+| Path | What |
+| --- | --- |
+| `src/content/profile.js` | Every fact about Yarin; the one place to edit copy |
+| `src/main.js` | Scene, flight, render loop, performance tiers, save migrations |
+| `src/render.js`, `src/panels.js`, `src/bar.js` | The text of each stop and the top bar |
+| `src/style.css` | All styling, the phone layouts and the print CV |
+| `scripts/` | Build helpers: the git build log, the no-JS page, the owner marks, image stamping |
+| `tests/` | `node --test` suites, run by every build |
+| `CLAUDE.md` | Design decisions and conventions |
 
-## Where we are
+## License
 
-- ✅ Phase 1 — concept & mood locked
-- ✅ Phase 2 — scaffold — empty navigable void
-- ✅ Phase 3 — flight navigation (scroll-driven forward-then-up flight)
-- ⬜ Phase 4 — the void atmosphere (data-lines, parallax, reactivity)
-- ⬜ Phase 5 — drop in real projects
-- ⬜ Phase 6 — polish (lighting, sound, transitions, contact ending)
-- ⬜ Phase 7 — performance + deploy
+© 2026 Yarin Levin. All rights reserved; see [LICENSE](LICENSE). three.js and
+the fonts keep their own open-source licenses.

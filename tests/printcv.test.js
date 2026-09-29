@@ -31,7 +31,7 @@ test('link fields in the header are escaped', () => {
   const hostile = structuredClone(PROFILE);
   hostile.links = { ...hostile.links, email: 'a<b@x.test', phone: '<1>', linkedin: 'https://www.<l>', github: 'https://<g>', site: 'https://<s>' };
   mountPrintCV(hostile);
-  const contact = document.querySelector('#print-cv .pcv-contact').innerHTML;
+  const contact = document.querySelector('#print-cv .pcv-contact').innerHTML.replace(/<\/?(span|a)\b[^>]*>/g, '');   // one nowrap item per detail (links carry escaped hrefs)
   assert.ok(!/<[a-z]/i.test(contact), contact);
   for (const raw of ['a&lt;b@x.test', '&lt;1&gt;', '&lt;l&gt;', '&lt;g&gt;', '&lt;s&gt;']) assert.ok(contact.includes(raw), raw);
 });
@@ -40,4 +40,24 @@ test('print CV carries the build stamp when one is passed', () => {
   document.getElementById('print-cv')?.remove();
   mountPrintCV(PROFILE, { label: '14 Sep 2026', iso: '2026-09-14' });
   assert.ok(document.getElementById('print-cv').textContent.includes('Updated 14 Sep 2026'));
+});
+
+test('print CV ends on the owner\'s mark, so a printed page names him at both ends', () => {
+  document.getElementById('print-cv')?.remove();
+  mountPrintCV(PROFILE, { label: '14 Sep 2026', iso: '2026-09-14' });
+  const foot = document.querySelector('#print-cv .pcv-foot');
+  assert.equal(foot.textContent, `© 2026 ${PROFILE.name} · ${PROFILE.links.site.replace('https://', '')}`);
+  assert.equal(document.querySelector('#print-cv').lastElementChild, foot);
+});
+
+test('the subtitle names each item once (status.seeking ends on the role the title already gives)', () => {
+  document.getElementById('print-cv')?.remove();
+  mountPrintCV(PROFILE, { label: '14 Sep 2026', iso: '2026-09-14' });
+  const items = document.querySelector('#print-cv .pcv-sub').textContent.split(' · ');
+  assert.equal(items[0], PROFILE.title);
+  assert.equal(new Set(items).size, items.length, items.join(' | '));
+  const spans = [...document.querySelectorAll('#print-cv .pcv-contact span')].map((x) => x.textContent);
+  assert.equal(spans.at(-1), 'Updated 14 Sep 2026', 'the date is one unbreakable item');
+  const hrefs = [...document.querySelectorAll('#print-cv .pcv-contact a')].map((a) => a.getAttribute('href'));
+  assert.deepEqual(hrefs, [`mailto:${PROFILE.links.email}`, 'tel:+972548029820', PROFILE.links.linkedin, PROFILE.links.github, PROFILE.links.site], 'a saved PDF keeps working links');
 });

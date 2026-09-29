@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { flightOrder, workList } from '../scripts/noscript.js';
+import { flightOrder, workList, alsoLine, noscriptPlugin } from '../scripts/noscript.js';
 import { PROFILE } from '../src/content/profile.js';
 
 const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
@@ -26,4 +26,12 @@ test('noscript and JSON-LD contact details match profile.js', () => {
   assert.deepEqual(ld.mainEntity.sameAs, [linkedin, github]);
   const ns = html.slice(html.lastIndexOf('<noscript>'));
   for (const v of [email, phone, linkedin, github]) assert.ok(ns.includes(v), v);
+});
+
+test('the no-JS "Also" line names every other shipped project and every lab, from profile.js', () => {
+  const line = alsoLine(PROFILE);
+  for (const x of [...PROFILE.work.shipped, ...PROFILE.work.labs]) assert.ok(line.includes(x.name.replace(/&/g, '&amp;')), x.name);
+  const out = noscriptPlugin(new URL('..', import.meta.url).pathname.replace(/\/$/, ''), PROFILE).transformIndexHtml(html);
+  assert.ok(!out.includes('noscript:also') && !out.includes('noscript:work'), 'both markers are filled');
+  assert.ok(out.includes(`<p>${line}</p>`));
 });

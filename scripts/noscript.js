@@ -25,12 +25,19 @@ export function workList(profile, order) {
   }).filter(Boolean).join('\n');
 }
 
+// The line under the Work list: every other shipped project, then the labs (2026-09-29 —
+// the hand copy had drifted too: Focus left the flight but never reached it).
+export function alsoLine(profile) {
+  const names = (xs) => (xs || []).map((x) => esc(x.name)).join(', ');
+  return `Also: ${names(profile.work.shipped)} and the labs: ${names(profile.work.labs)}.`;
+}
+
 export function noscriptPlugin(root, profile) {
   return {
     name: 'noscript-work',
     transformIndexHtml(html) {
       const list = workList(profile, flightOrder(readFileSync(`${root}/src/main.js`, 'utf8')));
-      return html.replace(/ *<!-- noscript:work[^>]*-->/, list);
+      return html.replace(/ *<!-- noscript:work[^>]*-->/, list).replace(/<!-- noscript:also[^>]*-->/, alsoLine(profile));
     },
   };
 }

@@ -1,7 +1,7 @@
 # CLAUDE.md — context for "The Void" portfolio
 
 Read this first. It captures the locked decisions and where everything lives so
-you can pick up the build with full context. Last synced to code: **v22 — launch adjustments, 2026-09-29**.
+you can pick up the build with full context. Last synced to code: **v22 — wrap-up review + owner's mark, 2026-09-29**.
 
 ## What this is
 A 3D, scroll-driven portfolio for **Yarin Levin — AI-native developer**. The
@@ -105,6 +105,19 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   one pulses once on the Opening) and a 2px progress hairline along the
   bottom edge (`#hud-rail`, `scaleX(index/last)`). The stop name + count
   survive only in an `sr-only` `aria-live` region — no visible page counter.
+  **Input rules (2026-09-29 review):** a pinch / Ctrl+wheel is the browser's
+  zoom, never a flight (`e.ctrlKey`). Space yields to a button or link only
+  when the visitor *tabbed* to it (`_kbdFocus`: Tab sets it, any pointerdown
+  clears it) — Chrome keeps focus on a clicked button and turns `:focus-visible`
+  on at the first key press, so the old "any focused control keeps the keys"
+  rule stranded the flight after one click on ▼ / Work / About, and Space after
+  ▲ flew backwards. Arrows always fly unless a control handled them
+  (`defaultPrevented`: the lab's sliders) or it is a select / slider. A stop
+  taller than the window reads first — wheel (even over the void: it lands on
+  the canvas, so the stop is scrolled by hand), ↑/↓/PageUp/PageDown/Space and a
+  touch drag all scroll it, and a gesture that scrolled never flies: reaching
+  the end takes a fresh one. `#hud` sits above `#stops` (z 4 vs 3) so the
+  chevrons stay tappable on an overflowing stop.
 - **Abilities / Potential (2026-09-29, Yarin):** Cursor Buddy lists eight abilities
   (`abilities` in `profile.js`, each checked in the Swift source, v2.0.11); LLM Gateway
   and Agent Control list three products each could become (`potential`, always framed
@@ -147,7 +160,7 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   (portrait) / .55 (landscape) — node alpha and brightness, link alpha, link
   traffic (`smoothstep(.35,1,uDim)`) and nebula density (`.45 + .55·uDim`) all
   follow — and back to 1 during the flight. Eased in the render loop
-  (`_dimV`, .45s down / .6s up; instant under reduced motion). The void stays
+  (`_dimV`, .6s down / .45s up; instant under reduced motion). The void stays
   the transition, the words own the stop. Body text is `#d6e8f7` on phones.
 - **Minimal void, no mouse tracking (2026-09-29, Yarin):** the cursor trail
   (`cursor.js`), the threads that reached from nodes to the cursor and the
@@ -162,7 +175,13 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
 - **Reduced motion (2026-09-29):** flights run at 0.55× duration, no warp
   streaks, no camera parallax; the mouse parallax is desktop-only (on touch the
   last swipe's point stuck as an offset). The Opening wordmark still shatters
-  around the pointer — the one cursor interaction left, by choice.
+  around the pointer — the one cursor interaction left, by choice (a touch no
+  longer leaves a dent in it: `_cN` resets on pointerup). Since the wrap-up
+  review the stars neither stream nor twinkle, no meteors fall, a stop change
+  fires no warp swell or bloom flare, and the loader leaves on a plain fade.
+  The CSS kill-switch drops entrance transforms only: `.stop *:not(.lab, .lab *,
+  .tl-dot)` — it used to strip the lab card's centring and its handles' inline
+  positions too (`tests/css.test.js` guards it).
 - **Bloom across a flight (2026-09-29):** `index` jumps to the destination as
   a flight starts, so the threshold stays at 1.0 while any panel is still lit
   (`_panelLit`); About's photos used to flare solid white leaving for the
@@ -190,7 +209,10 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   suite first. Vercel clones shallow, so `read()` falls back to the committed
   snapshot `src/content/buildlog.json` (a local build refreshes it — commit it).
   The Bluesky Jetstream layer (`live.js`, the packets riding the links) is gone:
-  **the site makes no external requests at all.**
+  **the site makes no external requests at all** — and since 2026-09-29 the
+  Content-Security-Policy in `vercel.json` (`default-src 'self'`, no inline
+  scripts) enforces it; `vite preview` sends the same headers, so check any
+  new asset or library there before it ships.
 - **Lab card (2026-09-29, `src/lab.js` + `src/labcard.js`):** on the Timeline,
   desktop only (≥ 1100 × 600): the site's `--ease-out` as live code. Drag the
   two control points (or arrow keys on them), a dot runs the curve, presets,
@@ -278,15 +300,21 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
 12. **Contact** — the door (2026-09-14): the network parts around the look
     axis (vertex-shader push, `uDoor`, R = 34), the nebula ember warms, and a
     contact card (name, role, mail, tel, GitHub · LinkedIn, build stamp)
-    fades in once the door is ¾ open. No "Back to the start", no availability
+    fades in once the door is ¾ open. Leaving, the door eases shut where it opened
+    (`_doorC` / `_doorAx` follow the Contact beat only; they used to jump to the next
+    stop's axis and slam shut in one frame). No "Back to the start", no availability
     line (dropped 2026-09-14; `profile.contact` is gone). Camera tilts up.
 
 **Loader:** the poster of the Higgsfield void loop (`void-loop.webp`, 46 KB)
 sits under the constellation canvas as a still; reduced motion drops it. The
-clip itself (`public/assets/loader/void-loop.mp4`, 1.8 MB) is no longer fetched
-(2026-09-29): the loop fades out at 62 % of the loader, so it showed for ~190 ms
-on a warm localhost and rarely reached `canplay` over a real network, while
-Lighthouse mobile counted it as half the page. Spec:
+clip itself stopped being fetched on 2026-09-29 (the loop fades out at 62 % of
+the loader, so it showed for ~190 ms on a warm localhost and rarely reached
+`canplay` over a real network, while Lighthouse mobile counted it as half the
+page) and left the repo in the wrap-up pass. **No WebGL 2** (three r169 throws):
+a boot guard in `main.js` — an `error` listener that comes off on the module's
+last line — swaps the 3D chrome for the no-JS skim path (the `<noscript>`
+markup, which a scripting browser keeps as text) instead of leaving the visitor
+on "0% · initialising" forever. Spec:
 `docs/superpowers/specs/2026-09-14-contact-door-and-loader-design.md`.
 
 Project blocks lead with **Outcome** (display size, the line the eye lands on),
@@ -299,7 +327,8 @@ folds a second featured project in as a compact row under the links.
 | `src/main.js` | ~3,300 | Scene, network, nebula, flight, Director Mode, perf tiers, save/migrate, void dimming, HUD, animated panels, lab mount |
 | `src/buddy.js` | ~190 | Cursor Buddy's product loop on a canvas (panel texture + phone figure), node-tested timeline |
 | `src/lab.js` / `src/labcard.js` | ~45 / ~115 | Timeline lab card: `cubicBezier` (node-tested) and the drag/loop/code-tab wiring |
-| `scripts/buildlog.js` | ~55 | Build-time git-history summary for the How I Build strip, node-tested; snapshot in `src/content/buildlog.json` |
+| `scripts/buildlog.js` | ~55 | Build-time git-history summary for the How I Build strip, node-tested; snapshot in `src/content/buildlog.json`. Dates are UTC (`TZ=UTC`, `format-local`), like `today`; the heatmap shows the last 26 weeks, the counts stay all-time |
+| `scripts/owner.js` / `scripts/stamp.js` | ~60 / ~170 | The owner's mark: bundle banners, humans.txt, the no-JS notice / XMP + EXIF in every image (see Owner's mark) |
 | `src/panels.js` | 96 | DOM stop layer: builds/shows/hides stops (inert + aria-hidden), count-up, print/copy |
 | `src/render.js` | ~190 | Pure HTML renderers (hi, about, timeline + lab card, build + build log, project + abilities / potential list, contact + finale) incl. the portrait-only `stop-img` figures, node-tested |
 | `src/bar.js` | 53 | Fixed top bar: name + role, availability, Work, About, phone / LinkedIn / GitHub, Copy email |
@@ -311,7 +340,39 @@ folds a second featured project in as a compact row under the links.
 | `public/previews/*.webp` | | teepo · aerocy · shadiez · smartcut · llm-gateway · sabai · agent-control · thesis · gate-opener · kiaras-club (1400–2400 px wide, except gate-opener: a 1000×1600 phone capture; panel canvases take a 1600 px long side on desktop, 1024 on touch). Cursor Buddy has none — `buddy.js` draws it |
 | `public/assets/me/` | | portrait 4:5 (1000×1250, centred, head to knees; 19.2×24 panel) + 2 About panels: FIDF stage 4:3 (logo + speaker, no black rig band; 18×13.5) and the Nova memorial at Re’im 3:4 (10.5×14). Re-cut 2026-09-29 from the originals in `~/.claude/uploads/…` (mild grade + unsharp, q88); the lectern shot was a crop of the stage and is gone. Panel textures keep the panel's aspect (long side 1600, 1024 on touch) — until 2026-09-29 the height was capped at 1024, so every portrait panel was a stretched square |
 
-Deps: `three` 0.169, `meshline`, `three.quarks`, `vite` 8. No React.
+Deps: `three` 0.169 and `vite` 8 (+ `happy-dom` for tests). No React.
+`meshline` and `three.quarks` were never imported and left on 2026-09-29.
+
+### Owner's mark (2026-09-29, Yarin: "make sure that everything is watermarked to my name")
+Every file the site ships names him, all from `profile.js`:
+- **Page:** `<meta name="author">`, `<link rel="author" href="/humans.txt">`,
+  JSON-LD `author` / `copyrightHolder` / `copyrightNotice` pointing at the Person
+  (`@id`), an HTML comment on the first line, the sr-only h1, the contact card's
+  last row (`© 2026 Yarin Levin · Updated …`), the print CV's footer (and its
+  contact line is links now, so a saved PDF opens mail / LinkedIn / GitHub),
+  the no-JS path's closing line, and a styled line in the DevTools console.
+- **Code:** `scripts/owner.js` (Vite plugin) puts a `/*! … */` banner on every JS
+  and CSS file after minification and emits `/humans.txt`; `build.license` emits
+  `/licenses.txt` with three.js's MIT notice (the minifier had stripped every
+  license comment). `LICENSE` (all rights reserved; three.js and the OFL fonts
+  keep their own), `package.json` `author` / `license: UNLICENSED`.
+- **Images:** `scripts/stamp.js` (`npm run stamp`) writes XMP (dc:creator,
+  photoshop:Credit, dc:rights, xmpRights) and EXIF Artist / Copyright into every
+  WebP / JPEG under `public/` by rewriting chunks around the untouched image data
+  (pixels verified identical). The panels carry no text on purpose, so the mark
+  is metadata, not a visible stamp. `tests/stamp.test.js` fails the build on
+  any unstamped image — run `npm run stamp` after adding one.
+- `tests/owner.test.js` holds all of it to `profile.js`, and no source file may
+  spell the name out (the loader and Opening wordmarks used to).
+
+### Headers (`vercel.json`, 2026-09-29)
+CSP (`default-src 'self'`; styles allow inline attributes; `frame-ancestors
+'none'`), `nosniff`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options`,
+COOP. Hashed build files (`/assets/<name>-<hash>.*`) cache for a year,
+immutable; `/fonts/*` for 30 days; everything else revalidates (the unhashed
+`public/assets/me/*` must stay revalidated — the rule's `[^/]+` keeps it out).
+Safari won't match `'self'` on an IPv6-literal origin: test the preview on the
+Mac's LAN IP (`http://10.x.x.x:4173`), not `http://[::1]:4173`.
 
 ### Persistence / migrations
 Path + FX config persists in **localStorage** `voidConfig`, currently **save
@@ -357,7 +418,9 @@ export tuned `BEATS` and paste into `DEFAULT_BEATS`.
 npm install
 npm run dev      # http://localhost:5173  (DEV_TOOLS on → E/B/T/U/A work)
 npm run build    # runs the test suite, then vite build → dist/
-npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash, save, assets, domain, lab, buddy, buildlog (happy-dom for the DOM ones), 74 passing
+npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash, save, assets, domain, lab, buddy, buildlog, owner, stamp, css (happy-dom for the DOM ones), 93 passing
+npm run stamp    # the owner's name into any new image under public/ (the test suite fails until it's done)
+npx vite preview --host   # the production build with vercel.json's headers (CSP) — `void-preview` in .claude/launch.json
 ```
 `.claude/launch.json` has a `void-dev` config for the browser preview.
 Offline-capable: fonts are self-hosted and the site makes no external requests. HMR can be flaky —

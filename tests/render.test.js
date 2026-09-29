@@ -161,12 +161,15 @@ test('telHref normalises an Israeli local number', () => {
   assert.equal(telHref(''), '');
 });
 
-test('contact card carries the build stamp when one is injected', () => {
+test('contact card ends on the owner\'s mark and the build stamp', () => {
   const built = { label: '14 Sep 2026', iso: '2026-09-14' };
   const h = renderContact(PROFILE, built);
   assert.ok(h.includes('class="card-row card-built"'));
-  assert.ok(h.includes('<time datetime="2026-09-14">14 Sep 2026</time>'));
-  assert.ok(!renderContact(PROFILE).includes('card-built'), 'no stamp without a build');
+  assert.ok(h.includes(`<span class="seg">© 2026 ${PROFILE.name} ·</span> <span class="seg">Updated <time datetime="2026-09-14">14 Sep 2026</time></span>`));
+  const bare = renderContact(PROFILE);
+  assert.ok(bare.includes(`<span class="seg">© ${PROFILE.name}</span></div>`), 'the name stays without a build; the date and its separator go');
+  assert.ok(!bare.includes('Updated'));
+  assert.ok(renderContact({ ...PROFILE, name: '<b>' }, built).includes('© 2026 &lt;b&gt; ·'), 'the name is escaped');
 });
 
 test('the build log renders a heatmap cell per day, the counts and the latest commits', () => {
@@ -180,6 +183,9 @@ test('the build log renders a heatmap cell per day, the counts and the latest co
   assert.ok(h.includes('9 tests passing'));
   assert.ok(h.includes('fix &lt;b&gt;'), 'commit subjects are escaped');
   assert.equal(renderBuildLog(null), '', 'no log, no strip');
+  const year = { ...log, days: Array(365).fill(1) };   // a year in (53 week columns): whole leading weeks drop until 26 remain
+  assert.equal((renderBuildLog(year).match(/<i data-l=/g) || []).length, 365 - (53 - 26) * 7);
+  assert.ok(renderBuildLog(year).includes('aria-label="5 commits on 2 days since'), 'the totals stay all-time');
   assert.ok(renderBuild(PROFILE, log).includes('class="blog"'), 'How I Build carries the strip');
   assert.ok(!renderBuild(PROFILE).includes('class="blog"'));
 });

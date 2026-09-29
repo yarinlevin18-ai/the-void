@@ -66,7 +66,9 @@ export const countTests = (dir) => readdirSync(dir).filter((f) => f.endsWith('.t
 
 const snapPath = (root) => `${root}/src/content/buildlog.json`;
 const git = (root, a) => execSync(`git ${a}`, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
-const gitLog = (root) => git(root, "log '--format=%h|%ad|%s' --date=short").trim().split('\n');
+// Dates in UTC, like `today` (isoDay): --date=short used the author's +03:00, so a commit
+// made between midnight and 03:00 in Israel counted in `commits` but fell off the heatmap.
+const gitLog = (root) => execSync("git log '--format=%h|%ad|%s' --date=format-local:%Y-%m-%d", { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], env: { ...process.env, TZ: 'UTC' } }).trim().split('\n');
 const shallow = (root) => git(root, 'rev-parse --is-shallow-repository').trim() === 'true';
 
 // Never throws: no git and no snapshot → null, and the strip simply isn't rendered.

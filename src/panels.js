@@ -58,8 +58,8 @@ export function initPanels({ beats, profile, root }) {
       const w = s && navigator.clipboard?.writeText(profile.links.email);
       if (!w) return;
       e.preventDefault();
-      const set = (v) => { s.textContent = v; };
-      w.then(() => copyLabel(set, 'click to copy')).catch(() => failLabel(set, 'click to copy'));
+      // If the copy fails after all, the mail client still opens: the visitor asked for the address.
+      w.then(() => copyLabel(s, 'click to copy')).catch(() => { failLabel(s, 'click to copy'); window.location.href = t.href; });
     }
    });
   }

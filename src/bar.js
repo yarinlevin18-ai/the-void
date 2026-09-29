@@ -2,14 +2,25 @@
 // The only navigation chrome on the site (replaces the waypoint rail).
 import { esc, escAttr, telHref } from './render.js';
 
-// one pending revert PER setter — the bar button and the contact email each own
-// their own timer, so copying one no longer cancels the other's revert.
-// `text` is what shows for `ms` ('Copied', or 'Copy failed'); then `original` returns.
+// One pending revert PER label — the bar button and the contact email each own their
+// timer, so copying one never cancels the other's revert. `target` is the element whose
+// text flips (or a setter function); the timer is keyed by it, so a second click restarts
+// the same timer instead of racing it (callers used to pass a fresh setter per click).
+// `text` shows for `ms` ('Copied', or 'Copy failed'), then `original` returns, and a
+// polite live region tells screen readers what happened.
 const _timers = new Map();
-export function copyLabel(set, original, ms = 1800, text = 'Copied') {
-  clearTimeout(_timers.get(set));
+export function copyLabel(target, original, ms = 1800, text = 'Copied') {
+  const set = typeof target === 'function' ? target : (v) => { target.textContent = v; };
+  clearTimeout(_timers.get(target));
   set(text);
-  _timers.set(set, setTimeout(() => { _timers.delete(set); set(original); }, ms));
+  announce(text);
+  _timers.set(target, setTimeout(() => { _timers.delete(target); set(original); }, ms));
+}
+function announce(msg) {
+  if (typeof document === 'undefined') return;
+  let r = document.getElementById('sr-status');
+  if (!r) { r = document.createElement('p'); r.id = 'sr-status'; r.className = 'sr-only'; r.setAttribute('aria-live', 'polite'); document.body.appendChild(r); }
+  r.textContent = msg;
 }
 const failLabel = (set, original) => copyLabel(set, original, 1800, 'Copy failed');
 export { failLabel };
@@ -39,10 +50,9 @@ export function initBar({ profile, onWork, onAbout, root }) {
     if (act) { (act.dataset.act === 'work' ? onWork : onAbout)(); return; }
     const cp = e.target.closest('.bar-copy');
     if (cp) {
-      const set = (v) => { cp.textContent = v; };
       const w = navigator.clipboard?.writeText(profile.links.email);
-      if (w) w.then(() => copyLabel(set, 'Copy email')).catch(() => failLabel(set, 'Copy email'));
-      else failLabel(set, 'Copy email');
+      if (w) w.then(() => copyLabel(cp, 'Copy email')).catch(() => failLabel(cp, 'Copy email'));
+      else failLabel(cp, 'Copy email');
     }
   });
   root.inert = true;

@@ -26,6 +26,24 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
 
+// The owner's mark in the console, for whoever opens DevTools (2026-09-29).
+console.log(`%c${PROFILE.name}%c · ${PROFILE.title} · ${PROFILE.links.site}`, 'font: 700 13px system-ui, sans-serif; color: #4fd2ff', 'color: #9fc2e0');
+
+// Boot guard (2026-09-29 review): three r169 needs WebGL 2 and throws without it, which
+// left the visitor on "0% · initialising" forever. An error while this module is still
+// evaluating swaps the 3D chrome for the no-JS skim path (the <noscript> markup, which a
+// scripting browser keeps as text). The guard comes off on the module's last line, so a
+// later runtime error can never take a working site down.
+function showSkimPath(why) {
+  console.warn('[boot] no 3D, showing the skim path:', why);
+  for (const sel of ['#loader', '#scene', '#overlay', '#hud', '#bar', '#stops', '#phone-note']) document.querySelector(sel)?.remove();
+  for (const el of [document.documentElement, document.body]) { el.style.overflow = 'auto'; el.style.height = 'auto'; }
+  const ns = document.querySelector('body > noscript');
+  if (ns && !document.getElementById('skim')) { const d = document.createElement('div'); d.id = 'skim'; d.innerHTML = ns.textContent; document.body.appendChild(d); }
+}
+const bootGuard = (e) => showSkimPath(e.error || e.message);
+window.addEventListener('error', bootGuard);
+
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 // Only TEXT entry should swallow global hotkeys (E/V/arrows) — not range sliders, checkboxes, etc.
 const isTextEntry = (el) => el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && !['range', 'checkbox', 'radio', 'button', 'submit'].includes(el.type));
@@ -178,10 +196,11 @@ const livingVoid = (() => {
           if(d>0.01){ float fade=smoothstep(tEnd,tStart,t);
             vec3 emit=climate*(0.7+d*0.9)+ember*smoothstep(0.5,1.0,d)*uEmber*2.5;  // dim haze stays under bloom (0.22); only dense cores bloom
             emit+=mix(climate,vec3(0.7,0.85,1.0),smoothstep(0.7,1.0,d))*smoothstep(0.5,1.0,d)*uGlow*1.6;  // inner glow: dense gas glows (cyan->white cores, blooms)
+            if(uFlashAmt>0.0){   // the cursor lightning is off for visitors (cursorDrive 0): skip a noise() per step
             vec3 fp=p-uFlash; float gd=exp(-dot(fp,fp)*uFlashReach);                       // glow that follows the cursor
             float fil=pow(noise(p*0.06+uTime*4.0),3.0);                                     // filamentary arc veins (electric branches)
             float crk=0.35+0.65*pow(0.5+0.5*sin(uTime*uCrackle+p.x*0.05+p.y*0.07),5.0);     // fast electric crackle
-            emit+=uFlashCol*uFlashAmt*gd*(0.3+1.6*fil)*crk;                                  // electrifies the gas along the cursor
+            emit+=uFlashCol*uFlashAmt*gd*(0.3+1.6*fil)*crk; }                                // electrifies the gas along the cursor
             float a=clamp(d*(stepLen*0.0042)*(0.6+uDens*0.5)*fade,0.0,1.0);   // thinner accumulation -> translucent, the star sky shows through
             acc+=emit*a*(1.0-alpha); alpha+=a*(1.0-alpha); }
           t+=stepLen; }
@@ -221,7 +240,7 @@ const livingVoid = (() => {
   sgeo.setAttribute('tmp', new THREE.BufferAttribute(stmp, 1));
   const smat = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-    uniforms: { uTime: { value: 0 }, uDepth: { value: DEPTH }, uSpeed: { value: 26.0 }, uPtN: { value: new THREE.Vector2(9, 9) }, uVel: { value: 0 }, uStar: { value: 1 }, uTwinkle: { value: 1 }, uWarp: { value: 0 }, uTint: { value: new THREE.Color(0x4fd2ff) }, uTintAmt: { value: 0 } },
+    uniforms: { uTime: { value: 0 }, uDepth: { value: DEPTH }, uSpeed: { value: PREFERS_REDUCED ? 0 : 26.0 }, uPtN: { value: new THREE.Vector2(9, 9) }, uVel: { value: 0 }, uStar: { value: 1 }, uTwinkle: { value: 1 }, uWarp: { value: 0 }, uTint: { value: new THREE.Color(0x4fd2ff) }, uTintAmt: { value: 0 } },
     vertexShader: `attribute float seed; attribute float mag; attribute float tmp;
       varying float vT; varying float vMag; varying float vTmp; varying float vFade;
       uniform float uTime,uDepth,uSpeed,uVel,uStar,uTwinkle,uWarp; uniform vec2 uPtN;
@@ -463,7 +482,7 @@ const openingFX = (() => {
       // One voice: the same display face the DOM and the loader use, uppercased
       // and tracked to match the loader wordmark, then auto-fitted — the raster
       // is drawn in Bricolage at weight 800 and auto-fitted to the 1100px canvas.
-      const NAME = 'YARIN LEVIN', TRACK = 12;
+      const NAME = PROFILE.name.toUpperCase(), TRACK = 12;   // from profile.js, like every other mention of the name
       if ('letterSpacing' in x) x.letterSpacing = TRACK + 'px';
       const face = (px) => '800 ' + px + 'px "Bricolage", "Helvetica Neue", Arial, sans-serif';
       x.font = face(190);
@@ -1034,7 +1053,7 @@ function save() {
 // push the global (saved) FX/UX/transition state into the live scene + DOM
 function applyGlobals() {
   applyVoidDensity();
-  livingVoid.smat.uniforms.uTwinkle.value = FX.twinkleOn ? 1 : 0;
+  livingVoid.smat.uniforms.uTwinkle.value = (FX.twinkleOn && !PREFERS_REDUCED) ? 1 : 0;
   if (network) { network.pmat.uniforms.uTwinkle.value = (FX.twinkleOn && !PREFERS_REDUCED) ? 1 : 0; network.lines.visible = FX.linesOn; }
   livingVoid.composite.visible = FX.nebVisible;
   livingVoid.nebMat.uniforms.uSpd.value = FX.nebSpd;
@@ -1090,7 +1109,7 @@ let curve = null;    // smooth spline through the camera positions
 // Portrait poses: a beat may carry `portrait: { cam, look, fov }` (see PP()) that
 // replaces its desktop shot on tall screens. The accessors below are the only
 // place play mode reads a beat's pose; Director Mode edits the desktop fields.
-const isPortrait = () => camera.aspect < 1;
+const isPortrait = () => camera.aspect <= 1;   // <= : CSS (orientation: portrait) matches a square viewport too
 // "Compact" (2026-09-21): portrait, or a landscape phone (≤ 520 px tall). Both use the DOM
 // figures instead of the WebGL panels — in landscape the panels projected onto the words.
 const isCompact = () => isPortrait() || window.innerHeight <= 520;   // same line as the CSS `(max-height: 520px)`
@@ -1663,23 +1682,38 @@ function step(dir) { goTo(index + dir); }
 // One section per scroll GESTURE: a trackpad swipe fires dozens of wheel events,
 // so we step once on the first event, then stay locked until the scroll has
 // fully stopped (no wheel events for `idle` ms). You must scroll again to advance.
-let navLock = false, wheelIdle = null;
+let navLock = false, wheelIdle = null, wheelFlew = false;   // wheelFlew: this gesture already stepped — its momentum tail must not scroll the stop it arrives at
 // A tall stop scrolls natively, but only while it still has room in the
 // gesture's direction — at either end the gesture goes back to the flight.
+// Downwards it counts only while real content sits below the fold: bottom padding alone
+// made the Timeline 14 px "taller" than a 900 px window, so the first wheel or ↓ there
+// scrolled 14 px instead of flying.
 function scrollableStop(dy) {
   const sc = document.querySelector('#stops .stop.in');
   if (!sc || sc.scrollHeight <= sc.clientHeight + 8) return false;
-  return dy > 0 ? sc.scrollTop < sc.scrollHeight - sc.clientHeight - 1 : sc.scrollTop > 1;
+  if (dy <= 0) return sc.scrollTop > 1;
+  const contentBottom = Math.max(...[...sc.children].map((c) => c.getBoundingClientRect().bottom));
+  return contentBottom > sc.getBoundingClientRect().bottom + 1 && sc.scrollTop < sc.scrollHeight - sc.clientHeight - 1;
 }
 window.addEventListener('wheel', (e) => {
   if (editMode) return;   // editor uses orbit zoom
-  if (scrollableStop(e.deltaY)) return;   // a tall stop scrolls its own content first
+  if (e.ctrlKey) return;  // a trackpad pinch or Ctrl+wheel is the browser's page zoom, never a flight
+  if (scrollableStop(e.deltaY)) {   // a tall stop scrolls its own content first
+    // Over the void or a panel the wheel lands on the canvas, not the stop's column: scroll it by hand.
+    const sc = document.querySelector('#stops .stop.in');
+    clearTimeout(wheelIdle);
+    wheelIdle = setTimeout(() => { navLock = false; wheelFlew = false; }, 180);
+    if (wheelFlew) { e.preventDefault(); return; }
+    if (!(e.target instanceof Node && sc.contains(e.target))) { e.preventDefault(); sc.scrollTop += e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY; }
+    navLock = true;   // a gesture that scrolled the stop never flies — reaching the end takes a fresh one
+    return;
+  }
   e.preventDefault();
   if (Math.abs(e.deltaY) < 6) return;
   clearTimeout(wheelIdle);
-  wheelIdle = setTimeout(() => { navLock = false; }, 180);  // gesture ended → re-arm
-  if (navLock) return;                                       // already stepped this gesture
-  navLock = true;
+  wheelIdle = setTimeout(() => { navLock = false; wheelFlew = false; }, 180);  // gesture ended → re-arm
+  if (navLock) return;                                       // already stepped (or scrolled) this gesture
+  navLock = true; wheelFlew = true;
   step(e.deltaY > 0 ? 1 : -1);
 }, { passive: false });
 // Touch: one section per swipe GESTURE — the touch mirror of the wheel's
@@ -1691,12 +1725,12 @@ window.addEventListener('wheel', (e) => {
 const SWIPE_DIST = 70;    // px — a deliberate drag
 const FLICK_DIST = 30;    // px — minimum travel for a velocity-fired flick
 const FLICK_VEL = 0.45;   // px/ms
-let _tX = 0, _tY = 0, _tT = 0, _tAxis = null, _tFired = false, _tPrevY = 0;
+let _tX = 0, _tY = 0, _tT = 0, _tAxis = null, _tFired = false, _tPrevY = 0, _tScrolled = false;
 window.addEventListener('touchstart', (e) => {
   if (e.touches.length !== 1) { _tAxis = 'multi'; return; }
   if (e.target instanceof Element && e.target.closest('[data-own-gestures]')) { _tAxis = 'multi'; return; }   // the Timeline lab's handles drag; they must not fly the camera
   _tX = e.touches[0].clientX; _tY = e.touches[0].clientY; _tPrevY = _tY;
-  _tT = performance.now(); _tAxis = null; _tFired = false;
+  _tT = performance.now(); _tAxis = null; _tFired = false; _tScrolled = false;
 }, { passive: true });
 window.addEventListener('touchmove', (e) => {
   if (editMode || _tAxis === 'multi') return;
@@ -1709,22 +1743,41 @@ window.addEventListener('touchmove', (e) => {
     // preventDefault above blocks native scrolling, so an overflowing stop with
     // room left in this direction gets scrolled manually from the raw per-move delta.
     const sc = document.querySelector('#stops .stop.in');
-    if (scrollableStop(_tPrevY - curY)) { sc.scrollTop += (_tPrevY - curY); _tPrevY = curY; return; }
-    if (!_tFired && Math.abs(dy) > SWIPE_DIST) { _tFired = true; step(dy < 0 ? 1 : -1); }   // swipe up = advance
+    if (scrollableStop(_tPrevY - curY)) { sc.scrollTop += (_tPrevY - curY); _tPrevY = curY; _tScrolled = true; return; }
+    if (!_tFired && !_tScrolled && Math.abs(dy) > SWIPE_DIST) { _tFired = true; step(dy < 0 ? 1 : -1); }   // swipe up = advance
   }
   _tPrevY = curY;
 }, { passive: false });
 window.addEventListener('touchend', (e) => {
-  if (editMode || _tFired || _tAxis !== 'y') return;
+  if (editMode || _tFired || _tScrolled || _tAxis !== 'y') return;   // a swipe that scrolled a long stop reads it, it doesn't fly
   const dy = e.changedTouches[0].clientY - _tY, dt = performance.now() - _tT;
   if (Math.abs(dy) > FLICK_DIST && Math.abs(dy) / Math.max(1, dt) > FLICK_VEL) step(dy < 0 ? 1 : -1);
 }, { passive: true });
+// Was the focused control reached by keyboard? Tab sets it, any pointer press clears it.
+// (:focus-visible can't tell: Chrome turns it on for a mouse-focused button the moment
+// a key is pressed, so Space after clicking ▲ re-clicked ▲ and flew backwards.)
+let _kbdFocus = false;
+window.addEventListener('pointerdown', () => { _kbdFocus = false; }, true);
+window.addEventListener('keydown', (e) => { if (e.key === 'Tab') _kbdFocus = true; }, true);
 window.addEventListener('keydown', (e) => {
-  if (isTextEntry(e.target)) return;
-  if (e.target instanceof Element && e.target.closest('button, a, select, [tabindex]:not([tabindex="-1"])')) return;   // Space/arrows belong to the focused control
+  if (isTextEntry(e.target) || e.defaultPrevented) return;   // a control that handled the key itself (the lab's sliders) keeps it
+  const t = e.target instanceof Element ? e.target : null;
+  if (t?.closest('select, [role="slider"]')) return;
+  // Space belongs to a button or link the visitor tabbed to. Chrome also leaves focus on a
+  // clicked button; there the keys fly as before — the old rule, "any focused control keeps
+  // the keys", stranded the flight after a single click on ▼, Work or About.
+  if (e.key === ' ' && _kbdFocus && t?.closest('button, a, [tabindex]:not([tabindex="-1"])')) return;
   if (editMode || e.repeat) return;   // ignore key auto-repeat → one section per press
-  if (['ArrowDown','PageDown',' ','Spacebar'].includes(e.key)) { e.preventDefault(); step(1); }
-  else if (['ArrowUp','PageUp'].includes(e.key)) { e.preventDefault(); step(-1); }
+  const dir = ['ArrowDown','PageDown',' ','Spacebar'].includes(e.key) ? 1 : ['ArrowUp','PageUp'].includes(e.key) ? -1 : 0;
+  if (!dir) return;
+  e.preventDefault();
+  const sc = document.querySelector('#stops .stop.in');
+  if (scrollableStop(dir)) {   // a stop taller than the window reads first, as with the wheel
+    const page = e.key.startsWith('Page') || e.key === ' ' || e.key === 'Spacebar';
+    sc.scrollBy({ top: dir * (page ? sc.clientHeight * 0.85 : 64), behavior: PREFERS_REDUCED ? 'auto' : 'smooth' });
+    return;
+  }
+  step(dir);
 });
 
 // subtle parallax (play mode only)
@@ -1736,6 +1789,12 @@ window.addEventListener('pointermove', (e) => {
   _pPX = nx; _pPY = nyTop; _cN.set(nx, nyTop);                            // pointer NDC (y-up) for the reactive FX
   _wUV.set(e.clientX / window.innerWidth, 1 - e.clientY / window.innerHeight);  // 0..1 uv for the water sim
 });
+
+// On touch the pointer leaves with the finger — otherwise the last touch point kept a
+// permanent dent in the Opening wordmark (the stuck-point bug the parallax had).
+const _cLeave = (e) => { if (e.pointerType !== 'mouse') _cN.set(9, 9); };
+window.addEventListener('pointerup', _cLeave);
+window.addEventListener('pointercancel', _cLeave);
 
 // ---- HUD --------------------------------------------------------------------
 const overlay = document.querySelector('#overlay');
@@ -2312,8 +2371,8 @@ window.addEventListener('keydown', (e) => {
     // still allow Ctrl+Z inside fields
   }
   const k = e.key.toLowerCase();
-  if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
-  if ((e.ctrlKey || e.metaKey) && k === 'y') { e.preventDefault(); redo(); return; }
+  if (DEV_TOOLS && (e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }   // dev-only: a visitor's Cmd/Ctrl+Z stays the browser's
+  if (DEV_TOOLS && (e.ctrlKey || e.metaKey) && k === 'y') { e.preventDefault(); redo(); return; }
   const typing = isTextEntry(e.target);
   if (k === 'e' && !typing && DEV_TOOLS) { setEdit(!editMode); }   // preview-only: no Director Mode
   if (editMode && !typing) {
@@ -2567,7 +2626,7 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
   const _ocol = document.querySelector('#fx-opencolor');
   if (_ocol) { _ocol.value = FX.openColor; _ocol.addEventListener('input', () => { FX.openColor = _ocol.value; }); }
   const chk = (id, key, fn) => { const el = document.querySelector('#fx-' + id); if (!el) return; el.checked = !!FX[key]; el.addEventListener('change', () => { FX[key] = el.checked; fn(el.checked); }); };
-  chk('twinkle', 'twinkleOn', (v) => { livingVoid.smat.uniforms.uTwinkle.value = v ? 1 : 0; if (network) network.pmat.uniforms.uTwinkle.value = (v && !PREFERS_REDUCED) ? 1 : 0; });
+  chk('twinkle', 'twinkleOn', (v) => { livingVoid.smat.uniforms.uTwinkle.value = (v && !PREFERS_REDUCED) ? 1 : 0; if (network) network.pmat.uniforms.uTwinkle.value = (v && !PREFERS_REDUCED) ? 1 : 0; });
   chk('drift', 'driftOn', () => {});
   chk('lines', 'linesOn', (v) => { if (network) network.lines.visible = v; });
   chk('nebvig', 'nebVig', () => {});   // raymarch nebula has a baked vignette; toggle is a no-op now
@@ -2832,7 +2891,7 @@ function animate() {
   livingVoid.update(t);                      // advance nebula + starfield time
   if (gradePass) { gradePass.uniforms.uTime.value = t; gradePass.uniforms.uDark.value = FX.vignette; gradePass.uniforms.uGrain.value = FX.grain; }
   if (network) network.update(t, (FX.driftOn && !PREFERS_REDUCED) ? 1 : 0, _FAR, 0);   // data network: drift (the cursor stir and near-pointer glow are gone)
-  meteors.update(dt, !editMode && index === 0);   // falling stars on the start frame only
+  meteors.update(dt, !editMode && index === 0 && !PREFERS_REDUCED);   // falling stars on the start frame only (none under reduced motion)
   {                                          // Frame 2 — the grouped Hero cluster (assets parallax to cursor + scroll)
     const heroOn = !editMode && !!beats[index]?.screens && !isCompact();   // v18: the Timeline beat carries the two live screens; portrait screens keep the rows readable
     const hsc = heroOn ? Math.max(-0.5, Math.min(0.5, progress * Math.max(1, lastIdx()) - index)) : 0;
@@ -2880,7 +2939,7 @@ function animate() {
     const k = clamp(door.t / door.dur, 0, 1);
     door.v = PREFERS_REDUCED ? door.to : door.from + (door.to - door.from) * (door.to ? EASINGS.easeOut(k) : k * k);
     const dv = Math.max(door.v, doorPreview);
-    if (b && (atContact || dv > 0)) {
+    if (b && (atContact || doorPreview > 0)) {   // frozen once we leave: the door eases shut where it opened, not along the next stop's axis
       const c = bCam(b), lk = usesPortrait(b) ? b.portrait.look : b.look;
       _doorAx.set(lk[0] - c[0], lk[1] - c[1], lk[2] - c[2]).normalize();
       _doorC.set(c[0], c[1], c[2]).addScaledVector(_doorAx, 60);
@@ -2972,7 +3031,7 @@ function animate() {
     mat.opacity = (editMode || PREFERS_REDUCED) ? 0 : clamp((camSpeed - 12) / 120, 0, FX.warpStrength);   // no streaks under reduced motion
   }
 
-  if (index !== _lastBeatIdx) { voidWarp = Math.max(voidWarp, 0.9); _lastBeatIdx = index; } // warp burst on chapter change
+  if (index !== _lastBeatIdx) { if (!PREFERS_REDUCED) voidWarp = Math.max(voidWarp, 0.9); _lastBeatIdx = index; } // warp burst on chapter change (reduced motion: none)
   voidWarp *= 0.94; if (voidWarp < 0.001) voidWarp = 0;
   livingVoid.setWarp(voidWarp);
   if (network) network.setWarp(voidWarp);    // nodes swell + links flare on the burst
@@ -3112,7 +3171,7 @@ bar = initBar({ profile: PROFILE, onWork: () => goTo(WORK_INDEX), onAbout: () =>
   if (loop) { if (RM) loop.remove(); else loop.classList.add('on'); }
 
   // the wordmark: one <i> per slot, scrambling until progress reaches it
-  const WORD = 'YARIN LEVIN', SCRAM = '#*+=-<>/|01[]{}';
+  const WORD = PROFILE.name.toUpperCase(), SCRAM = '#*+=-<>/|01[]{}';
   const cells = [...WORD].map((ch) => {
     const el = document.createElement('i');
     if (ch !== ' ' && !RM) el.className = 'pend';
@@ -3210,3 +3269,6 @@ bar = initBar({ profile: PROFILE, onWork: () => goTo(WORK_INDEX), onAbout: () =>
   }
   requestAnimationFrame(step);
 })();
+
+// Boot finished: from here on an error is a bug to log, not a reason to drop the 3D site.
+window.removeEventListener('error', bootGuard);

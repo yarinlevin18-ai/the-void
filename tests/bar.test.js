@@ -27,6 +27,20 @@ test('copyLabel cancels a pending revert on repeat calls', async () => {
   assert.equal(label, 'Copy email');
 });
 
+test('copyLabel keys its timer by the element, so a second click restarts it', async () => {
+  const el = document.createElement('button');
+  el.textContent = 'Copy email';
+  copyLabel(el, 'Copy email', 20);
+  await tick(12);
+  copyLabel(el, 'Copy email', 20);   // callers pass the element; a fresh setter per click used to race the old timer
+  await tick(12);
+  assert.equal(el.textContent, 'Copied', 'the first timer must not revert the second copy');
+  assert.equal(document.getElementById('sr-status').textContent, 'Copied', 'screen readers hear it');
+  assert.equal(document.getElementById('sr-status').getAttribute('aria-live'), 'polite');
+  await tick(20);
+  assert.equal(el.textContent, 'Copy email');
+});
+
 const mount = (profile = PROFILE) => {
   const root = document.createElement('nav');
   const calls = [];

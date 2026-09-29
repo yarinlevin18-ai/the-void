@@ -3,17 +3,23 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "An interactive 3D 'void you fly through' portfolio. See PLAN.md.",
+  "description": "The Void — Yarin Levin's 3D portfolio: a scroll-driven flight through a living data network.",
+  "author": "Yarin Levin (https://yarinlevin.com)",
+  "license": "UNLICENSED",
+  "homepage": "https://yarinlevin.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yarinlevin18-ai/the-void.git"
+  },
   "scripts": {
     "dev": "vite",
     "build": "node scripts/buildlog.js --write && node --test tests/*.test.js && vite build",
     "preview": "vite preview",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "stamp": "node scripts/stamp.js"
   },
   "dependencies": {
-    "meshline": "^3.3.1",
-    "three": "^0.169.0",
-    "three.quarks": "^0.16.0"
+    "three": "^0.169.0"
   },
   "devDependencies": {
     "happy-dom": "^20.14.5",
