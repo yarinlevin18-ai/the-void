@@ -347,16 +347,20 @@ Deps: `three` 0.169 and `vite` 8 (+ `happy-dom` for tests). No React.
 
 ### Phone sizes (2026-09-30, Yarin: "go for" the wrap-up items)
 Every stop now fits between the bar and the chevrons at every size swept (Chrome, true
-viewports): portrait 360 × 640, 375 × 553 (iPhone SE), 375 × 629, 390 × 664, 402 × 714,
+viewports): portrait 360 × 640, 375 × 549 / 553 (iPhone SE), 375 × 629, 390 × 664, 402 × 714,
 440 × 790; landscape 640 × 360, 667 × 320 / 331, 750 × 340, 874 × 370, 932 × 400; desktop
-1024 × 700 up to 1920 × 1080, incl. 1366 × 657 and 1280 × 690. Safari (iPhone 17 Pro) checked.
+1024 × 700 up to 1920 × 1080, incl. 1366 × 657 and 1280 × 690. Walked in Safari on the
+iPhone 17 Pro (402 × 714 of viewport) and the iPhone SE simulator (375 × 549); landscape
+Safari is still unchecked (the headless simulator can't be rotated from here).
 - **Portrait frame:** phone stops start at `max(12.5vh, 14px + 5.5rem)` and end at
   `max(…vh, 4rem)`: the bar ends at 94 px, and 12.5vh (69-79 px on short phones) let a
   full stop slide its first line under it.
 - **Small phones** (≤ 640 px tall): smaller portrait and photos, the proof counters one line
   each, and the stack line leaves the three stops that carry a list. **iPhone SE** (≤ 600):
   screenshots become a 13.5vh strip, the stack line and the abilities / potential list go,
-  the Timeline's CV pill joins its title row, an Also row keeps one line ("Also · AeroCy").
+  the Timeline's CV pill joins its title row, an Also row keeps one line ("Also · AeroCy"),
+  and How I Build's three repo cards share one row (in Safari the second row of cards ran
+  10 pt under the chevrons; Chrome had it 4 px clear).
   How I Build's lines and project outcomes lost the 30ch desktop measure on every phone.
 - **Landscape phones** (`(orientation: landscape) and (max-height: 520px)`, last in
   `style.css`, guarded by `tests/css.test.js`): the figure beside the words — render.js

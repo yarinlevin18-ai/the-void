@@ -917,7 +917,7 @@ span.pill { cursor: default; }   /* "Private build", "Personal app", "Private re
   .stop-build .repos { gap: .3rem; }
   .stop-build .repo { padding: .38rem .65rem; }
 }
-/* iPhone SE class (375 × 553 of Safari, 2026-09-30): 387 px between the bar and the chevrons, and
+/* iPhone SE class (375 × 549 of Safari in the simulator, 2026-09-30): ~385 px between the bar and the chevrons, and
    every stop but three ran 20-100 px past them. The pictures shrink to a strip; what goes is
    secondary — the stack line and the abilities / potential list; the CV pill joins the Timeline's
    title row and an Also row keeps one line. The stop still scrolls if a line more ever lands. */
@@ -932,6 +932,12 @@ span.pill { cursor: default; }   /* "Private build", "Personal app", "Private re
   .about .about-title { font-size: 1.6rem; }
   .about .para { font-size: .84rem; margin-bottom: .45em; }
   .stop-build .method .line { font-size: .84rem; line-height: 1.2; }
+  .stop-build .repos { grid-template-columns: repeat(3, minmax(0, 1fr)); }   /* one row of three: in Safari the second row of cards ran 10 pt under the chevrons */
+  .stop-build .repo.lead { grid-column: auto; }
+  .stop-build .repo { padding: .35rem .55rem; }
+  .stop-build .repo b { letter-spacing: 0; }   /* "LLM Gateway" on one line in a third of the column */
+  .stop-build .repo .links { gap: .1rem .6rem; }
+  .stop-build .repo .muted { display: none; }   /* "private repo": the card has no GitHub link, which says it */
   .stop.stop-timeline { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-content: safe center; column-gap: .6rem; }
   .stop-timeline .eyebrow { grid-column: 1 / -1; }
   .stop-timeline .tl-title { grid-column: 1; grid-row: 2; }

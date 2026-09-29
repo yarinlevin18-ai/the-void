@@ -319,7 +319,9 @@ Yarin: "go for 3-5" (copy check, repo tidy, small and sideways phones).
       fits every swept size; short laptops (1366 × 657) fixed too.
 - [x] iOS double-tap on ▼ no longer zooms the page; the contact card no longer clips its
       © row on short screens.
-- [ ] Safari landscape + iPhone SE simulator check (needs Yarin's OK in the panel).
+- [x] iPhone SE simulator (Safari, 375 × 549): every stop walked; How I Build's repo cards
+      moved into one row after Safari ran them 10 pt under the chevrons.
+- [ ] Safari landscape (the headless simulator can't be rotated from Claude's side).
 
 ## Open work (2026-09-12) — in priority order
 1. ~~Camera authoring for stops 2–11~~ ✅ 2026-09-12 — desktop shots baked
