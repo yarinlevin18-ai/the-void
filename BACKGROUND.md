@@ -1,7 +1,7 @@
 # BACKGROUND.md — the "living void" environment spec
 
 > How the background should look & behave. Reference implementation:
-> **`demo-living-void.html`** (open it — it IS the spec; match its feel).
+> **`sketches/demo-living-void.html`** (open it — it IS the spec; match its feel).
 > Built into the real scene via `/fx background reactivity`. Companion to ENVIRONMENT.md.
 
 ## Goal

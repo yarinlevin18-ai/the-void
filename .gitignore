@@ -16,3 +16,6 @@ Israel-open-roles.md
 .survey/
 .superpowers/
 .playwright-mcp/
+
+# Editor workspace files (local paths, not part of the project).
+*.code-workspace

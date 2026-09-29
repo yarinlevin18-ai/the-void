@@ -150,12 +150,12 @@ const camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerH
 
 // The void's points are now the volumetric starfield inside livingVoid (below).
 
-// ---- Living void (per BACKGROUND.md / demo-living-void.html) -----------------
+// ---- Living void (per BACKGROUND.md / sketches/demo-living-void.html) --------
 // An animated nebula backdrop + twinkling, drifting shader nodes + form/dissolve
 // energy lines whose endpoints follow the moving nodes. All behind the content.
 const livingVoid = (() => {
   // 1) Volumetric nebula — a half-res RAYMARCHED 3D gas cloud (from
-  //    demo-nebula-volumetric.html, APPROVED). Each pixel marches a world-space ray
+  //    sketches/demo-nebula-volumetric.html, APPROVED). Each pixel marches a world-space ray
   //    through domain-warped 3D noise -> real depth + parallax, the camera flies
   //    THROUGH it. Rendered to a half-res target, composited under the stars.
   const _reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -222,7 +222,7 @@ const livingVoid = (() => {
   scene.add(composite);
 
   // 2) Volumetric starfield — a 3D VOLUME you fly through (ported 1:1 from
-  //    demo-nebula.html). Streamed toward the camera and wrapped endlessly in the
+  //    sketches/demo-nebula.html). Streamed toward the camera and wrapped endlessly in the
   //    vertex shader; depth-driven size + fade; per-star magnitude spread + colour
   //    temperature; sharp core + halo + a 4-point spike on the brightest; twinkle.
   const STAR_N = 1500, DEPTH = 1800;
@@ -464,7 +464,7 @@ const heroCluster = (() => {
 })();
 
 // ---- FRAME 1: OPENING — "Yarin Levin" formed from ~5k additive void particles
-//  (ported 1:1 from demo-opening.html): scatter→glyphs form-in, cursor-shatter idle,
+//  (ported 1:1 from sketches/demo-opening.html): scatter→glyphs form-in, cursor-shatter idle,
 //  burst-exit on leave that hands into the flight. Glow is free — additive points + the
 //  existing UnrealBloom (threshold ~0.22). A dedicated Points set (the streaming
 //  starfield can't hold glyph positions); visually it reads as the void's own matter.
@@ -642,7 +642,7 @@ let _prevCamPos = null;
 const _vel = new THREE.Vector3(), _dir = new THREE.Vector3();
 
 // ---- The data network — nodes + living energy lines (BACKGROUND.md layer 4,
-//  ENVIRONMENT.md Layer 2; look ported from demo-living-void.html, APPROVED).
+//  ENVIRONMENT.md Layer 2; look ported from sketches/demo-living-void.html, APPROVED).
 //  World-space, built AFTER the beats load so hubs cluster around each section:
 //  the "CRM/SaaS network" read from the PRD. All motion runs in the vertex
 //  shader (drift = layered sines from per-vertex attrs), so nodes and their
@@ -2437,7 +2437,7 @@ try {
 } catch (e) { composer = null; console.warn('Postprocessing disabled:', e); }
 
 // ---- Water swipe — GPU wave-equation sim refracting the scene, per-section ----
-//  (ported 1:1 from demo-water-trail.html). Half-float ping-pong sim; the final
+//  (ported 1:1 from sketches/demo-water-trail.html). Half-float ping-pong sim; the final
 //  composer pass refracts the rendered scene by the wave gradient. Calm = passthrough.
 // Built only if a section asks for it (2026-09-29): no shipped beat sets `water`, and the
 // sim + its full-screen pass cost every desktop frame while doing nothing (code review).

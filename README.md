@@ -33,6 +33,7 @@ npm run stamp    # writes the owner's name into any new image under public/
 | `src/style.css` | All styling, the phone layouts and the print CV |
 | `scripts/` | Build helpers: the git build log, the no-JS page, the owner marks, image stamping |
 | `tests/` | `node --test` suites, run by every build |
+| `sketches/` | Early standalone demos and font specimens; not part of the site |
 | `CLAUDE.md` | Design decisions and conventions |
 
 ## License

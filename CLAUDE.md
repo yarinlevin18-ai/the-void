@@ -481,5 +481,11 @@ hard-refresh if a change doesn't show.
   Use the iOS Simulator (Safari on iPhone 17 via the `Claude_Code_iOS_Simulator`
   tool; `xcode-select` is set) rather than Chrome's 390×844 emulation, which
   hid both the soft-panel and the panel-on-text bugs of 2026-09-17.
-- Root-level `demo-*.html` and `font-specimen*.html` are scratch/reference —
-  not part of the shipped site. The `references/` folder no longer exists.
+- `sketches/` holds the June–July `demo-*.html` pages and the two font specimens
+  (moved out of the repo root 2026-09-30) — scratch/reference, not part of the
+  shipped site; `main.js` comments point there where a shader was ported. The seven
+  June slash commands in `.claude/commands/` (`/void`, `/atmosphere`, `/fx`, …) are
+  just as stale — they ask for the Typekit fonts, the wave ribbon, cursor effects
+  and a TEEPO beat — so don't follow them (the sandbox won't let Claude move them;
+  Yarin can `git mv .claude/commands/*.md sketches/commands/`). `*.code-workspace`
+  is gitignored. The `references/` folder no longer exists.
