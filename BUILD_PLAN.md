@@ -236,7 +236,7 @@ Spec: `docs/superpowers/specs/2026-09-14-contact-door-and-loader-design.md`.
   the per-hop bulges (`[avoid]`). Recomputed on every beat / panel rebuild.
 - Tests 50 passing; save version unchanged (18).
 
-## Phase M — Launch adjustments ✅ (2026-09-29, save v21)
+## Phase M — Launch adjustments ✅ (2026-09-29, save v22)
 Yarin's ten-point review before publishing:
 - [x] Mouse tracking removed: cursor trail (`cursor.js`), cursor threads, node stir.
 - [x] Minimal void: stars .45 / nodes .55 / links .45, traffic and flares halved.
@@ -260,6 +260,11 @@ Second round (same day):
 - [x] Cursor Buddy: an animated product loop (`buddy.js`) instead of a screenshot.
 - [x] Finale: a typed lead-in above the contact card.
 - [x] New captures for Sabai, the Agent Control landing page, SHADIEZ.
+Follow-ups (same day):
+- [x] Sabai's live link pulled: the app needs no login and shows real booking codes and
+      phone numbers. A profile test keeps `url` empty until the app is gated.
+- [x] Gate Opener: a 5:8 panel (save v22) filled by the 3× phone capture instead of a
+      narrow column in a 16:10 frame; a shorter phone figure (`phone: true`).
 
 ## Open work (2026-09-12) — in priority order
 1. ~~Camera authoring for stops 2–11~~ ✅ 2026-09-12 — desktop shots baked

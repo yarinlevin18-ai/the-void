@@ -143,7 +143,7 @@ export function renderProject(x, side, also = null) {
       <span class="also-links">${small(also.url, 'Visit live')}${small(also.repo, 'GitHub')}</span>
     </div>` : '';
   return `<article class="project" data-side="${escAttr(side)}">
-    ${x.anim ? `<figure class="stop-img shot anim"><canvas data-anim="${escAttr(x.anim)}" role="img" aria-label="${escAttr(x.animAlt || `${x.name} — animated demo`)}"></canvas></figure>` : figure(x.img, `${x.name} — screenshot`, 'shot')}
+    ${x.anim ? `<figure class="stop-img shot anim"><canvas data-anim="${escAttr(x.anim)}" role="img" aria-label="${escAttr(x.animAlt || `${x.name} — animated demo`)}"></canvas></figure>` : figure(x.img, `${x.name} — screenshot`, x.phone ? 'shot phone' : 'shot')}
     ${eyebrow(`${x.kind} · ${x.tag}`)}
     <h2 class="title">${esc(x.name)}</h2>
     <p class="outcome">${esc(x.outcome)}</p>

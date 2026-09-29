@@ -894,7 +894,7 @@ const DEFAULT_BEATS = [
   /* 7 */ { name: 'Sabai', stop: 'project', id: 'sabai', side: 'left', cam: [4, 3, -255], look: [4, 3, -355], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/sabai.webp', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -255, 'left') },
   /* 8 */ { name: 'Agent Control', stop: 'project', id: 'agent-control', also: 'aerocy', side: 'right', cam: [-4, 3, -325], look: [-4, 3, -425], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/agent-control.webp', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -325, 'right') },
   /* 9 */ { name: 'Thesis Agent', stop: 'project', id: 'thesis', side: 'left', cam: [4, 3, -395], look: [4, 3, -495], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/thesis.webp', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -395, 'left') },
-  /* 10 */ { name: 'Gate Opener', stop: 'project', id: 'gate-opener', side: 'right', cam: [-4, 3, -465], look: [-4, 3, -565], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/gate-opener.webp', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -465, 'right') },
+  /* 10 */ { name: 'Gate Opener', stop: 'project', id: 'gate-opener', side: 'right', cam: [-4, 3, -465], look: [-4, 3, -565], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/gate-opener.webp', link: '', fx: { ...VOID_FX }, panel: (() => { const p = P(-4, 3, -465, 'right'); p.size = [15, 24]; p.pos[1] = 2.5; return p; })() },   // v22: 5:8 — a phone PWA in a 16:10 frame was a narrow column adrift in empty space
   /* 11 */ { name: 'SHADIEZ', stop: 'project', id: 'shadiez', also: 'smartcut', side: 'left', groupLabel: 'Landing pages', cam: [4, 3, -535], look: [4, 3, -635], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/shadiez.webp', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -535, 'left') },
   /* 12 */ { name: 'Contact', stop: 'contact', cam: [0, 49, -560], look: [1, 290, -560], up: [0, 0, -1], fov: 52, dur: 3, desc: '', img: '', link: '', panel: null },
 ];
@@ -1035,6 +1035,12 @@ function load() {
           for (const k of ['starFrac', 'nodeFrac', 'lineFrac', 'pulse', 'flare', 'cursorDrive']) FX[k] = FX_DEFAULTS[k];
           migrated = true;
         }
+        if (!(d.version >= 22)) {
+          // v22 (2026-09-29): Gate Opener's panel turns 5:8 to fit the phone capture —
+          // re-adopt that beat's panel only.
+          const was = beats.find((b) => b.id === 'gate-opener'), now = DEFAULT_BEATS.find((b) => b.id === 'gate-opener');
+          if (was && now) { was.panel = structuredClone(now.panel); migrated = true; }
+        }
         beats.forEach(backfillBeat); // bring older saves up to the current schema
         if (migrated) save();
         return;
@@ -1046,7 +1052,7 @@ function load() {
 }
 function save() {
   const g = {}; for (const k of GLOBAL_KEYS) g[k] = FX[k]; g.ease = txEaseName;
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 21 })); }
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 22 })); }
   catch (e) { console.warn('[save]', e); }   // private mode / quota: never let a failed write abort the boot
 }
 // push the global (saved) FX/UX/transition state into the live scene + DOM

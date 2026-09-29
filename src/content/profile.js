@@ -262,7 +262,7 @@ export const PROFILE = {
         decision: 'Offline-first: schedule, stays, flights, maps, budget and emergency info in one app, with OCR of the actual booking PDFs. No accounts, no sync server.',
         outcome: 'I used it every day of the trip.',
         stack: 'Next.js 16 · React 19 · Tesseract.js',
-        url: 'https://thailand-trip-app-phi.vercel.app',
+        url: '',   // unlinked 2026-09-29: the live app needs no login and shows real booking codes — gate it before linking again
       },
       {
         id: 'agent-control', name: 'Agent Control', group: 'saas', kind: 'Agent guardrails', tag: 'Cyber security', year: 2026,
@@ -284,7 +284,7 @@ export const PROFILE = {
       },
       {
         id: 'gate-opener', name: 'Gate Opener', group: 'saas', kind: 'Geofenced web app', tag: 'Private build', year: 2026,
-        tint: '#3fc978', img: '/previews/gate-opener.webp', private: true,
+        tint: '#3fc978', img: '/previews/gate-opener.webp', private: true, phone: true,   // a 5:8 phone capture: 5:8 panel on desktop, a shorter figure on phones
         problem: 'Opening the family gate meant stopping the car and finding an app, every single time.',
         decision: 'No open button: a geofence state machine that GPS drift can’t fire twice, and gate tokens encrypted server-side.',
         outcome: 'Pulling up to the gate is the trigger.',

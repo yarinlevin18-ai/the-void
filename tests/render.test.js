@@ -40,6 +40,7 @@ test('hi and project carry their imagery as a portrait-only figure with alt text
   assert.ok(hp.includes(`class="stop-img shot"`) && hp.includes(`src="${teepo.img}"`) && hp.includes('alt="TEEPO — screenshot"'));
   assert.ok(hp.indexOf('stop-img') < hp.indexOf('class="eyebrow"'), 'figure comes before the words');
   assert.ok(!renderProject({ ...teepo, img: '' }, 'left').includes('<img'), 'no figure without an image');
+  assert.ok(renderProject({ ...teepo, phone: true }, 'left').includes(`class="stop-img shot phone"`), 'a phone capture gets the shorter phone figure');
 });
 
 test('timeline renders one row per entry, a dot each, and the print pill', () => {

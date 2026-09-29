@@ -29,7 +29,7 @@ test('every image DEFAULT_BEATS ships exists under public/', () => {
 // carry old beat arrays (CLAUDE.md). The beat block's fingerprint (comments and
 // whitespace stripped) is pinned per save version: change a beat and this fails until
 // you bump the version, add the load() migration, and pin the new value here.
-const PINNED = { 21: 'bbee99921fb515a6' };
+const PINNED = { 21: 'bbee99921fb515a6', 22: '8dbb741b66a88e65' };
 test('DEFAULT_BEATS cannot change without a save-version bump', () => {
   const start = src.indexOf('const DEFAULT_BEATS = [');
   const block = src.slice(start, src.indexOf('\n];', start)).replace(/\/\/[^\n]*/g, '').replace(/\s+/g, '');

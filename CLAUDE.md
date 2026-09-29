@@ -1,7 +1,7 @@
 # CLAUDE.md — context for "The Void" portfolio
 
 Read this first. It captures the locked decisions and where everything lives so
-you can pick up the build with full context. Last synced to code: **v20 + phone polish / live layer, 2026-09-20**.
+you can pick up the build with full context. Last synced to code: **v22 — launch adjustments, 2026-09-29**.
 
 ## What this is
 A 3D, scroll-driven portfolio for **Yarin Levin — AI-native developer**. The
@@ -233,11 +233,16 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
 5. **LLM Gateway** — project stop, image left, SaaS group label. The strongest
    screen leads the work.
 6. **Cursor Buddy** — animated panel right (`buddy.js`, no screenshot), macOS menu-bar agent, private repo (replaced Focus 2026-09-29).
-7. **Sabai** — image left.
+7. **Sabai** — image left, **no live link** (2026-09-29): the app needs no login
+   and shows real booking codes and phone numbers, so `url` stays empty (guarded in
+   `tests/profile.test.js`) until Yarin gates it.
 8. **Agent Control** — image right, the cyber-security stop (live demo at
    agent-control-demo.vercel.app), **also** AeroCy.
 9. **Thesis Agent** — image left, private build (his dad's M.A. thesis advisor).
-10. **Gate Opener** — image right, private build (geofenced gate PWA).
+10. **Gate Opener** — image right, private build (geofenced gate PWA). Its panel
+    is 5:8 (15×24, save v22), filled by a 3× phone capture — in the default 16:10
+    frame the app was a narrow column adrift in empty space. `phone: true` in
+    `profile.js` caps its phone figure at 26vh so the stop clears the bar.
 11. **SHADIEZ** — image left, Landing pages group label, **also** SmartCut.
     TEEPO left the flight 2026-09-29 but stays in the Timeline and How I Build.
 12. **Contact** — the door (2026-09-14): the network parts around the look
@@ -274,14 +279,14 @@ folds a second featured project in as a compact row under the links.
 | `src/text3d.js` | 193 | Extruded 3D text (Source Code Pro, dev-only) |
 | `src/style.css` | ~770 | All styling incl. @media phone layout + print CV |
 | `index.html` | ~410 | Shell, loader, editor panels, JSON-LD, noscript skim path |
-| `public/previews/*.webp` | | teepo · aerocy · shadiez · smartcut · llm-gateway · sabai · agent-control · thesis · gate-opener · kiaras-club (1400–2400 px wide; panel canvases take a 1600 px long side on desktop, 1024 on touch). Cursor Buddy has none — `buddy.js` draws it |
+| `public/previews/*.webp` | | teepo · aerocy · shadiez · smartcut · llm-gateway · sabai · agent-control · thesis · gate-opener · kiaras-club (1400–2400 px wide, except gate-opener: a 1000×1600 phone capture; panel canvases take a 1600 px long side on desktop, 1024 on touch). Cursor Buddy has none — `buddy.js` draws it |
 | `public/assets/me/` | | portrait 4:5 (1000×1250, centred, head to knees; 19.2×24 panel) + 2 About panels: FIDF stage 4:3 (logo + speaker, no black rig band; 18×13.5) and the Nova memorial at Re’im 3:4 (10.5×14). Re-cut 2026-09-29 from the originals in `~/.claude/uploads/…` (mild grade + unsharp, q88); the lectern shot was a crop of the stage and is gone. Panel textures keep the panel's aspect (long side 1600, 1024 on touch) — until 2026-09-29 the height was capped at 1024, so every portrait panel was a stretched square |
 
 Deps: `three` 0.169, `meshline`, `three.quarks`, `vite` 8. No React.
 
 ### Persistence / migrations
 Path + FX config persists in **localStorage** `voidConfig`, currently **save
-version 21**. Any save below 16 has its beat array replaced wholesale with
+version 22**. Any save below 16 has its beat array replaced wholesale with
 `DEFAULT_BEATS` (the shape changed too much to patch) while the visitor's
 global FX/speed/ease settings are kept; v17 (2026-09-12) then rewrites
 `/previews/*.jpg` → `.webp` in whatever beat array survived (the JPGs are
@@ -294,7 +299,8 @@ the About `panels[]` (re-laid so the three never overlap) and the Hi `panel`
 (18×24); v21 (2026-09-29) — seven project stops, no Timeline screens, two About
 photos — wholesale re-adopts `DEFAULT_BEATS` and resets the minimal-void globals
 (`starFrac`, `nodeFrac`, `lineFrac`, `pulse`, `flare`, `cursorDrive`) from
-`FX_DEFAULTS`. The v2–v14 patch migrations were
+`FX_DEFAULTS`; v22 (2026-09-29) re-adopts only the Gate Opener beat's `panel`
+(16:10 → 5:8). The v2–v14 patch migrations were
 deleted on 2026-09-12: they only ever ran on beats the v14/v15 reset was about
 to discard. Any future
 `DEFAULT_BEATS` shape change needs its own migration step + version bump,
@@ -320,7 +326,7 @@ export tuned `BEATS` and paste into `DEFAULT_BEATS`.
 npm install
 npm run dev      # http://localhost:5173  (DEV_TOOLS on → E/B/T/U/Y/A work)
 npm run build    # runs the test suite, then vite build → dist/
-npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash, save, assets, domain, lab, buddy, buildlog (happy-dom for the DOM ones), 67 passing
+npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash, save, assets, domain, lab, buddy, buildlog (happy-dom for the DOM ones), 71 passing
 ```
 `.claude/launch.json` has a `void-dev` config for the browser preview.
 Offline-capable: fonts are self-hosted and the site makes no external requests. HMR can be flaky —

@@ -551,6 +551,8 @@ html, body {
   .stop-img.shot img { max-height: 42vh; }
   .stop-imgs { max-width: 22rem; margin-bottom: .7rem; }
 }
+/* A 5:8 phone capture (Gate Opener) binds on height: at 30vh the stop rose to 6 px under the bar */
+@media (orientation: portrait) { .stop-img.shot.phone img { max-height: 26vh; } }
 
 /* ---- Per-stop entrances on portrait screens (2026-09-17) ----
    One easing curve, short travel, ≤ 600 ms, staggered so each stop reads as one

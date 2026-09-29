@@ -47,6 +47,7 @@ test('repo links only on public repos; private builds flagged', () => {
     if (p.private) assert.equal(p.repo, undefined, `${p.id} is private but has a repo link`);
   }
   for (const id of ['cursor-buddy', 'thesis', 'gate-opener']) assert.equal(featured.find((p) => p.id === id).url, '', `${id} is a private build with no live link`);
+  assert.equal(featured.find((p) => p.id === 'sabai').url, '', 'sabai: the live app shows booking codes and phone numbers to anyone — gate it before linking it again');
 });
 
 test('contact block', () => {
