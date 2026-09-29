@@ -260,37 +260,6 @@
       <div class="fx-hint">A to hide · live · play mode · saved</div>
     </div>
 
-    <!-- 3D TEXT panel (toggle with Y) — place truly-extruded Ogg text -->
-    <div id="textpanel" class="sidepanel" hidden>
-      <div class="fx-head">3D Text <span>Y</span></div>
-      <div class="fx-row"><label>Item</label><select id="text-list"></select></div>
-      <div class="fx-row btns2"><button id="text-add">+ Add</button><button id="text-del">Delete</button><button id="text-place">Place at view</button></div>
-
-      <div class="fx-group">Content</div>
-      <div class="fx-row col"><textarea id="text-content" rows="2" placeholder="type text…"></textarea></div>
-
-      <div class="fx-group">Shape</div>
-      <div class="fx-row"><label>Size</label><input id="text-size" type="range" min="4" max="80" step="1" /><span id="text-size-v"></span></div>
-      <div class="fx-row"><label>Depth</label><input id="text-depth" type="range" min="0" max="30" step="0.5" /><span id="text-depth-v"></span></div>
-      <div class="fx-row"><label>Bevel</label><input id="text-bevel" type="range" min="0" max="5" step="0.1" /><span id="text-bevel-v"></span></div>
-
-      <div class="fx-group">Look</div>
-      <div class="fx-row"><label>Glow</label><input id="text-glow" type="range" min="0" max="4" step="0.1" /><span id="text-glow-v"></span></div>
-      <div class="fx-row"><label>Color</label><input id="text-color" type="color" /></div>
-
-      <div class="fx-group">Position</div>
-      <div class="fx-row"><label>X</label><input id="text-x" type="range" min="-300" max="300" step="1" /><span id="text-x-v"></span></div>
-      <div class="fx-row"><label>Y</label><input id="text-y" type="range" min="-150" max="300" step="1" /><span id="text-y-v"></span></div>
-      <div class="fx-row"><label>Z</label><input id="text-z" type="range" min="-700" max="200" step="1" /><span id="text-z-v"></span></div>
-
-      <div class="fx-group">Rotation</div>
-      <div class="fx-row"><label>Rot X</label><input id="text-rx" type="range" min="-180" max="180" step="1" /><span id="text-rx-v"></span></div>
-      <div class="fx-row"><label>Rot Y</label><input id="text-ry" type="range" min="-180" max="180" step="1" /><span id="text-ry-v"></span></div>
-      <div class="fx-row"><label>Rot Z</label><input id="text-rz" type="range" min="-180" max="180" step="1" /><span id="text-rz-v"></span></div>
-
-      <div class="fx-hint" id="text-status">loading font…</div>
-    </div>
-
     <!-- DIRECTOR MODE editor (toggle with E) -->
     <div id="editor" hidden>
       <div class="row title">DIRECTOR MODE <span class="hint">E to exit</span></div>
@@ -371,7 +340,7 @@
           <li>May 2026 — SHADIEZ: paid client site, in production.</li>
           <li>Jun 2026 — AeroCy: the company’s live bilingual site, shipped in days.</li>
           <li>Jul 2026 — TEEPO: Hebrew-RTL study platform, live with real auth.</li>
-          <li>Aug 2026 — LLM Gateway: the control plane every agent I run goes through.</li>
+          <li>Aug 2026 — LLM Gateway: one control plane for model routing, a spend cap and agent policies.</li>
           <li>Now — 17 built, 7 live. Every build goes through Claude Code end-to-end; the next one is already underway.</li>
         </ul>
         <h2>Before code</h2>

@@ -84,7 +84,7 @@ export const PROFILE = {
       { when: 'May 2026', what: 'SHADIEZ', line: 'Paid client site, in production.' },
       { when: 'Jun 2026', what: 'AeroCy', line: 'The company’s live bilingual site, shipped in days.' },
       { when: 'Jul 2026', what: 'TEEPO', line: 'Hebrew-RTL study platform, live with real auth.' },
-      { when: 'Aug 2026', what: 'LLM Gateway', line: 'The control plane every agent I run goes through.' },
+      { when: 'Aug 2026', what: 'LLM Gateway', line: 'One control plane for model routing, a spend cap and agent policies.' },
       { when: 'Now', what: '17 built, 7 live', line: 'Every build goes through Claude Code end-to-end; the next one is already underway.' },
     ],
   },
@@ -241,8 +241,13 @@ export const PROFILE = {
         tint: '#4fd2ff', img: '/previews/llm-gateway.webp', private: true,
         problem: 'Every app I build calls a model provider, and none of them shared routing, budgets or logs.',
         decision: 'A local control plane: one route endpoint, a budget check before every call, a log row after it, and an agent layer for policies and approvals. No hosted service, no billing.',
-        outcome: 'Every agent I run goes through it. Spend and latency visible per model, per day.',
-        stack: 'Node · Fastify · SQLite · Anthropic SDK',
+        outcome: 'Routed calls stop at a daily cap, and no agent action runs without a rule that allows it.',
+        stack: 'Node · Hono · SQLite · Anthropic SDK',
+        potential: [   // products this could become — framed as potential, never as shipped
+          { t: 'AI spend control', d: 'Budgets per client and cost per model, hosted for teams shipping AI.' },
+          { t: 'Agency client portal', d: 'Each client sees its own usage, approvals and activity, on its own page.' },
+          { t: 'Local-first router', d: 'Easy tasks to a local model, hard ones to Claude, behind one endpoint.' },
+        ],
         url: 'https://shaar-ai-landing.vercel.app',
       },
       {
@@ -253,6 +258,16 @@ export const PROFILE = {
         decision: 'A menu-bar agent that sees the screen and acts in Mac apps, safety first: real-click-only approvals and a sandboxed terminal.',
         outcome: 'Hold a key, ask by voice or text, and the answer lands beside the cursor.',
         stack: 'Swift 6 · SwiftUI · Claude API · whisper.cpp · MCP',
+        abilities: [   // each one checked in the Swift source (v2.0.11, 2026-09-29)
+          { t: 'Talk or type', d: 'Hold ⌥Space and speak, or ⌥⇧Space to type.' },
+          { t: 'Speech on-device', d: 'English or Hebrew, transcribed on the Mac.' },
+          { t: 'Sees what you see', d: 'Reads the screen under the cursor; circle to point.' },
+          { t: 'Answers in place', d: 'A bubble beside the pointer, its steps shown live.' },
+          { t: 'Points it out', d: 'Draws arrows and boxes over any app to show where.' },
+          { t: 'Works your apps', d: 'Presses buttons and fills fields without your mouse.' },
+          { t: 'Files and terminal', d: 'Moves files with undo; runs builds in a sandbox.' },
+          { t: 'Asks before acting', d: 'Risky steps wait for a real click. Esc stops it all.' },
+        ],
         url: '',
       },
       {
@@ -271,6 +286,11 @@ export const PROFILE = {
         decision: 'Guardrails the admin sets and the connector enforces, personal data scrubbed before any model call, an append-only audit log.',
         outcome: 'A working demo: four agents, four roles, every action on the record.',
         stack: 'Next.js · Hebrew RTL · role-based access',
+        potential: [   // products this could become — framed as potential, never as shipped
+          { t: 'Agent governance', d: 'The fence, roles and audit log as a product for firms running agents.' },
+          { t: 'Privacy-first office AI', d: 'Clinics and law firms: personal data scrubbed, confidential work in-house.' },
+          { t: 'Back-office autopilot', d: 'Invoices, supplier mail and stock checks, with a manager past a set limit.' },
+        ],
         url: 'https://agent-control-demo.vercel.app',
       },
       {

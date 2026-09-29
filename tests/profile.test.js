@@ -56,6 +56,19 @@ test('contact block', () => {
   assert.equal('x' in PROFILE.links, false, 'X was dropped 2026-09-22 — no dead channel');
 });
 
+test('abilities and potential stay short enough for the strip and the phone list', () => {
+  const byId = (id) => featured.find((p) => p.id === id);
+  assert.ok(byId('cursor-buddy').abilities.length >= 6 && byId('cursor-buddy').abilities.length <= 8, 'Cursor Buddy: 6-8 abilities (two rows of four at most)');
+  for (const id of ['llm-gateway', 'agent-control']) assert.equal(byId(id).potential.length, 3, `${id}: three potential products, one row`);
+  for (const p of featured) {
+    for (const i of [...(p.abilities || []), ...(p.potential || [])]) {
+      assert.ok(i.t.length <= 24, `${p.id}: "${i.t}" — titles fit one line of a strip card`);
+      assert.ok(i.d.length <= (p.abilities ? 56 : 80), `${p.id}: "${i.d}" — the one-liner runs past its card`);
+    }
+    assert.ok(!(p.abilities && p.potential), `${p.id}: one list per stop`);
+  }
+});
+
 test('ids are unique and the ids render.js hardcodes exist', () => {
   const ids = featured.map((p) => p.id);
   assert.equal(new Set(ids).size, ids.length);
@@ -97,7 +110,7 @@ test('buildStop ids exist in featured and every featured preview file is on disk
 
 // Claims that were retired in the 2026-09-14 wording rework. They must not
 // come back anywhere a visitor or crawler can read them.
-const RETIRED = ['ai-native builder', 'real users', 'with users', 'dropped wix', 'stopped rescheduling', 'one user', 'not a demo', 'projects a quarter'];
+const RETIRED = ['ai-native builder', 'real users', 'with users', 'dropped wix', 'stopped rescheduling', 'one user', 'not a demo', 'projects a quarter', 'every agent i run'];   // the gateway audit (2026-09-29): some apps only report usage, local calls skip it
 
 function strings(value, out = []) {
   if (typeof value === 'string') out.push(value);

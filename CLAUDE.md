@@ -50,9 +50,8 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
 - **Three typefaces:** Bricolage Grotesque (display, `--f-display`), Schibsted
   Grotesk (body, `--f-body`, also aliased `--f`), Doto (labels/counters,
   `--f-mono`) — all OFL, self-hosted Latin-subset woff2 in `public/fonts`,
-  preloaded, ~142KB total. Source Code Pro Medium TTF survives only for the
-  extruded 3D wordmark (`text3d.js`), dev-only, font load gated. No external
-  requests.
+  preloaded, ~142KB total. No external requests. (The extruded 3D text tool —
+  `text3d.js`, the Y panel and its Source Code Pro TTF — was deleted 2026-09-29.)
 - **Panels are pure image artifacts** — full-bleed screenshot(s), hairline frame,
   no text or CTA baked in. They must read sharp and bright on arrival
   (2026-09-14): the DOF pass racks focus onto the stop's panel (not the look
@@ -106,6 +105,23 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   one pulses once on the Opening) and a 2px progress hairline along the
   bottom edge (`#hud-rail`, `scaleX(index/last)`). The stop name + count
   survive only in an `sr-only` `aria-live` region — no visible page counter.
+- **Abilities / Potential (2026-09-29, Yarin):** Cursor Buddy lists eight abilities
+  (`abilities` in `profile.js`, each checked in the Swift source, v2.0.11); LLM Gateway
+  and Agent Control list three products each could become (`potential`, always framed
+  as potential). `renderProject` emits the list twice: `.xl-flow`, titles only, in the
+  text column (phones, narrow screens), and `.xl-strip`, cards with one-liners, as a
+  sibling of the article that sits under the image panel from 1100 × 600 (`top: 65vh`,
+  from 48vw on the panel's side). Eight cards keep their one-liners only from 1300 × 820
+  — below that the two rows ran into the chevrons at 1440 × 790. Below 640 px tall on
+  a wider-than-phone window the flow list hides (the column is full there). Phones:
+  PROBLEM / DECISION / the list are run-in labels on every project stop (each label +
+  sentence is its own `<div>` inside the `<dl>` — Safari only balances real blocks),
+  and the three list stops show a 52 % screenshot (42 % under 690 px tall). Measured
+  2026-09-29: all seven project stops fit 402 × 711 and 390 × 664; at 375 × 629 four
+  still tuck 6-14 px under the bar (production overflowed by 70-175 px there). The
+  same audit fixed the gateway copy: Hono not Fastify, and "every agent I run goes
+  through it" is a retired phrase (some apps only report usage; local calls skip it).
+  Stack lines use `segments()`: an item never breaks inside, a line never starts with ·.
 - **Phone composition (2026-09-22):** Hi and About are centred on portrait
   instead of hugging the top (they left 230-300 px of dead void below the last
   line); project stops carry 11.5vh of bottom padding so the links row clears
@@ -215,8 +231,8 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   flight leaves the Opening. Phones: a two-row CSS grid (`grid-template-areas`
   — name/role + Copy email, then Work · About · icon links), availability
   text hidden, icons only. Replaces the old dossier button / waypoint rail.
-- **Director Mode** (`E`) and the FX/Transitions/UI/3D-Text/Assets panels
-  (`B T U Y A`) are **dev-only**: gated by `DEV_TOOLS = import.meta.env.DEV ||
+- **Director Mode** (`E`) and the FX/Transitions/UI/Assets panels
+  (`B T U A`) are **dev-only**: gated by `DEV_TOOLS = import.meta.env.DEV ||
   ?edit` in the URL. Visitors never see them.
 
 ## The flight (DEFAULT_BEATS, `src/main.js`)
@@ -271,12 +287,11 @@ folds a second featured project in as a compact row under the links.
 | `src/lab.js` / `src/labcard.js` | ~45 / ~115 | Timeline lab card: `cubicBezier` (node-tested) and the drag/loop/code-tab wiring |
 | `scripts/buildlog.js` | ~55 | Build-time git-history summary for the How I Build strip, node-tested; snapshot in `src/content/buildlog.json` |
 | `src/panels.js` | 96 | DOM stop layer: builds/shows/hides stops (inert + aria-hidden), count-up, print/copy |
-| `src/render.js` | ~190 | Pure HTML renderers (hi, about, timeline + lab card, build + build log, project, contact + finale) incl. the portrait-only `stop-img` figures, node-tested |
+| `src/render.js` | ~190 | Pure HTML renderers (hi, about, timeline + lab card, build + build log, project + abilities / potential list, contact + finale) incl. the portrait-only `stop-img` figures, node-tested |
 | `src/bar.js` | 53 | Fixed top bar: name + role, availability, Work, About, phone / LinkedIn / GitHub, Copy email |
 | `src/hash.js` | 28 | Deep-link resolver: fragment/anchor → stop index, prototype-free, node-tested |
 | `src/printcv.js` | 54 | Print-only CV (moved out of the old dossier.js) |
 | `src/content/profile.js` | 269 | **Single source of truth** for bio, CV, intro/method/proof, 10 featured (7 flight stops + AeroCy/SmartCut rows + TEEPO for How I Build) + shipped/labs projects, links, status |
-| `src/text3d.js` | 193 | Extruded 3D text (Source Code Pro, dev-only) |
 | `src/style.css` | ~770 | All styling incl. @media phone layout + print CV |
 | `index.html` | ~410 | Shell, loader, editor panels, JSON-LD, noscript skim path |
 | `public/previews/*.webp` | | teepo · aerocy · shadiez · smartcut · llm-gateway · sabai · agent-control · thesis · gate-opener · kiaras-club (1400–2400 px wide, except gate-opener: a 1000×1600 phone capture; panel canvases take a 1600 px long side on desktop, 1024 on touch). Cursor Buddy has none — `buddy.js` draws it |
@@ -326,7 +341,7 @@ export tuned `BEATS` and paste into `DEFAULT_BEATS`.
 npm install
 npm run dev      # http://localhost:5173  (DEV_TOOLS on → E/B/T/U/Y/A work)
 npm run build    # runs the test suite, then vite build → dist/
-npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash, save, assets, domain, lab, buddy, buildlog (happy-dom for the DOM ones), 71 passing
+npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash, save, assets, domain, lab, buddy, buildlog (happy-dom for the DOM ones), 73 passing
 ```
 `.claude/launch.json` has a `void-dev` config for the browser preview.
 Offline-capable: fonts are self-hosted and the site makes no external requests. HMR can be flaky —
@@ -347,6 +362,8 @@ hard-refresh if a change doesn't show.
    visitor text ≥ 4.5:1 on the void), Lighthouse mobile 2026-09-12 (after
    WebP + label fix): perf 84–88 / a11y 100 / best-practices 100 / SEO 100,
    100 % legible text, 610 KiB total. Still to do on a physical phone.
+   **Landscape phones** overflow on every project stop (measured 2026-09-29 at
+   874 × 370: 160-215 px past the fold, production included) — needs its own layout.
 6. ~~Custom domain~~ decided 2026-09-14: **yarinlevin.com**, bought through
    Vercel (Settings → Domains; `www` redirects to the apex). Code, canonical,
    OG, JSON-LD, robots, sitemap and `links.site` already point there;
@@ -370,7 +387,9 @@ hard-refresh if a change doesn't show.
   `try/catch` ate the TypeError. `tests/globals.test.js` now fails the build on
   any module-scope `history`/`location`/`document`/… binding.
 - Gone for good (2026-09-12 review): the neon wave ribbon, `freeRoam`, the
-  `onTint`/`data-tint` hover channel. Don't reintroduce dead channels.
+  `onTint`/`data-tint` hover channel; (2026-09-29) the extruded 3D text tool
+  (`text3d.js`, Y panel, the lights and glass environment only it used). Don't
+  reintroduce dead channels.
 - Every `DEFAULT_BEATS` change ships with a save migration + version bump
   (`tests/save.test.js` fails if `save()`'s version lags the newest guard, and
   pins a fingerprint of the `DEFAULT_BEATS` block per save version — edit a beat

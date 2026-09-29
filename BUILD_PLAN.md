@@ -265,6 +265,16 @@ Follow-ups (same day):
       phone numbers. A profile test keeps `url` empty until the app is gated.
 - [x] Gate Opener: a 5:8 panel (save v22) filled by the 3× phone capture instead of a
       narrow column in a 16:10 frame; a shorter phone figure (`phone: true`).
+Third round (same day):
+- [x] The extruded 3D text tool is gone (`text3d.js`, Y panel, Source Code Pro TTF, the
+      lights + glass environment only it used).
+- [x] Cursor Buddy: eight abilities, each checked in the Swift source; LLM Gateway and
+      Agent Control: a Potential section (three products each). Card strip under the
+      panel on wide screens, a titles-only line in the text column elsewhere.
+- [x] Phones: run-in labels on every project stop, smaller screenshots on the three list
+      stops; all seven fit 402 × 711 and 390 × 664 (production overflowed at 390 × 664).
+- [x] Gateway copy audit: Hono not Fastify; "every agent I run goes through it" retired.
+- [ ] Landscape phones: every project stop overflows (pre-existing).
 
 ## Open work (2026-09-12) — in priority order
 1. ~~Camera authoring for stops 2–11~~ ✅ 2026-09-12 — desktop shots baked

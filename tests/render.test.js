@@ -11,7 +11,7 @@ test('hi renders greeting, status and two lines, side left', () => {
   const h = renderHi(PROFILE);
   assert.ok(h.includes('data-side="left"'));
   assert.ok(h.includes(esc(PROFILE.hi.greeting)));
-  for (const seg of PROFILE.hi.status.split(' · ')) assert.ok(h.includes(`<span class="seg">${esc(seg)}</span>`), seg);
+  for (const seg of PROFILE.hi.status.split(' · ')) assert.ok(h.includes(`<span class="seg">${esc(seg)}`), seg);
   assert.equal((h.match(/class="line"/g) || []).length, 2);
 });
 
@@ -116,6 +116,20 @@ test('a project stop can fold in a second project as an Also row', () => {
   assert.ok(h.includes(aerocy.outcome));
   assert.ok(h.includes(`href="${aerocy.url}"`));
   assert.ok(!renderProject(teepo, 'right').includes('class="also"'), 'no row without a second project');
+});
+
+test('a project with abilities or potential renders the list twice: text column and strip', () => {
+  const base = { id: 'q', name: 'n', kind: 'k', tag: 't', tint: '#000000', problem: 'p', decision: 'd', outcome: 'o', stack: 'A · B', url: '', private: true };
+  const h = renderProject({ ...base, potential: [{ t: 'Spend <control>', d: 'one line' }, { t: 'b', d: 'x' }, { t: 'c', d: 'y' }] }, 'right');
+  assert.ok(h.includes('class="project has-xl"'), 'the article is flagged for the phone compaction');
+  const art = h.slice(0, h.indexOf('</article>'));
+  assert.ok(art.includes('class="xl xl-flow"') && art.indexOf('xl-flow') < art.indexOf('class="stack"'), 'the flow list sits in the text column, before the stack');
+  assert.ok(h.slice(h.indexOf('</article>')).includes('class="xl xl-strip"'), 'the strip is a sibling of the article, positioned against the stop');
+  assert.ok(h.includes('Potential') && h.includes('Spend &lt;control&gt;') && !h.includes('<control>'), 'label shown, text escaped');
+  const many = renderProject({ ...base, abilities: Array.from({ length: 8 }, (_, i) => ({ t: `a${i}`, d: 'd' })) }, 'right');
+  assert.ok(many.includes('xl-strip many') && many.includes('Abilities'), 'eight abilities get the four-column strip');
+  assert.ok(!renderProject(base, 'left').includes('class="xl'), 'no list, no markup');
+  assert.ok(renderProject(base, 'left').includes('<span class="seg">A ·</span> <span class="seg">B</span>'), 'stack items never break inside, and a line never starts with a dot');
 });
 
 test('outcome leads the project block, above Problem and Decision', () => {

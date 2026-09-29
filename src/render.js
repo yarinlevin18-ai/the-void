@@ -19,7 +19,7 @@ const figure = (src, alt, cls) => src ? `<figure class="stop-img ${cls}"><img sr
 // Abbreviations don't end a sentence: initials like "B.A." / "M.A." and e.g. / i.e. / vs. / etc.
 export const sentences = (t) => String(t).split(/(?<=[.!?])(?<!\b(?:[A-Z]\.)+)(?<!\b(?:e\.g|i\.e|vs|etc)\.)\s+(?=\S)/).map((x) => `<span class="sent">${esc(x)}</span>`).join(' ');
 // A " · " list (the Hi status) breaks only between its items.
-const segments = (t) => String(t).split(' · ').map((x) => `<span class="seg">${esc(x)}</span>`).join(' · ');
+const segments = (t) => String(t).split(' · ').map((x, i, a) => `<span class="seg">${esc(x)}${i < a.length - 1 ? ' ·' : ''}</span>`).join(' ');   // the dot rides with the item before it: a line never starts with one
 
 // 01 Hi — portrait panel on the left (WebGL on landscape, DOM figure on portrait), greeting on the right.
 export function renderHi(p) {
@@ -135,6 +135,12 @@ export function renderProject(x, side, also = null) {
   const repo = x.repo ? `<a class="pill ghost" href="${escAttr(x.repo)}" target="_blank" rel="noopener">GitHub ↗</a>` : '';
   const privateRepo = (x.url && x.private && !x.repo) ? '<span class="pill ghost">Private repo</span>' : '';
   const small = (href, label) => href ? `<a href="${escAttr(href)}" target="_blank" rel="noopener">${label} ↗</a>` : '';
+  // Extra depth (2026-09-29): Cursor Buddy's abilities; what LLM Gateway and Agent
+  // Control could become as products. Rendered twice on purpose, like the figures:
+  // titles-only in the text column (phones, narrow screens) and as a card strip under
+  // the image panel on wide screens (≥ 1100 × 600). CSS shows exactly one.
+  const [xLabel, xMore, xItems] = x.abilities ? ['Abilities', 'what it can do', x.abilities] : x.potential ? ['Potential', 'what it could become', x.potential] : [];
+  const xl = (cls) => xItems?.length ? `<div class="xl ${cls}"><div class="xl-label">${esc(xLabel)}<span class="more"> · ${esc(xMore)}</span></div><ul>${xItems.map((i) => `<li><b>${esc(i.t)}</b><span>${esc(i.d)}</span></li>`).join(' ')}</ul></div>` : '';   // spaces: the titles-only list wraps between items
   const alsoRow = also ? `
     <div class="also">
       <span class="also-label">Also · ${esc(also.kind)}</span>
@@ -142,18 +148,18 @@ export function renderProject(x, side, also = null) {
       <span class="also-line">${esc(also.outcome)}</span>
       <span class="also-links">${small(also.url, 'Visit live')}${small(also.repo, 'GitHub')}</span>
     </div>` : '';
-  return `<article class="project" data-side="${escAttr(side)}">
+  return `<article class="project${xItems?.length ? ' has-xl' : ''}" data-side="${escAttr(side)}">
     ${x.anim ? `<figure class="stop-img shot anim"><canvas data-anim="${escAttr(x.anim)}" role="img" aria-label="${escAttr(x.animAlt || `${x.name} — animated demo`)}"></canvas></figure>` : figure(x.img, `${x.name} — screenshot`, x.phone ? 'shot phone' : 'shot')}
     ${eyebrow(`${x.kind} · ${x.tag}`)}
     <h2 class="title">${esc(x.name)}</h2>
     <p class="outcome">${esc(x.outcome)}</p>
     <dl>
-      <dt>Problem</dt><dd>${esc(x.problem)}</dd>
-      <dt>Decision</dt><dd>${esc(x.decision)}</dd>
-    </dl>
-    <div class="stack">${esc(x.stack)}</div>
+      <div><dt>Problem</dt><dd>${esc(x.problem)}</dd></div>
+      <div><dt>Decision</dt><dd>${esc(x.decision)}</dd></div>
+    </dl>${xl('xl-flow')}
+    <div class="stack">${segments(x.stack)}</div>
     <div class="links">${live}${repo}${privateRepo}</div>${alsoRow}
-  </article>`;
+  </article>${xl(`xl-strip${xItems?.length > 4 ? ' many' : ''}`)}`;
 }
 
 // tel: href — digits only, local 0 → +972. Empty in → empty out (no dead link).

@@ -11,7 +11,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
-import { createText3D, defaultText } from './text3d.js';
 import { PROFILE } from './content/profile.js';
 import { initPanels } from './panels.js';
 import { initLab } from './labcard.js';
@@ -583,29 +582,6 @@ const openingFX = (() => {
   const formed = () => !built || phase === 'idle' || phase === 'exit' || editMode || index !== 0;
   return { update, matchTo, formed };
 })();
-
-// ---- Placeable extruded 3D text (the site's one typeface) -------------------
-// Lights are added only for the standard-material text — the particle shaders
-// ignore them. Emissive + bloom make the letters glow; the directional light
-// catches the bevels/extrusion so they read as solid 3D.
-scene.add(new THREE.AmbientLight(0x4a5a6a, 0.85));
-const _textKey = new THREE.DirectionalLight(0xbfe6ff, 1.4); _textKey.position.set(40, 80, 120); scene.add(_textKey);   // key light for glass clearcoat glints
-// Cool gradient environment so the liquid-glass 3D text has the void to reflect (only Standard/Physical materials use it — panels/nebula are unaffected).
-try {
-  const c = document.createElement('canvas'); c.width = 16; c.height = 256; const x = c.getContext('2d');
-  const g = x.createLinearGradient(0, 0, 0, 256); g.addColorStop(0, '#0c2734'); g.addColorStop(0.5, '#06121c'); g.addColorStop(1, '#020406');
-  x.fillStyle = g; x.fillRect(0, 0, 16, 256);
-  const tex = new THREE.CanvasTexture(c); tex.mapping = THREE.EquirectangularReflectionMapping; tex.colorSpace = THREE.SRGBColorSpace;
-  const pm = new THREE.PMREMGenerator(renderer); scene.environment = pm.fromEquirectangular(tex).texture; tex.dispose(); pm.dispose();
-} catch (e) { console.warn('[glass env] skipped:', e); }   // never let env setup take down the page
-const text3d = createText3D();
-scene.add(text3d.group);
-text3d.restore();                 // re-place saved texts (meshes build once the font loads)
-// 3D text is dev-only now (the Y panel + restored saved texts) — visitors never
-// pay for the typeface JSON/TTF unless something is actually placed in the scene.
-if (DEV_TOOLS || text3d.list().length) {
-  text3d.loadFont().then((r) => { const el = document.querySelector('#text-status'); if (el) el.textContent = r.ogg ? 'Source Code Pro loaded ✓' : 'Font missing — check public/fonts/'; });
-}
 
 // Live density control for every void layer — uses draw ranges (instant, no
 // rebuild) so you can dial the amount of stars / nodes / energy lines / nebula.
@@ -2204,7 +2180,7 @@ document.querySelector('#ed-add').addEventListener('click', addFromView);
 document.querySelector('#ed-jump').addEventListener('click', () => { jumpToSelected(); flash('Jumped'); });
 document.querySelector('#ed-undo').addEventListener('click', undo);
 document.querySelector('#ed-redo').addEventListener('click', redo);
-document.querySelector('#ed-save').addEventListener('click', () => { save(); text3d.save(); flash('Saved — everything'); });
+document.querySelector('#ed-save').addEventListener('click', () => { save(); flash('Saved — everything'); });
 document.querySelector('#ed-reset').addEventListener('click', () => {
   if (!confirm('Reset the whole path to defaults? This clears your saved edits.')) return;
   beats = structuredClone(DEFAULT_BEATS); speedMul = 1; smooth = 0.5; sel = 0;
@@ -2310,7 +2286,7 @@ function setEdit(on) {
   editor.hidden = !on;
   timelineEl.hidden = !on;
   if (fxEl) fxEl.hidden = on;        // hide the FX panel in Director Mode (no overlap with the editor)
-  if (on) { if (txEl) txEl.hidden = true; if (uxEl) uxEl.hidden = true; if (textEl) textEl.hidden = true; }  // hide the extra panels too
+  if (on) { if (txEl) txEl.hidden = true; if (uxEl) uxEl.hidden = true; }  // hide the extra panels too
   pathGroup.visible = on;
   controls.enabled = on;
   clearFly();
@@ -2608,7 +2584,7 @@ function bindPanelHotkey(key, fn) {
 function togglePanel(target) {
   if (!target) return;
   const willShow = target.hidden;
-  for (const p of [fxEl, txEl, uxEl, textEl, asEl]) { if (p) p.hidden = true; }
+  for (const p of [fxEl, txEl, uxEl, asEl]) { if (p) p.hidden = true; }
   if (willShow) target.hidden = false;
 }
 
@@ -2735,63 +2711,7 @@ const uxEl = document.querySelector('#uxpanel');
   bindPanelHotkey('u', () => togglePanel(uxEl));
 })();
 
-// ---- 3D Text panel (toggle with Y) — place & style extruded 3D text ---------
-const textEl = document.querySelector('#textpanel');
-(() => {
-  if (!textEl || !DEV_TOOLS) return;        // preview-only build (placed text still renders for visitors)
-  let curId = null;
-  const $ = (id) => document.querySelector('#text-' + id);
-  const listEl = $('list');
-  // [field, geometry-changing?] — geometry fields rebuild the mesh; others just re-apply
-  const FIELDS = [['size', true], ['depth', true], ['bevel', true], ['glow', false], ['x', false], ['y', false], ['z', false], ['rx', false], ['ry', false], ['rz', false]];
-
-  function renderList() {
-    const items = text3d.list();
-    listEl.innerHTML = items.map((d) => `<option value="${d.id}">${d.id}: ${(d.text || '').slice(0, 12) || '(empty)'}</option>`).join('');
-    if (items.length && (curId == null || !items.some((d) => d.id === curId))) curId = items[items.length - 1].id;
-    listEl.value = curId ?? '';
-  }
-  function loadFields() {
-    const d = text3d.get(curId); if (!d) return;
-    $('content').value = d.text;
-    for (const [f] of FIELDS) { const inp = $(f), out = $(f + '-v'); if (inp) inp.value = d[f]; if (out) out.textContent = d[f]; }
-    $('color').value = d.color;
-  }
-  function bindField(f, geo) {
-    const inp = $(f), out = $(f + '-v');
-    if (!inp) return;
-    inp.addEventListener('input', () => {
-      const d = text3d.get(curId); if (!d) return;
-      d[f] = parseFloat(inp.value); if (out) out.textContent = inp.value;
-      geo ? text3d.rebuild(curId) : text3d.apply(curId);
-    });
-    inp.addEventListener('change', () => text3d.save());
-  }
-  for (const [f, geo] of FIELDS) bindField(f, geo);
-  $('content').addEventListener('input', () => { const d = text3d.get(curId); if (!d) return; d.text = $('content').value; text3d.rebuild(curId); renderList(); });
-  $('content').addEventListener('change', () => text3d.save());
-  $('color').addEventListener('input', () => { const d = text3d.get(curId); if (!d) return; d.color = $('color').value; text3d.apply(curId); });
-  $('color').addEventListener('change', () => text3d.save());
-
-  listEl.addEventListener('change', () => { curId = parseInt(listEl.value, 10); loadFields(); });
-  $('add').addEventListener('click', () => { const d = text3d.add(defaultText()); curId = d.id; renderList(); loadFields(); });
-  $('del').addEventListener('click', () => { if (curId == null) return; text3d.remove(curId); curId = null; renderList(); loadFields(); });
-  $('place').addEventListener('click', () => {
-    const d = text3d.get(curId); if (!d) return;
-    const fwd = new THREE.Vector3(); camera.getWorldDirection(fwd);
-    const p = camera.position.clone().addScaledVector(fwd, 70);
-    d.x = Math.round(p.x); d.y = Math.round(p.y); d.z = Math.round(p.z);
-    const tmp = new THREE.Object3D(); tmp.position.copy(p); tmp.lookAt(camera.position);   // face the camera
-    d.rx = Math.round(THREE.MathUtils.radToDeg(tmp.rotation.x));
-    d.ry = Math.round(THREE.MathUtils.radToDeg(tmp.rotation.y));
-    d.rz = 0;                                          // force upright — no roll/tilt, dead-center
-    text3d.apply(curId); text3d.save(); loadFields();
-  });
-
-  renderList(); loadFields();
-  bindPanelHotkey('y', () => { togglePanel(textEl); renderList(); loadFields(); });
-  bindPanelHotkey('a', () => { togglePanel(asEl); loadAssetFields(); });
-})();
+if (DEV_TOOLS) bindPanelHotkey('a', () => { togglePanel(asEl); loadAssetFields(); });   // the Assets panel is set up above
 
 applyGlobals();   // apply the loaded global FX/UX/transition state before the loop starts
 
@@ -2917,7 +2837,6 @@ function animate() {
     const hsc = heroOn ? Math.max(-0.5, Math.min(0.5, progress * Math.max(1, lastIdx()) - index)) : 0;
     heroCluster.update(heroOn, t, beats[index], hsc);
   }
-  text3d.update(t, PREFERS_REDUCED);           // placed 3D text: light sweep + idle float
   try { openingFX.update(!editMode && index === 0 && progress < 0.06, t); } catch (e) { if (!animate._oerr) { console.error('[opening]', e); animate._oerr = 1; } }
   {                                          // per-chapter color world
     const [bi, bd] = nearestBeat(bCam);

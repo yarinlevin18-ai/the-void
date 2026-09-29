@@ -4,8 +4,7 @@
 /* Type system (v15) — three self-hosted OFL faces, Latin-subset woff2, no external requests.
    Display: Bricolage Grotesque (condensed-black at display sizes, calm at small).
    Body:    Schibsted Grotesk.
-   Labels:  Doto (dot-matrix) for eyebrows, stack lines, counters.
-   Source Code Pro remains ONLY for the extruded 3D wordmark (text3d.js). */
+   Labels:  Doto (dot-matrix) for eyebrows, stack lines, counters. */
 @font-face {
   font-family: "Bricolage";
   src: url("/fonts/BricolageGrotesque.woff2") format("woff2");
@@ -337,7 +336,6 @@ html, body {
 .sidepanel[hidden] { display: none; }
 #txpanel { left: 1.2rem; top: 1.2rem; }
 #uxpanel { left: 1.2rem; bottom: 1.2rem; }
-#textpanel { right: 1.2rem; top: 1.2rem; }
 .sidepanel .fx-row.col { display: block; }
 .sidepanel .fx-row textarea { width: 100%; box-sizing: border-box; background: rgba(6, 20, 28, 0.9); color: #eaf4ff; border: 1px solid rgba(79, 210, 255, 0.3); border-radius: 3px; font: inherit; text-transform: none; resize: vertical; }
 .sidepanel .fx-row input[type="color"] { flex: 1; min-width: 0; height: 20px; background: none; border: 1px solid rgba(79, 210, 255, 0.3); border-radius: 3px; padding: 0; cursor: pointer; }
@@ -745,7 +743,7 @@ html, body {
 .stop.in .project { opacity: 1; transform: none; }
 .project .title { font-family: var(--f-display); font-weight: 800; font-stretch: 78%; font-size: clamp(2.4rem, 8vw, 5.5rem); line-height: .9; letter-spacing: -0.02em; text-transform: uppercase; color: #eaf4ff; margin: 0 0 1rem; }
 .project .outcome { font-family: var(--f-display); font-weight: 500; font-stretch: 90%; font-size: clamp(1.1rem, 2.2vw, 1.55rem); line-height: 1.25; color: #eaf4ff; max-width: 30ch; margin: 0 0 1rem; }
-.project dl { margin: 0; display: grid; gap: .55rem; }
+.project dl, .project dl > div { margin: 0; display: grid; gap: .55rem; }
 .project dt { font-family: var(--f-mono); font-weight: 700; font-size: .75rem; letter-spacing: .14em; text-transform: uppercase; color: #4fd2ff; }
 .project dd { margin: 0 0 .2rem; font-size: .9rem; line-height: 1.5; color: #b8d4ea; max-width: 52ch; }
 .project .stack { margin-top: .8rem; }
@@ -754,6 +752,38 @@ html, body {
 .project .also b { color: #eaf4ff; font-weight: 600; }
 .project .also-links { display: flex; gap: .9rem; }
 @media (min-width: 720px) { .project .also { grid-template-columns: auto 1fr; } .project .also-label { grid-column: 1 / -1; } .project .also-links { justify-self: end; } }
+/* Abilities / Potential (2026-09-29): Cursor Buddy's abilities, what LLM Gateway and
+   Agent Control could become. render.js emits the list twice — titles only in the text
+   column (phones, narrow screens), a card strip under the image panel from 1100 × 600,
+   where the panel leaves the lower third of its side empty. Exactly one shows. */
+.xl ul { list-style: none; margin: 0; padding: 0; }
+.xl-label { font-family: var(--f-mono); font-weight: 700; font-size: .75rem; letter-spacing: .14em; text-transform: uppercase; color: #4fd2ff; }
+.xl-flow { margin-top: .55rem; }
+.xl-flow .more, .xl-flow li span { display: none; }
+.xl-flow ul { margin-top: .2rem; font-size: .9rem; line-height: 1.5; color: #b8d4ea; max-width: 52ch; text-wrap: balance; }
+.xl-flow li { display: inline; white-space: nowrap; }
+.xl-flow li:not(:last-child)::after { content: ' ·'; color: #4fd2ff; }
+.xl-flow b { font-weight: 500; color: #eaf4ff; }
+.xl-strip { display: none; }
+@media (min-width: 1100px) and (min-height: 600px) {
+  .xl-flow { display: none; }
+  .xl-strip { display: block; position: absolute; top: 65vh; width: min(41vw, 46rem); opacity: 0; transform: translateY(10px); transition: opacity .45s ease .3s, transform .45s var(--ease-out) .3s; }
+  .stop.in .xl-strip { opacity: 1; transform: none; }
+  .stop-project[data-side="right"] .xl-strip { left: 48vw; }
+  .stop-project[data-side="left"] .xl-strip { right: 48vw; }
+  .xl-strip ul { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin-top: .55rem; }
+  .xl-strip.many { width: min(44vw, 50rem); }
+  .xl-strip.many ul { grid-template-columns: repeat(4, 1fr); gap: .45rem; }
+  .xl-strip.many li { padding: .45rem .65rem .5rem; }
+  .xl-strip li { padding: .55rem .7rem .6rem; border: 1px solid rgba(159,216,255,.16); border-radius: 8px; background: rgba(8,16,26,.55); }
+  .xl-strip b { display: block; font-size: .85rem; font-weight: 600; color: #eaf4ff; }
+  .xl-strip li span { display: block; margin-top: .2rem; font-size: .78rem; line-height: 1.4; color: #9fc2e0; text-wrap: balance; }
+}
+@media (min-width: 1100px) and (min-height: 600px) and (prefers-reduced-motion: reduce) { .xl-strip { transform: none; transition: opacity .2s ease; } }
+/* Short windows narrower than the strip (1024×600 and the like): the text column is full already */
+@media (min-width: 641px) and (min-height: 521px) and (max-height: 639px) { .xl-flow { display: none; } }
+/* Eight abilities in two rows only keep their one-liners where they fit above the chevrons */
+@media (min-width: 1100px) and (min-height: 600px) and (max-width: 1299px), (min-width: 1100px) and (min-height: 600px) and (max-height: 819px) { .xl-strip.many li span { display: none; } }
 /* phones: the screenshot is a DOM figure in flow above the text (2026-09-17), so
    the block just needs tightening to keep the TEEPO / SHADIEZ stops (which carry
    an `also` row) inside the fold */
@@ -774,7 +804,7 @@ html, body {
   .hi .status { margin-bottom: 1rem; }
   .project .title { font-size: clamp(1.8rem, 7.5vw, 5.5rem); margin-bottom: .4rem; }
   .project .outcome { font-size: .92rem; margin-bottom: .5rem; }
-  .project dl { gap: .3rem; }
+  .project dl, .project dl > div { gap: .3rem; }
   .project dd { font-size: .86rem; line-height: 1.45; }
   .project .stack { margin-top: .6rem; }
   .project .also { margin-top: .6rem; padding-top: .45rem; grid-template-columns: auto 1fr; align-items: baseline; }
@@ -782,6 +812,20 @@ html, body {
   .project .also-line { display: none; }   /* the one-liner is the desktop luxury; name + links carry it on a phone */
   .project .also-links { justify-self: end; }
   .stop .group-label { position: static; margin-bottom: .45rem; }
+  /* Run-in labels (2026-09-29): PROBLEM / DECISION and the abilities / potential list
+     open their line instead of standing on one of their own — that, tighter steps and a
+     52% screenshot on the three stops with a list paid for the lists without leaving the fold */
+  .project dl { display: block; }
+  .project dl > div { display: block; text-wrap: balance; margin-bottom: .3rem; }
+  .project dt { display: inline; margin-right: .5em; }
+  .project dd { display: inline; }
+  .project .outcome { margin-bottom: .4rem; }
+  .project .stack { margin-top: .35rem; }
+  .project .links { margin-top: .55rem; }
+  .xl-flow { margin-top: 0; }
+  .xl-flow .xl-label { display: inline; margin-right: .5em; }
+  .xl-flow ul { display: inline; font-size: .86rem; line-height: 1.45; color: #d6e8f7; }
+  .project.has-xl .stop-img.shot { max-width: 52%; }
   /* How I Build: method + proof + three repo cards ran past the fold at 844px */
   .stop-build { padding-top: 12.5vh; padding-bottom: 11vh; }   /* the chevrons sit in the bottom ~10vh; keep the last card's links clear of them */
   .stop-build .eyebrow { margin-bottom: .5rem; }
@@ -804,6 +848,17 @@ html, body {
   .stop-timeline .tl-line { grid-column: 1 / -1; }
   .stop-timeline .tl-dot { top: .72rem; }
   .stop.stop-timeline .pill { margin-top: .8rem; }
+}
+/* Shorter phones (iPhone 16e / mini class, < 690 px of Safari viewport): smaller screenshots keep
+   every project stop between the bar and the chevrons (production overflowed there by 70-175 px).
+   It sits after the phone block on purpose: same specificity, so source order decides. */
+@media (max-width: 640px) and (max-height: 689px) {
+  .stop-img.shot { max-width: 58%; }
+  .project.has-xl .stop-img.shot { max-width: 42%; }
+  .stop-project .eyebrow { margin-bottom: .35rem; }
+  .project .title { margin-bottom: .3rem; }
+  .project dl > div { margin-bottom: .2rem; }
+  .project .also { margin-top: .45rem; padding-top: .35rem; }
 }
 .group-label { position: absolute; top: 12vh; left: 6vw; }
 @media (min-width: 900px) {
