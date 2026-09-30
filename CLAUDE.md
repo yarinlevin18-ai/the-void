@@ -1,7 +1,7 @@
 # CLAUDE.md — context for "The Void" portfolio
 
 Read this first. It captures the locked decisions and where everything lives so
-you can pick up the build with full context. Last synced to code: **v22 — wrap-up review + owner's mark (2026-09-29); every phone size, landscape included, and the recounted counters (2026-09-30)**.
+you can pick up the build with full context. Last synced to code: **v22 — wrap-up review + owner's mark (2026-09-29); every phone size, landscape included, short desktop windows, and the recounted counters (2026-09-30)**.
 
 ## What this is
 A 3D, scroll-driven portfolio for **Yarin Levin — AI-native developer**. The
@@ -188,7 +188,8 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   the Timeline's Download CV pill sat 28-47 px under the bottom edge, How I Build's eyebrow
   under the bar and the contact card's last rows under the chevrons; one `max-height: 720px`
   tier tightens those three (desktop-width only). Seven laptop sizes 1024-1536 wide now clear
-  every stop.
+  every stop. Windows under 640 px tall have their own tiers since 2026-09-30 (see **Phone
+  sizes**).
 - **Per-stop entrances on phones (2026-09-17):** portrait + no-preference
   only, ≤600ms, one easing (`--ease-out`). Hi "develops" (blur/tint → colour),
   About slides in from both sides, How I Build lights the proof panel then
@@ -337,7 +338,7 @@ folds a second featured project in as a compact row under the links.
 | `src/hash.js` | 28 | Deep-link resolver: fragment/anchor → stop index, prototype-free, node-tested |
 | `src/printcv.js` | 54 | Print-only CV (moved out of the old dossier.js) |
 | `src/content/profile.js` | 269 | **Single source of truth** for bio, CV, intro/method/proof, 10 featured (7 flight stops + AeroCy/SmartCut rows + TEEPO for How I Build) + shipped/labs projects, links, status |
-| `src/style.css` | ~1,200 | All styling incl. the phone tiers (portrait, small, SE, landscape — last in the file) + print CV |
+| `src/style.css` | ~1,260 | All styling incl. the phone tiers (portrait, small, SE, landscape — last in the file), the short-desktop tiers + print CV |
 | `index.html` | ~410 | Shell, loader, editor panels, JSON-LD, noscript skim path |
 | `public/previews/*.webp` | | teepo · aerocy · shadiez · smartcut · llm-gateway · sabai · agent-control · thesis · gate-opener · kiaras-club (1400–2400 px wide, except gate-opener: a 1000×1600 phone capture; panel canvases take a 1600 px long side on desktop, 1024 on touch). Cursor Buddy has none — `buddy.js` draws it |
 | `public/assets/me/` | | portrait 4:5 (1000×1250, centred, head to knees; 19.2×24 panel) + 2 About panels: FIDF stage 4:3 (logo + speaker, no black rig band; 18×13.5) and the Nova memorial at Re’im 3:4 (10.5×14). Re-cut 2026-09-29 from the originals in `~/.claude/uploads/…` (mild grade + unsharp, q88); the lectern shot was a crop of the stage and is gone. Panel textures keep the panel's aspect (long side 1600, 1024 on touch) — until 2026-09-29 the height was capped at 1024, so every portrait panel was a stretched square |
@@ -349,7 +350,9 @@ Deps: `three` 0.169 and `vite` 8 (+ `happy-dom` for tests). No React.
 Every stop now fits between the bar and the chevrons at every size swept (Chrome, true
 viewports): portrait 360 × 640, 375 × 549 / 553 (iPhone SE), 375 × 629, 390 × 664, 402 × 714,
 440 × 790; landscape 640 × 360, 667 × 320 / 331, 750 × 340, 874 × 370, 932 × 400; desktop
-1024 × 700 up to 1920 × 1080, incl. 1366 × 657 and 1280 × 690. Walked in Safari on the
+900 × 560 up to 1920 × 1080 — 1280 × 560 / 580 / 600 / 640 / 690 / 720 / 800, 1024 × 560 /
+600 / 700 / 768, 1100 × 600, 1152 × 576, 1366 × 657 / 768, 1440 × 620 / 789 / 900, 1536 × 730
+/ 864, 1920 × 955 (no line under the bar or the chevrons, no stop that holds the wheel). Walked in Safari on the
 iPhone 17 Pro (402 × 714 of viewport) and the iPhone SE simulator (375 × 549); landscape
 Safari is still unchecked (the headless simulator can't be rotated from here).
 - **Portrait frame:** phone stops start at `max(12.5vh, 14px + 5.5rem)` and end at
@@ -373,6 +376,20 @@ Safari is still unchecked (the headless simulator can't be rotated from here).
   role in the bar go. Stacked, these stops ran 150-800 px past the fold.
 - **Short laptops** (≤ 720 px tall) got smaller heatmap cells, no commit feed and a
   tighter project frame (1366 × 657 ran 8-20 px off before, production included).
+- **Short desktop windows** (a 1080p laptop at Windows' 150 % is 1280 × 720, and the taskbar
+  and toolbars leave 560-600 px): at ≤ 640 px How I Build goes to two columns (method beside
+  the build log and the proof, as on a landscape phone), About, the Timeline and the project
+  stops tighten, and the group labels drop to 13vh, level with the text column; under 600 px
+  PROBLEM / DECISION run in and the counters take a line each (and 900-1099 px wide drops the
+  log's gloss). All three tiers sit after every stop rule, before the bar. Before them, the
+  live site at 1280 × 560 ran About's words 28 px off the bottom and put How I Build under
+  both the bar and the chevrons (both stops held the first wheel), and at 1024 × 600 /
+  900 × 560 About and SHADIEZ ran onto the chevrons.
+- **A stop's padding may overflow; its words may not.** `scrollableStop()` (main.js) holds a
+  gesture only when a child's box runs past the stop's bottom edge. Padding alone never does:
+  the Timeline is 16 px taller than a 1440 × 900 window and a real wheel over its rows flies
+  on (checked on the live site), so don't "fix" `scrollHeight > clientHeight` by itself. The
+  sweep flags the same thing (`READS-FIRST`).
 - Two bugs on the way: two quick taps on ▼ zoomed the page in iOS Safari
   (`touch-action: manipulation` on `html`, buttons and links; pinch-zoom still works),
   and on a short screen the contact card (`overflow: hidden`, so a flex item may shrink)
@@ -532,7 +549,13 @@ hard-refresh if a change doesn't show.
   lays out at 1707×821 (found 2026-09-30; earlier desktop fits measured there were
   optimistic). Mobile-emulated contexts ignore it. `.playwright-mcp/phones.js`
   (gitignored) is the stop-fit sweep: every stop against the bar and the chevrons
-  per viewport.
+  per viewport. `.playwright-mcp/sweep.mjs` is the same sweep from the shell
+  (`VPS='[[1280,600]]' node .playwright-mcp/sweep.mjs`, plus `URL`, `CSS`, `SHOTS`, `OUT`):
+  it drives the npx cache's playwright-core 1.61 with the full Chromium build
+  (`channel: 'chromium'`, on the GPU — the headless shell renders the void at ~6 fps and
+  flights never land), must run outside the Bash sandbox (Chromium's Mach ports), and
+  judges each line against the chevrons only where they stand under it, and a stop's
+  overflow the way `scrollableStop()` does.
 - `sketches/` holds the June–July `demo-*.html` pages and the two font specimens
   (moved out of the repo root 2026-09-30) — scratch/reference, not part of the
   shipped site; `main.js` comments point there where a shader was ported. The seven

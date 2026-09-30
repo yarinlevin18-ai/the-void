@@ -321,7 +321,11 @@ Yarin: "go for 3-5" (copy check, repo tidy, small and sideways phones).
       © row on short screens.
 - [x] iPhone SE simulator (Safari, 375 × 549): every stop walked; How I Build's repo cards
       moved into one row after Safari ran them 10 pt under the chevrons.
-- [ ] Safari landscape (the headless simulator can't be rotated from Claude's side).
+- [x] Short desktop windows (Yarin: "continue working"): tiers at ≤ 640 and < 600 px tall —
+      How I Build in two columns, run-in labels, tighter About / Timeline / projects — so every
+      stop fits from 900 × 560 up (22 desktop sizes to 1920 × 1080). At 1280 × 560 the live
+      site had run About 28 px off the bottom and How I Build under the bar and the chevrons.
+- [ ] Safari landscape (the headless simulator can't be rotated from Claude's side) — Yarin.
 
 ## Open work (2026-09-12) — in priority order
 1. ~~Camera authoring for stops 2–11~~ ✅ 2026-09-12 — desktop shots baked

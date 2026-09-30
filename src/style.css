@@ -1020,6 +1020,55 @@ span.pill { cursor: default; }   /* "Private build", "Personal app", "Private re
   .card .mail { font-size: 1.7rem; }
 }
 
+/* Short desktop windows (2026-09-30). A 1080p laptop at Windows' 150 % is a 1280 × 720 screen, and
+   the taskbar and the browser's toolbars leave 560-600 px of it. At 1280 × 600 About's last line sat
+   4 px off the bottom edge (its column ran past it, so the first wheel scrolled the stop instead of
+   flying), How I Build's eyebrow sat 2 px under the bar and its repo cards under the chevrons, and the
+   Timeline, Agent Control and SHADIEZ started 7-11 px under the bar. Measured on true viewports
+   900-1440 wide: every stop now fits from 560 px tall (900 × 560 included). After all the stop rules
+   on purpose: equal specificity is decided by source order. */
+@media (min-width: 900px) and (min-height: 560px) and (max-height: 640px) {
+  .stop-about { padding-top: 13vh; padding-bottom: 11vh; }
+  .about .about-title { font-size: 3.4rem; }
+  .about .para { font-size: 1rem; line-height: 1.5; margin-bottom: .7em; }
+  .stop-timeline { padding-top: 13vh; padding-bottom: 10vh; }
+  .stop-timeline .tl-title { font-size: 2.5rem; margin-bottom: .5rem; }
+  .tl-row { padding: .2rem 0; }
+  .tl-dot { top: .66rem; }
+  .stop-timeline .pill { margin-top: .6rem; }
+  /* How I Build in two columns, as on a landscape phone: the method beside the build log and the proof */
+  .stop-build { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); grid-template-areas: "hd hd" "method blog" "method proof" "repos repos"; column-gap: 2.6rem; align-content: safe center; padding-top: 13vh; padding-bottom: 11vh; }
+  .stop-build > .eyebrow { grid-area: hd; }
+  .stop-build .blog { grid-area: blog; align-self: start; margin: 0 0 .7rem; }
+  .stop-build .blog-kv { grid-template-columns: auto 1fr; }   /* one count per row beside the heatmap: two per row broke "days / shipped" */
+  .stop-build .method { grid-area: method; }
+  .stop-build .method .line { font-size: 1.2rem; max-width: none; }
+  .stop-build .proof { grid-area: proof; align-self: start; margin: 0 0 .9rem; }
+  .stop-build .repos { grid-area: repos; align-self: start; }
+  .stop-project { padding-top: 13vh; padding-bottom: 11vh; }
+  .stop .group-label { top: 13vh; }   /* level with the text column; at 12vh it sat 6 px under the bar at 1024 × 560 */
+  .stop-project .project .title { font-size: 3.4rem; margin-bottom: .5rem; }
+  .stop-project .project .outcome { font-size: 1.35rem; margin-bottom: .6rem; }
+  .stop-project .project dd { font-size: .86rem; }
+  .stop-project .project .links { margin-top: .8rem; }
+  .stop-project .project .also { margin-top: .7rem; padding-top: .7rem; }
+}
+@media (min-width: 900px) and (min-height: 560px) and (max-height: 599px) {
+  .about .about-title { font-size: 2.9rem; }
+  .about .para { font-size: .94rem; margin-bottom: .6em; }
+  /* PROBLEM / DECISION run in, as on phones, and the proof counters take a line each */
+  .stop-project .project dl { display: block; }
+  .stop-project .project dl > div { display: block; text-wrap: balance; margin-bottom: .45rem; }
+  .stop-project .project dt { display: inline; margin-right: .5em; }
+  .stop-project .project dd { display: inline; }
+  .stop-build .proof { grid-template-columns: 1fr; gap: .15rem; }
+  .stop-build .proof-item { display: flex; align-items: baseline; gap: .6rem; }
+  .stop-build .proof-item .num { display: inline; font-size: 1.3rem; min-width: 1.5em; }
+}
+@media (min-width: 900px) and (max-width: 1099px) and (min-height: 560px) and (max-height: 599px) {
+  .stop-build .blog .more { display: none; }   /* 900 × 560: the log's gloss ran to three lines and the repo cards reached the chevrons */
+}
+
 /* one focus language for every control in the stops (the bar has its own below) */
 .stop a:focus-visible, .stop button:focus-visible { outline: 2px solid #4fd2ff; outline-offset: 3px; border-radius: 4px; }
 .stop .pill:focus-visible { border-radius: 999px; }
