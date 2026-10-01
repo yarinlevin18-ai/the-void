@@ -464,8 +464,10 @@ html, button, a { touch-action: manipulation; }
   #print-cv .pcv-contact > * { white-space: nowrap; }
   #print-cv .pcv-contact a { color: inherit; text-decoration: none; }
   #print-cv .pcv-profile { margin: 0 0 6pt; font-size: 8.8pt; color: #222; }
+  /* Tracking ≤ .08em (2026-10-01): at .14em the saved PDF's text read "M I L I TA R Y S E R V I C E",
+     "E D U C AT I O N" (pdftotext; .1em broke all five), so a job portal parsing the CV could miss the sections. */
   #print-cv h2 {
-    font-size: 7.8pt; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+    font-size: 7.8pt; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
     margin: 5.5pt 0 2pt; color: #111; border-bottom: 0.5pt solid #999; padding-bottom: 1.5pt;
   }
   #print-cv .pcv-item { margin-bottom: 3.5pt; break-inside: avoid; }

@@ -53,3 +53,15 @@ test('the landscape-phone tier stays at the end of style.css', () => {
   assert.deepEqual(after, ['@media (orientation: landscape) and (max-height: 520px) {', '@media (orientation: landscape) and (max-height: 520px) and (max-width: 719px) {']);
   assert.ok(/#hud \.hud-arrows \{[^}]*flex-direction: column/.test(css.slice(at)), 'the chevrons stand in their own lane on the right');
 });
+
+// The CV is read by machines too: in the PDF a browser saves, wide tracking turns a heading
+// into spaced letters ("M I L I TA R Y S E R V I C E" from pdftotext at .14em, every heading at
+// .1em), and a job portal parsing the CV would miss its sections. .08em and below read clean.
+test('the print CV keeps its headings machine-readable', () => {
+  for (const sel of ['#print-cv h1', '#print-cv h2']) {
+    const block = new RegExp(`${sel.replace(/ /g, '\\s+')}\\s*\\{([^}]*)\\}`).exec(css);
+    assert.ok(block, `${sel} is styled`);
+    const ls = /letter-spacing:\s*([\d.]+)em/.exec(block[1]);
+    assert.ok(!ls || +ls[1] <= 0.08, `${sel} letter-spacing ${ls && ls[1]}em is at most .08em`);
+  }
+});

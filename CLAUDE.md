@@ -401,7 +401,9 @@ Every file the site ships names him, all from `profile.js`:
   JSON-LD `author` / `copyrightHolder` / `copyrightNotice` pointing at the Person
   (`@id`), an HTML comment on the first line, the sr-only h1, the contact card's
   last row (`© 2026 Yarin Levin · Updated …`), the print CV's footer (and its
-  contact line is links now, so a saved PDF opens mail / LinkedIn / GitHub),
+  contact line is links now, so a saved PDF opens mail / LinkedIn / GitHub; its
+  headings keep ≤ .08em tracking, since wider turned the PDF's text into "E D U C AT I O N"
+  and a job portal's parser would miss the section — `tests/css.test.js`, 2026-10-01),
   the no-JS path's closing line, and a styled line in the DevTools console.
 - **Code:** `scripts/owner.js` (Vite plugin) puts a `/*! … */` banner on every JS
   and CSS file after minification and emits `/humans.txt`; `build.license` emits
@@ -470,7 +472,7 @@ export tuned `BEATS` and paste into `DEFAULT_BEATS`.
 npm install
 npm run dev      # http://localhost:5173  (DEV_TOOLS on → E/B/T/U/A work)
 npm run build    # runs the test suite, then vite build → dist/
-npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash, save, assets, domain, lab, buddy, buildlog, owner, stamp, css (happy-dom for the DOM ones), 98 passing
+npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash, save, assets, domain, lab, buddy, buildlog, owner, stamp, css (happy-dom for the DOM ones), 99 passing
 npm run stamp    # the owner's name into any new image under public/ (the test suite fails until it's done)
 npx vite preview --host   # the production build with vercel.json's headers (CSP) — `void-preview` in .claude/launch.json
 ```
