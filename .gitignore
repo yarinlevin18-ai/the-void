@@ -8,10 +8,6 @@ dist/
 # Bulky and carry nested .git folders, so keep them out of this repo.
 references/
 
-# Personal notes — not part of the project, keep out of the repo.
-Israel-companies-to-apply.md
-Israel-open-roles.md
-
 # Automated visual-QA screenshots (regenerated every survey pass).
 .survey/
 .superpowers/
