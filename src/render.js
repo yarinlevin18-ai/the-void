@@ -1,5 +1,6 @@
 // render.js — pure functions: PROFILE data → HTML strings for each flight stop.
 // No DOM, no Three.js, no side effects: runs in node --test as well as the browser.
+import { gatewayOutcome } from './gateway.js';
 
 export const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -20,6 +21,26 @@ const figure = (src, alt, cls) => src ? `<figure class="stop-img ${cls}"><img sr
 // `.sent` is a block in style.css; a sentence too long for the column balances.
 // Abbreviations don't end a sentence: initials like "B.A." / "M.A." and e.g. / i.e. / vs. / etc.
 export const sentences = (t) => String(t).split(/(?<=[.!?])(?<!\b(?:[A-Z]\.)+)(?<!\b(?:e\.g|i\.e|vs|etc)\.)\s+(?=\S)/).map((x) => `<span class="sent">${esc(x)}</span>`).join(' ');
+// Typed headings (2026-10-13): a stop's heading writes itself in on arrival, one character
+// at a time with a caret riding the newest one (style.css `.tw`). Screen readers get the
+// heading whole; the per-character spans are hidden from them. Words never break apart: there
+// is no break opportunity between two inline spans, only at the spaces.
+export const typed = (t, from = 0) => [...String(t)].map((ch, i) => `<span style="--c:${from + i}">${esc(ch)}</span>`).join('');
+// Headings (2026-10-13, random entrances): each word is one unbreakable box of character spans,
+// so a character can move on its own (inline-block) without a line breaking inside the word.
+// `--c` is the reading position, `--r` a fixed shuffled position for the scatter entrance.
+const shuffled = (n) => [...Array(n).keys()].sort((a, b) => ((a * 7919 + 13) % 101) - ((b * 7919 + 13) % 101));
+export const typedHeading = (t) => {
+  const chars = [...String(t)], ink = chars.flatMap((ch, i) => (ch === ' ' ? [] : [i])), pos = [];
+  shuffled(ink.length).forEach((k, j) => { pos[ink[k]] = j; });
+  let html = '', word = '';
+  chars.forEach((ch, i) => {
+    if (ch === ' ') { html += `<span class="w">${word}</span> `; word = ''; return; }
+    word += `<span style="--c:${i};--r:${pos[i]}">${esc(ch)}</span>`;
+  });
+  html += `<span class="w">${word}</span>`;
+  return `<span class="sr-only">${esc(t)}</span><span class="tw" aria-hidden="true">${html}</span>`;
+};
 // A " · " list (the Hi status) breaks only between its items.
 const segments = (t) => String(t).split(' · ').map((x, i, a) => `<span class="seg">${esc(x)}${i < a.length - 1 ? ' ·' : ''}</span>`).join(' ');   // the dot rides with the item before it: a line never starts with one
 
@@ -30,7 +51,7 @@ export function renderHi(p) {
     ${figure(p.hi.portrait, p.hi.portraitAlt || p.name || 'Portrait', 'portrait')}
     <div class="stop-txt">
     ${eyebrow('Hello')}
-    <h2 class="greeting" style="--i:0">${esc(p.hi.greeting)}</h2>
+    <h2 class="greeting" style="--i:0">${typedHeading(p.hi.greeting)}</h2>
     <div class="status">${segments(p.hi.status)}</div>
     ${lines}
     </div>
@@ -45,7 +66,7 @@ export function renderAbout(p) {
     ${photos ? `<div class="stop-imgs">${photos}</div>` : ''}
     <div class="stop-txt">
     ${eyebrow(p.about.eyebrow)}
-    <h2 class="about-title" style="--i:0">${esc(p.about.title)}</h2>
+    <h2 class="about-title" style="--i:0">${typedHeading(p.about.title)}</h2>
     ${paras}
     </div>
   </article>`;
@@ -79,7 +100,7 @@ export function renderTimeline(p) {
       <span class="tl-body"><b class="tl-what">${esc(r.what)}</b><span class="tl-line">${sentences(r.line)}</span></span>
     </li>`).join('');
   return `${eyebrow(p.timeline.eyebrow)}
-    <h2 class="tl-title">${esc(p.timeline.title)}</h2>
+    <h2 class="tl-title">${typedHeading(p.timeline.title)}</h2>
     <ol class="timeline">${rows}</ol>
     <button type="button" class="pill" data-print-cv>Download CV ↓</button>
     ${renderLab()}`;
@@ -122,7 +143,7 @@ export function renderBuild(p, log = null) {
   const rows = p.buildStop.rows.map((id) => { const x = byId(id); if (!x) throw new Error(`renderBuild: no featured project "${id}"`); return x; });
   const link = (href, label) => href ? `<a href="${escAttr(href)}" target="_blank" rel="noopener">${label} ↗</a>` : '';
   // The stop's only heading (every other stop has an h2 title), styled as its eyebrow.
-  return `<h2 class="eyebrow">How I build</h2>
+  return `<h2 class="eyebrow">${typedHeading('How I build')}</h2>
     ${renderBuildLog(log)}
     <div class="method">${method}</div>
     <div class="proof">${proof}</div>
@@ -134,6 +155,32 @@ export function renderBuild(p, log = null) {
         <div class="links">${link(lead.url, 'Live')}${lead.repo ? link(lead.repo, 'GitHub') : '<span class="muted">private repo</span>'}</div>
       </div>
       ${rows.map((r) => `<div class="repo"><b>${esc(r.name)}</b><span class="stack">${esc(r.stack)}</span><div class="links">${link(r.url, 'Live')}${link(r.repo, 'GitHub')}</div></div>`).join('')}
+    </div>`;
+}
+
+// The exhibit (2026-10-12): a project with `exhibit` gets scenario buttons and an outcome
+// line in its text column, and a clip in place of its phone screenshot. The words carry the
+// result on their own — the clip illustrates it, so a visitor who can't or won't play video
+// misses nothing. exhibit.js wires the buttons and the clip; the first scenario is the
+// initial state. The <video> has no src until the stop opens (exhibit.js), so a phone
+// doesn't fetch it, or its poster, before the visitor arrives.
+export function renderExhibitFigure(x) {
+  const s = x.exhibit.scenarios[0];
+  return `<figure class="stop-img shot exhibit-fig"><video data-exhibit-video muted playsinline preload="none" data-poster="${escAttr(s.poster)}" aria-label="${escAttr(x.exhibit.alt)}"></video></figure>`;
+}
+// A walkthrough (profile.js `clip`): the poster holds the figure's layout and its reveal, the
+// muted loop fades in over it once it plays (exhibit.js initClip). Nothing loads before arrival
+// but the poster, which is the clip's first frame.
+export function renderClipFigure(x) {
+  return `<figure class="stop-img shot clip"><span class="clip-box"><img src="${escAttr(x.clip.poster)}" alt="${escAttr(x.clip.alt)}" loading="lazy" decoding="async"><video data-clip-video muted playsinline loop preload="none" aria-hidden="true"></video></span></figure>`;
+}
+export function renderExhibit(x) {
+  const [first] = x.exhibit.scenarios, o = gatewayOutcome(first);
+  const buttons = x.exhibit.scenarios.map((s) => `<button type="button" data-scenario="${escAttr(s.id)}" aria-pressed="${s === first}">${esc(s.label)}</button>`).join('');
+  return `<div class="exhibit" data-scenario="${escAttr(first.id)}" data-verdict="${o.verdict}" data-media="idle">
+      <div class="ex-hd"><span>Try it<span class="more"> · fictional numbers</span></span><span class="ex-media" aria-live="polite"></span><button type="button" class="ex-replay" hidden>Replay</button></div>
+      <div class="ex-choices" role="group" aria-label="Budget scenario">${buttons}</div>
+      <p class="ex-out" role="status"><b class="ex-verdict">${esc(o.label)}</b> <span class="ex-reason">${esc(o.reason)}</span></p>
     </div>`;
 }
 
@@ -158,12 +205,12 @@ export function renderProject(x, side, also = null) {
       <span class="also-line">${esc(also.outcome)}</span>
       <span class="also-links">${small(also.url, 'Visit live')}${small(also.repo, 'GitHub')}</span>
     </div>` : '';
-  return `<article class="project${xItems?.length ? ' has-xl' : ''}" data-side="${escAttr(side)}">
-    ${x.anim ? `<figure class="stop-img shot anim"><canvas data-anim="${escAttr(x.anim)}" role="img" aria-label="${escAttr(x.animAlt || `${x.name} — animated demo`)}"></canvas></figure>` : figure(x.img, `${x.name} — screenshot`, x.phone ? 'shot phone' : 'shot')}
+  return `<article class="project${xItems?.length ? ' has-xl' : ''}${x.exhibit ? ' has-exhibit' : ''}" data-side="${escAttr(side)}">
+    ${x.exhibit ? renderExhibitFigure(x) : x.clip ? renderClipFigure(x) : x.anim ? `<figure class="stop-img shot anim"><canvas data-anim="${escAttr(x.anim)}" role="img" aria-label="${escAttr(x.animAlt || `${x.name} — animated demo`)}"></canvas></figure>` : figure(x.img, `${x.name} — screenshot`, x.phone ? 'shot phone' : 'shot')}
     <div class="stop-txt">
     ${eyebrow(`${x.kind} · ${x.tag}`)}
-    <h2 class="title">${esc(x.name)}</h2>
-    <p class="outcome">${esc(x.outcome)}</p>
+    <h2 class="title">${typedHeading(x.name)}</h2>
+    <p class="outcome">${esc(x.outcome)}</p>${x.exhibit ? renderExhibit(x) : ''}
     <dl>
       <div><dt>Problem</dt><dd>${esc(x.problem)}</dd></div>
       <div><dt>Decision</dt><dd>${esc(x.decision)}</dd></div>
@@ -190,7 +237,6 @@ export function renderContact(p, built = null) {
   const tel = telHref(l.phone);
   // The lead-in (2026-09-29): typed one character at a time as the door opens.
   // Screen readers get the sentence whole; the per-character spans are hidden from them.
-  const typed = (t, from) => [...t].map((ch, i) => `<span style="--c:${from + i}">${esc(ch)}</span>`).join('');
   const f = p.finale || {};
   // The owner's mark (2026-09-29): © year + name on the last row, then the build stamp.
   // Two .seg spans, so a narrow card breaks between them, never inside one.

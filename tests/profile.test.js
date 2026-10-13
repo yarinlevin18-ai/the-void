@@ -29,9 +29,9 @@ test('method and proof are present, proof has exactly 3 numbers', () => {
   for (const p of PROFILE.proof) { assert.equal(typeof p.n, 'number'); assert.ok(p.label); }
 });
 
-test('featured projects: 4 landing then 6 saas, in spec order', () => {
-  assert.deepEqual(featured.map((p) => p.id), ['teepo', 'aerocy', 'shadiez', 'smartcut', 'llm-gateway', 'cursor-buddy', 'sabai', 'agent-control', 'thesis', 'gate-opener']);
-  assert.deepEqual(featured.map((p) => p.group), ['landing', 'landing', 'landing', 'landing', 'saas', 'saas', 'saas', 'saas', 'saas', 'saas']);
+test('featured projects: 4 landing then 5 saas, in spec order', () => {
+  assert.deepEqual(featured.map((p) => p.id), ['teepo', 'aerocy', 'shadiez', 'smartcut', 'llm-gateway', 'cursor-buddy', 'sabai', 'agent-control', 'thesis']);
+  assert.deepEqual(featured.map((p) => p.group), ['landing', 'landing', 'landing', 'landing', 'saas', 'saas', 'saas', 'saas', 'saas']);
 });
 
 test('every featured project has problem/decision/outcome, image, tint, stack', () => {
@@ -46,7 +46,7 @@ test('repo links only on public repos; private builds flagged', () => {
   for (const p of featured) {
     if (p.private) assert.equal(p.repo, undefined, `${p.id} is private but has a repo link`);
   }
-  for (const id of ['cursor-buddy', 'thesis', 'gate-opener']) assert.equal(featured.find((p) => p.id === id).url, '', `${id} is a private build with no live link`);
+  for (const id of ['cursor-buddy', 'thesis']) assert.equal(featured.find((p) => p.id === id).url, '', `${id} is a private build with no live link`);
   assert.equal(featured.find((p) => p.id === 'sabai').url, '', 'sabai: the live app shows booking codes and phone numbers to anyone — gate it before linking it again');
 });
 
@@ -117,7 +117,7 @@ test('every project id DEFAULT_BEATS hardcodes exists in the profile', () => {
   const body = arr.slice(0, arr.indexOf('\n];'));
   const ids = [...body.matchAll(/\bid: '([a-z-]+)'/g)].map((m) => m[1]);
   const also = [...body.matchAll(/\balso: '([a-z-]+)'/g)].map((m) => m[1]);
-  assert.equal(ids.length, 7, 'seven project stops');
+  assert.equal(ids.length, 6, 'six project stops (Gate Opener left 2026-10-13)');
   assert.equal(also.length, 2, 'two folded-in projects');
   // TEEPO left the flight 2026-09-29 but stays featured for the How I Build repo cards
   const reach = new Set([...ids, ...also, PROFILE.buildStop.lead, ...PROFILE.buildStop.rows]);

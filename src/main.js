@@ -12,8 +12,9 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { PROFILE } from './content/profile.js';
-import { initPanels } from './panels.js';
+import { initPanels, pickFx } from './panels.js';
 import { initLab } from './labcard.js';
+import { initExhibit, initClip } from './exhibit.js';
 import { drawBuddy } from './buddy.js';
 import { initBar } from './bar.js';
 import { resolveHash } from './hash.js';
@@ -889,9 +890,9 @@ const DEFAULT_BEATS = [
   /* 7 */ { name: 'Sabai', stop: 'project', id: 'sabai', side: 'left', cam: [4, 3, -255], look: [4, 3, -355], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/sabai.webp', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -255, 'left') },
   /* 8 */ { name: 'Agent Control', stop: 'project', id: 'agent-control', also: 'aerocy', side: 'right', cam: [-4, 3, -325], look: [-4, 3, -425], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/agent-control.webp', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -325, 'right') },
   /* 9 */ { name: 'Thesis Agent', stop: 'project', id: 'thesis', side: 'left', cam: [4, 3, -395], look: [4, 3, -495], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/thesis.webp', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -395, 'left') },
-  /* 10 */ { name: 'Gate Opener', stop: 'project', id: 'gate-opener', side: 'right', cam: [-4, 3, -465], look: [-4, 3, -565], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/gate-opener.webp', link: '', fx: { ...VOID_FX }, panel: (() => { const p = P(-4, 3, -465, 'right'); p.size = [15, 24]; p.pos[1] = 2.5; return p; })() },   // v22: 5:8 — a phone PWA in a 16:10 frame was a narrow column adrift in empty space
-  /* 11 */ { name: 'SHADIEZ', stop: 'project', id: 'shadiez', also: 'smartcut', side: 'left', groupLabel: 'Landing pages', cam: [4, 3, -535], look: [4, 3, -635], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/shadiez.webp', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -535, 'left') },
-  /* 12 */ { name: 'Contact', stop: 'contact', cam: [0, 49, -560], look: [1, 290, -560], up: [0, 0, -1], fov: 52, dur: 3, desc: '', img: '', link: '', panel: null },
+  // v23 (2026-10-13): Gate Opener left the flight; SHADIEZ takes its slot and side so the sides keep alternating.
+  /* 10 */ { name: 'SHADIEZ', stop: 'project', id: 'shadiez', also: 'smartcut', side: 'right', groupLabel: 'Landing pages', cam: [-4, 3, -465], look: [-4, 3, -565], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/shadiez.webp', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -465, 'right') },
+  /* 11 */ { name: 'Contact', stop: 'contact', cam: [0, 49, -560], look: [1, 290, -560], up: [0, 0, -1], fov: 52, dur: 3, desc: '', img: '', link: '', panel: null },
 ];
 // Live indices into `beats` (not DEFAULT_BEATS) — Director Mode can reorder /
 // add / delete stops, so these are recomputed after load() and on every commit().
@@ -929,10 +930,14 @@ const EASINGS = {
   easeInOut,
   easeOut: (x) => 1 - Math.pow(1 - x, 3),
   easeInOutQuint: (x) => (x < 0.5 ? 16 * x * x * x * x * x : 1 - Math.pow(-2 * x + 2, 5) / 2),
+  // smootherstep (2026-10-13, the default): zero speed AND zero acceleration at both ends, so a
+  // flight neither jolts off a stop nor brakes into the next; its top speed is 1.9× the average
+  // where easeInOut's is 3×, which read as a lurch through the middle of every hop.
+  smoother: (x) => x * x * x * (x * (6 * x - 15) + 10),
   linear: (x) => x,
 };
-let transitionEase = easeInOut;
-let txEaseName = 'easeInOut';
+let transitionEase = EASINGS.smoother;
+let txEaseName = 'smoother';
 // Every beat's fov was composed on a ~16:10 desktop. On narrow (portrait)
 // screens the horizontal field collapses and the composed shot crops — so
 // widen the VERTICAL fov until the horizontal framing matches the reference
@@ -1036,6 +1041,28 @@ function load() {
           const was = beats.find((b) => b.id === 'gate-opener'), now = DEFAULT_BEATS.find((b) => b.id === 'gate-opener');
           if (was && now) { was.panel = structuredClone(now.panel); migrated = true; }
         }
+        if (!(d.version >= 23)) {
+          // v23 (2026-10-13): Gate Opener leaves the flight (it stays in the shipped list);
+          // SHADIEZ moves into its slot on the right — drop the one, re-adopt the other.
+          const n = beats.length;
+          beats = beats.filter((b) => b.id !== 'gate-opener');
+          const now = DEFAULT_BEATS.find((b) => b.id === 'shadiez'), at = beats.findIndex((b) => b.id === 'shadiez');
+          if (now && at >= 0) beats[at] = structuredClone(now);
+          if (beats.length !== n || at >= 0) migrated = true;
+        }
+        if (!(d.version >= 24)) {
+          // v24 (2026-10-13): the flight's default curve becomes `smoother` (C2: no jolt leaving or
+          // landing). A save always stores its curve, so the old default is swapped; a curve picked
+          // in the Transitions panel stays. (v24 also added a Writing stop; v25 took it out again.)
+          if (txEaseName === 'easeInOut') txEaseName = 'smoother';
+          migrated = true;
+        }
+        if (!(d.version >= 25)) {
+          // v25 (2026-10-13, Yarin: "delete this"): the Writing stop is gone again.
+          const n = beats.length;
+          beats = beats.filter((b) => b.stop !== 'writing');
+          if (beats.length !== n) migrated = true;
+        }
         beats.forEach(backfillBeat); // bring older saves up to the current schema
         if (migrated) save();
         return;
@@ -1047,7 +1074,7 @@ function load() {
 }
 function save() {
   const g = {}; for (const k of GLOBAL_KEYS) g[k] = FX[k]; g.ease = txEaseName;
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 22 })); }
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 25 })); }
   catch (e) { console.warn('[save]', e); }   // private mode / quota: never let a failed write abort the boot
 }
 // push the global (saved) FX/UX/transition state into the live scene + DOM
@@ -1061,7 +1088,7 @@ function applyGlobals() {
   livingVoid.nebMat.uniforms.uHue.value = FX.nebHue;
   livingVoid.nebMat.uniforms.uGlow.value = FX.nebGlow;
   livingVoid.spots.visible = FX.glowSpots;
-  transitionEase = EASINGS[txEaseName] || easeInOut;
+  transitionEase = EASINGS[txEaseName] || EASINGS.smoother;
   const hud = document.querySelector('#hud'); if (hud) hud.style.display = FX.uiHud ? '' : 'none';
   const hint = document.querySelector('#overlay .hint'); if (hint) hint.style.display = FX.uiHint ? '' : 'none';
   applyRootFont();
@@ -1286,9 +1313,59 @@ function paintAnimFigure(sec) {             // phones: the DOM figure in the ope
   drawBuddy(fig.getContext('2d'), fig.width, fig.height, PREFERS_REDUCED ? 11 : sec);
   fig.dataset.painted = '1';
 }
+// Exhibit panels (2026-10-12): a project with `exhibit` in profile.js (LLM Gateway) shows
+// its scenario clip on the panel. The clip is the stop's own <video> (exhibit.js owns it and
+// the phone figure shows it); the panel canvas draws its current frame, or the scenario's
+// poster until the clip has one, letterboxed (the clips are 16:9, the panel 16:10) inside the
+// same hairline frame as every panel. Keyed off profile.js like animFor, so DEFAULT_BEATS and
+// the save version stay as they are. A `clip` (2026-10-13: SHADIEZ, Agent Control — a recorded
+// walk through the live site, 16:10 like the panel) rides the same path through initClip.
+const exhibitFor = (b) => { const p = b.id && PROFILE.work.featured.find((q) => q.id === b.id); return (p && (p.exhibit || p.clip)) || null; };
+const exhibitPanels = [];
+const exhibits = [];   // { i, ctl } — mounted with the stops (mountExhibits)
+function makeExhibitCanvas(b) {
+  if (isCompact() && !editMode) return panelStandIn();   // phones show the clip in the stop's figure
+  const W = IS_TOUCH ? 1024 : 1280, H = Math.round(W * (b.panel.size[1] / b.panel.size[0]));
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  return cv;
+}
+function drawExhibitCanvas(a) {
+  const ctl = exhibits.find((e) => e.i === a.i)?.ctl;
+  const ex = exhibitFor(a.b), live = ctl && ctl.frameReady();
+  const src = live ? ctl.video : getImage(ctl ? ctl.poster() : ex.poster || ex.scenarios[0].poster);
+  const key = live ? `v${ctl.video.currentTime}` : src ? `p${src.src}` : 'none';
+  if (key === a.key) return false;           // same frame as last time: no draw, no upload
+  a.key = key;
+  const { cv } = a, ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
+  ctx.fillStyle = 'rgba(8,16,26,0.93)'; ctx.fillRect(0, 0, W, H);
+  if (src) {
+    const sw = live ? src.videoWidth : src.width, sh = live ? src.videoHeight : src.height;
+    const k = Math.min(W / sw, H / sh), dw = sw * k, dh = sh * k;
+    ctx.drawImage(src, (W - dw) / 2, (H - dh) / 2, dw, dh);
+  }
+  ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(79,210,255,0.5)'; ctx.strokeRect(2, 2, W - 4, H - 4);
+  return true;
+}
+function mountExhibits() {
+  for (const e of exhibits) e.ctl.destroy();
+  exhibits.length = 0;
+  beats.forEach((b, i) => {
+    const ex = exhibitFor(b), sec = ex && b.stop === 'project' && panels?.el(i);
+    const ctl = sec && (ex.scenarios ? initExhibit : initClip)(sec, ex, { reduced: PREFERS_REDUCED });
+    if (ctl) exhibits.push({ i, ctl });
+  });
+  for (const a of exhibitPanels) a.key = '';   // a remount resets the scenario: redraw
+}
+function tickExhibits() {
+  for (const e of exhibits) e.ctl.tick(!editMode && !!panels?.el(e.i)?.classList.contains('in'));
+}
 function tickAnimPanels(now) {
   if (now - _animLast < 33) return;          // ≤ 30 fps
   _animLast = now;
+  for (const a of exhibitPanels) {            // before the reduced-motion return: a clip asked for still plays
+    if (a.cv.width <= 2 || !a.mesh.visible || a.mesh.material.opacity <= 0.01) continue;
+    if (drawExhibitCanvas(a)) a.tex.needsUpdate = true;
+  }
   paintAnimFigure(now / 1000);
   if (PREFERS_REDUCED) return;               // the panel canvases already hold their still frame
   for (const a of animPanels) {
@@ -1299,22 +1376,77 @@ function tickAnimPanels(now) {
 // The animation comes from profile.js by project id (like the chapter tints), not only
 // from the saved beat: a browser holding an older v21 save still gets the loop.
 const animFor = (b) => b.anim || (b.id && PROFILE.work.featured.find((p) => p.id === b.id)?.anim) || '';
+// Random panel entrances (2026-10-13, Yarin: "randomize the 3D panels on desktop too"). Every
+// time a panel comes into view it draws how it appears, never the same draw twice in a row:
+// a mask (scan · wipe · iris · pixels · blinds · glitch, most with a cyan leading edge), a move
+// (flip · tilt · bend · drop) or a flash, or the plain fade. The reveal runs on the panel's
+// light-up value `a` (distance + hop progress), so it plays forwards on arrival and backwards
+// on departure. Injected into the MeshBasicMaterial (one shared program); reduced motion and
+// Director Mode keep the fade.
+const PANEL_FX = ['fade', 'scan', 'wipe', 'iris', 'pixels', 'blinds', 'glitch', 'flip', 'tilt', 'bend', 'drop', 'flash'];
+const panelFxTime = { value: 0 };
+let lastPanelFx;
+let _pfxForce = null;   // dev only (window.__voidPanelFx): hold every lit panel at one mode and progress
+const PFX_VERT_HEAD = 'uniform float uA;\nuniform int uMode;\nuniform float uDir;\nuniform vec2 uSize;\n';
+const PFX_VERT = `
+  float pvt = 1.0 - uA;
+  if (uMode == 7) { float an = pvt * 1.2 * uDir; transformed = vec3(transformed.x * cos(an), transformed.y, -transformed.x * sin(an)); }
+  else if (uMode == 8) { float an = pvt * 0.95 * uDir; transformed = vec3(transformed.x, transformed.y * cos(an), transformed.y * sin(an)); }
+  else if (uMode == 9) { float u = transformed.x / uSize.x * 2.0; transformed.z += (1.0 - u * u) * pvt * uSize.x * 0.32 * uDir; transformed.x *= 1.0 - 0.15 * pvt; }
+  else if (uMode == 10) { transformed.y += pvt * pvt * uSize.y * 0.5 * uDir; }
+`;
+const PFX_FRAG_HEAD = 'uniform float uA;\nuniform int uMode;\nuniform float uDir;\nuniform float uSeed;\nuniform float uTime;\nuniform vec2 uSize;\nfloat pfxHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }\n';
+const PFX_FRAG = `
+  vec2 ruv = vMapUv;
+  float pt = 1.0 - uA;
+  if (uMode == 6) { float n = pfxHash(vec2(floor(ruv.y * 26.0), floor(uTime * 24.0)) + uSeed); ruv.x += (n - 0.5) * 0.3 * pt * step(0.55, n); }
+  vec4 sampledDiffuseColor = texture2D(map, ruv);
+  if (uMode == 6) { float sh = 0.025 * pt; sampledDiffuseColor.r = texture2D(map, ruv + vec2(sh, 0.0)).r; sampledDiffuseColor.b = texture2D(map, ruv - vec2(sh, 0.0)).b; }
+  diffuseColor *= sampledDiffuseColor;
+  float pm = 1.0, pg = 0.0;
+  float asp = uSize.x / uSize.y;
+  if (uMode == 1) { float ed = 1.0 - uA * 1.06; pm = smoothstep(ed - 0.006, ed + 0.006, ruv.y); pg = 1.0 - smoothstep(0.0, 0.02, abs(ruv.y - ed)); }
+  else if (uMode == 2) { float x = uDir > 0.0 ? ruv.x : 1.0 - ruv.x; float ed = uA * 1.06; pm = 1.0 - smoothstep(ed - 0.006, ed + 0.006, x); pg = 1.0 - smoothstep(0.0, 0.02, abs(x - ed)); }
+  else if (uMode == 3) { float d = length((ruv - 0.5) * vec2(asp, 1.0)) / length(vec2(asp, 1.0) * 0.5); float r = uA * 1.08; pm = 1.0 - smoothstep(r - 0.01, r + 0.01, d); pg = 1.0 - smoothstep(0.0, 0.025, abs(d - r)); }
+  else if (uMode == 4) { float n = pfxHash(floor(ruv * vec2(30.0 * asp, 30.0)) + uSeed); float k = uA * 1.1 - 0.05; pm = step(n, k); pg = pm * (1.0 - smoothstep(0.0, 0.05, k - n)) * 0.55; }
+  else if (uMode == 5) { float sl = fract((1.0 - ruv.y) * 9.0); pm = step(sl, uA * 1.02); pg = 1.0 - smoothstep(0.0, 0.05, abs(sl - uA)); }
+  else if (uMode == 6) { pm = step(pfxHash(vec2(floor(ruv.y * 26.0), uSeed)), uA * 1.25); }
+  else if (uMode == 11) { pm = smoothstep(0.0, 0.4, uA); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.86, 0.96, 1.0), 0.8 * pt * pt); }   // a pale wash, never above 1: the bloom (threshold 1.0 at a stop) would white the screen out
+  else if (uMode != 0) { pm = uA; }   // the moves fade as they travel
+  pg = clamp(pg, 0.0, 1.0) * smoothstep(0.0, 0.08, pt);   // no leading edge once landed
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.31, 0.82, 1.0), pg * 0.85);
+  diffuseColor.a = max(diffuseColor.a * pm, pg * 0.9 * sampledDiffuseColor.a);
+`;
+function panelFx(mat, w, h) {
+  const u = { uA: { value: 1 }, uMode: { value: 0 }, uDir: { value: 1 }, uSeed: { value: 0 }, uSize: { value: new THREE.Vector2(w, h) }, uTime: panelFxTime };
+  mat.userData.fx = u;
+  mat.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, u);
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\n' + PFX_VERT_HEAD).replace('#include <begin_vertex>', '#include <begin_vertex>\n' + PFX_VERT);
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + PFX_FRAG_HEAD).replace('#include <map_fragment>', PFX_FRAG);
+  };
+  mat.customProgramCacheKey = () => 'panel-fx';
+  return mat;
+}
+const panelGeo = (b) => new THREE.PlaneGeometry(b.panel.size[0], b.panel.size[1], 24, 1);   // 24 columns: the bend needs vertices to curve
 function makePanelMesh(b, i) {
-  if (animFor(b) === 'buddy') {
-    const cv = makeAnimCanvas(b), tex = new THREE.CanvasTexture(cv);
+  const isExhibit = !!exhibitFor(b);
+  if (isExhibit || animFor(b) === 'buddy') {
+    const cv = isExhibit ? makeExhibitCanvas(b) : makeAnimCanvas(b), tex = new THREE.CanvasTexture(cv);
     tex.colorSpace = THREE.NoColorSpace; tex.anisotropy = 4;
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(b.panel.size[0], b.panel.size[1]), new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide }));
+    const mesh = new THREE.Mesh(panelGeo(b), panelFx(new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide }), b.panel.size[0], b.panel.size[1]));
     mesh.position.set(...b.panel.pos);
     const rot = b.panel.rot || [0, 0, 0];
     mesh.rotation.set(rot[0] * Math.PI / 180, rot[1] * Math.PI / 180, rot[2] * Math.PI / 180);
     mesh.userData = { type: 'panel', i }; mesh.renderOrder = 2;
-    animPanels.push({ b, cv, tex, mesh });
+    if (isExhibit) { const a = { b, i, cv, tex, mesh, key: '' }; if (cv.width > 2) drawExhibitCanvas(a); exhibitPanels.push(a); }
+    else animPanels.push({ b, cv, tex, mesh });
     return mesh;
   }
   const tex = new THREE.CanvasTexture(drawPanelCanvas(b));
   tex.colorSpace = THREE.NoColorSpace; tex.anisotropy = 4;   // no sRGB decode: the composer has no OutputPass (nothing re-encodes), so a decoded photo hit the screen linear and crushed — raw values land 1:1 (2026-09-16)
-  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide });
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(b.panel.size[0], b.panel.size[1]), mat);
+  const mat = panelFx(new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide }), b.panel.size[0], b.panel.size[1]);
+  const mesh = new THREE.Mesh(panelGeo(b), mat);
   mesh.position.set(...b.panel.pos);
   const rot = b.panel.rot || [0, 0, 0];
   mesh.rotation.set(rot[0] * Math.PI / 180, rot[1] * Math.PI / 180, rot[2] * Math.PI / 180);
@@ -1337,7 +1469,7 @@ function refreshPanelsFor(url) {
 }
 const extraPanelMeshes = [];   // v18: a beat's `panels[]` cluster (About's photos) — not index-aligned; disposed with the rest
 function disposePanels() {
-  animPanels.length = 0;
+  animPanels.length = 0; exhibitPanels.length = 0;
   for (const m of [...panelMeshes, ...extraPanelMeshes]) {
     if (!m) continue;
     m.geometry.dispose(); if (m.material.map) m.material.map.dispose(); m.material.dispose();
@@ -1369,7 +1501,7 @@ function updatePanel(i) {
   mesh.position.set(...b.panel.pos);
   const rot = b.panel.rot || [0, 0, 0];
   mesh.rotation.set(rot[0] * Math.PI / 180, rot[1] * Math.PI / 180, rot[2] * Math.PI / 180);
-  mesh.geometry.dispose(); mesh.geometry = new THREE.PlaneGeometry(b.panel.size[0], b.panel.size[1]);
+  mesh.geometry.dispose(); mesh.geometry = panelGeo(b); mesh.material.userData.fx?.uSize.value.set(b.panel.size[0], b.panel.size[1]);
   if (mesh.material.map) mesh.material.map.dispose();
   const tex = new THREE.CanvasTexture(drawPanelCanvas(b));
   tex.colorSpace = THREE.NoColorSpace; tex.anisotropy = 4;   // no sRGB decode: the composer has no OutputPass (nothing re-encodes), so a decoded photo hit the screen linear and crushed — raw values land 1:1 (2026-09-16)
@@ -1649,6 +1781,13 @@ function lastIdx() { return Math.max(0, beats.length - 1); }
 // one cooldown means hybrid devices can't double-step (e.g. a wheel event
 // trailing a touch swipe).
 const NAV_COOLDOWN = 300;
+// 2026-10-13 (Yarin: "a little bit faster"): every authored duration runs at this pace, so
+// a 1.35 s project hop takes 1.1 s. A constant rather than a beat edit: no save bump, and
+// Director Mode keeps showing the authored numbers.
+const FLIGHT_PACE = 0.82;
+// …and the next stop's words start their entrance this far into the flight, while the
+// camera is still settling, instead of after it has stopped (the old dead gap).
+const REVEAL_AT = 0.7;
 // Phone notice (2026-09-20): touch + narrow screens get one loud "best on desktop" card once the
 // loader lifts. "Got it" or the first flight hides it; localStorage keeps it away for 12 hours.
 const PHONE_NOTE_KEY = 'voidPhoneNote', PHONE_NOTE_TTL = 12 * 3600 * 1000;
@@ -1674,7 +1813,7 @@ function goTo(i) {
   index = n; lastNav = performance.now();
   // start a timed flight into the new section (per-shot duration, scaled by speed)
   const target = index / Math.max(1, lastIdx());
-  const dur = (beats[index]?.dur ?? DEF_DUR) / Math.max(0.05, speedMul) * (PREFERS_REDUCED ? 0.55 : 1);   // reduced motion: shorter hops
+  const dur = (beats[index]?.dur ?? DEF_DUR) * FLIGHT_PACE / Math.max(0.05, speedMul) * (PREFERS_REDUCED ? 0.55 : 1);   // reduced motion: shorter hops
   // per-beat easing (beat.ease) overrides the global transition curve
   tween = { from: progress, to: target, t: 0, dur: Math.max(0.15, dur), ease: EASINGS[beats[index]?.ease] || null };
 }
@@ -1954,7 +2093,7 @@ function commit(msg) {
   // an unknown stop/id typed in the editor must not be able to break commit/undo/save.
   try {
     panels = initPanels({ beats, profile: PROFILE, root: document.querySelector('#stops') });
-    mountLab();
+    mountLab(); mountExhibits();
   } catch (e) { console.warn('[panels]', e); flash('Panels: ' + e.message); }
   reattach(); pushHistory(); save(); if (msg) flash(msg);
 }
@@ -2750,7 +2889,7 @@ const txEl = document.querySelector('#txpanel');
   bind('warpstr', () => FX.warpStrength, (v) => { FX.warpStrength = v; }, f2);
   bind('warplen', () => FX.warpLength, (v) => { FX.warpLength = v; }, f3);
   const sel = document.querySelector('#tx-ease');
-  if (sel) { sel.value = txEaseName; sel.addEventListener('change', () => { txEaseName = sel.value; transitionEase = EASINGS[sel.value] || easeInOut; }); }
+  if (sel) { sel.value = txEaseName; sel.addEventListener('change', () => { txEaseName = sel.value; transitionEase = EASINGS[sel.value] || EASINGS.smoother; }); }
   bindPanelHotkey('t', () => togglePanel(txEl));
 })();
 
@@ -2835,7 +2974,7 @@ function tickLab() {
 }
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.05); // seconds since last frame (clamped for tab-switches)
-  tickLab(); tickAnimPanels(performance.now());
+  tickLab(); tickExhibits(); tickAnimPanels(performance.now());
   elapsed += dt;
   const t = elapsed;
   perfGovern(dt);
@@ -2911,8 +3050,9 @@ function animate() {
       const c = bCam(beats[index]);
       const dx = camera.position.x - c[0], dy = camera.position.y - c[1], dz = camera.position.z - c[2];
       const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      if (!tween && dist < 26 && loaderDone) panels.show(index);   // Opening/Hero have no stop → panels no-ops
-      else if (tween || dist > 70) panels.hide();
+      const landing = !!tween && tween.t / tween.dur >= REVEAL_AT;   // the entrance overlaps the last stretch of the flight
+      if (loaderDone && ((!tween && dist < 26) || landing)) panels.show(index);   // Opening/Hero have no stop → panels no-ops
+      else if ((tween && !landing) || dist > 70) panels.hide();
       _stopOpen = !tween && dist < 26 && loaderDone && !!beats[index]?.stop;
       setBar(progress > 0.02);                       // the bar arrives once the flight leaves the wordmark
     }
@@ -2952,13 +3092,15 @@ function animate() {
 
   // panels: billboard to face the camera, and light up as the camera arrives
   const _pIdx = progress * Math.max(1, lastIdx());   // continuous stop index, for the per-stop clusters
+  panelFxTime.value = performance.now() / 1000;      // the glitch reveal flickers on wall time
   let _panelLit = 0;                                 // brightest panel this frame — bloom stays lifted while any photo is on screen
   for (let i = 0, n = panelMeshes.length + extraPanelMeshes.length; i < n; i++) {
     const extra = i >= panelMeshes.length;
     const m = extra ? extraPanelMeshes[i - panelMeshes.length] : panelMeshes[i];
     if (!m) continue;
     if (!extra && beats[i]?.panel?.billboard) m.quaternion.copy(camera.quaternion);
-    if (editMode) { m.material.opacity = 1; m.visible = true; m.scale.setScalar(1); }
+    const pfx = m.material.userData.fx;
+    if (editMode) { m.material.opacity = 1; m.visible = true; m.scale.setScalar(1); if (pfx) { pfx.uMode.value = 0; pfx.uA.value = 1; } }
     else {
       let a = clamp(1 - (camera.position.distanceTo(m.position) - 90) / curFX.panelLightRange, 0, 1); // near = lit
       if (extra) a *= clamp(1 - 2.5 * Math.abs(_pIdx - m.userData.i), 0, 1);   // a `panels[]` cluster belongs to one stop: gone 40 % into the hop (2026-09-29: at 1× the About photos swept across the whole flight to the Timeline)
@@ -2966,9 +3108,20 @@ function animate() {
       if (isCompact()) a = 0;   // portrait and landscape-phone screens show the imagery as DOM figures in the stop (render.js, 2026-09-17): the WebGL panel rendered soft through the touch DPR cap and sat on the words under Safari's URL bar
       // An unlit panel is invisible, floor or not (2026-09-16): the Opening's default
       // floor of .1 left the Hi portrait ghosting under the wordmark.
-      m.material.opacity = a > 0 ? curFX.panelDimFloor + (1 - curFX.panelDimFloor) * a : 0;
+      const lit = a > 0 ? curFX.panelDimFloor + (1 - curFX.panelDimFloor) * a : 0;
+      if (pfx) {
+        if (a > 0 && !m.userData.fxOn) {            // coming into view: draw this appearance
+          m.userData.fxOn = true;
+          const k = PREFERS_REDUCED ? 'fade' : (lastPanelFx = pickFx(PANEL_FX, lastPanelFx));
+          pfx.uMode.value = PANEL_FX.indexOf(k); pfx.uDir.value = Math.random() < 0.5 ? -1 : 1; pfx.uSeed.value = Math.random() * 100;
+        } else if (a <= 0) m.userData.fxOn = false;
+        pfx.uA.value = a * a * (3 - 2 * a);
+      }
+      // a mask or a move does the revealing itself, so the panel stays opaque while it plays
+      m.material.opacity = pfx && pfx.uMode.value && a > 0 ? 1 : lit;
+      if (_pfxForce && pfx && a > 0) { pfx.uMode.value = _pfxForce.m; pfx.uA.value = _pfxForce.a; m.material.opacity = 1; }
       m.visible = m.material.opacity > 0;
-      if (m.material.opacity > _panelLit) _panelLit = m.material.opacity;
+      if (lit > _panelLit) _panelLit = lit;
       m.scale.setScalar(0.92 + 0.08 * a);
     }
   }
@@ -3123,7 +3276,7 @@ try {
   console.error('[panels]', e);
   panels = { show() {}, hide() {}, el() { return null; } };
 }
-mountLab();
+mountLab(); mountExhibits();
 // hash deep links: #work #about #cv #contact #top → the matching stop (src/hash.js
 // owns the table). A hash on first load jumps straight there (no flight); later
 // changes fly. A hash we handled is cleared so the URL never pins a stale
@@ -3269,6 +3422,19 @@ bar = initBar({ profile: PROFILE, onWork: () => goTo(WORK_INDEX), onAbout: () =>
   }
   requestAnimationFrame(step);
 })();
+
+// Dev only (2026-10-13): where each lit panel lands on screen, for the stop-fit sweep. A panel
+// on the words is a fit failure too: from 900 to ~1190 px wide the panels ran onto the text
+// column, which a sweep measuring only the bar and the chevrons never saw.
+if (import.meta.env.DEV) window.__voidPanelFx = (k, a = 0.5) => { _pfxForce = k == null ? null : { m: PANEL_FX.indexOf(k), a }; };
+if (import.meta.env.DEV) window.__voidPanels = () => [...panelMeshes, ...extraPanelMeshes].filter((m) => m && m.visible && m.material.opacity > 0.01).map((m) => {
+  const { width: w, height: h } = m.geometry.parameters, xs = [], ys = [];
+  for (const [x, y] of [[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]]) {
+    const v = new THREE.Vector3(x, y, 0).applyMatrix4(m.matrixWorld).project(camera);
+    xs.push((v.x + 1) / 2 * innerWidth); ys.push((1 - v.y) / 2 * innerHeight);
+  }
+  return { i: m.userData.i, x0: Math.round(Math.min(...xs)), x1: Math.round(Math.max(...xs)), y0: Math.round(Math.min(...ys)), y1: Math.round(Math.max(...ys)), a: +m.material.opacity.toFixed(2) };
+});
 
 // Boot finished: from here on an error is a bug to log, not a reason to drop the 3D site.
 window.removeEventListener('error', bootGuard);

@@ -47,7 +47,7 @@ export function initBar({ profile, onWork, onAbout, root }) {
     <button type="button" class="bar-copy">Copy email</button>`;
   root.addEventListener('click', (e) => {
     const act = e.target.closest('[data-act]');
-    if (act) { (act.dataset.act === 'work' ? onWork : onAbout)(); return; }
+    if (act) { ({ work: onWork, about: onAbout })[act.dataset.act]?.(); return; }
     const cp = e.target.closest('.bar-copy');
     if (cp) {
       const w = navigator.clipboard?.writeText(profile.links.email);

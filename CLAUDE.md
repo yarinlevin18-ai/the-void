@@ -1,7 +1,7 @@
 # CLAUDE.md — context for "The Void" portfolio
 
 Read this first. It captures the locked decisions and where everything lives so
-you can pick up the build with full context. Last synced to code: **v22 — wrap-up review + owner's mark (2026-09-29); every phone size, landscape included, short desktop windows, and the recounted counters (2026-09-30)**.
+you can pick up the build with full context. Last synced to code: **v25 — random entrances on every stop and every desktop panel, re-recorded walkthroughs, the Writing stop removed again (2026-10-13)**; v24 — a smoother and faster flight; v23 — Gate Opener out of the flight, the Gateway exhibit, walkthrough clips on SHADIEZ and Agent Control, the glass-pill bar (2026-10-13); before that v22 — wrap-up review + owner's mark (2026-09-29), every phone size and short desktop windows (2026-09-30).
 
 ## What this is
 A 3D, scroll-driven portfolio for **Yarin Levin — AI-native developer**. The
@@ -90,7 +90,7 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   Safari's URL bar shortening the viewport, landed on the words. Verified in
   the iOS Simulator (iPhone 17, Safari) — the Chrome phone emulation never
   showed either problem, so phone checks go through the simulator now.
-- **Flight:** 13 stops, seven of them projects (see below), section-snapping. Per-shot FOV + duration
+- **Flight:** 12 stops, six of them projects (see below), section-snapping. Per-shot FOV + duration
   with a deliberate rhythm (Hero 2.1s breath · Hero→Intro 2.4s exhale · CV/How
   I Build 1.6s · project hops 1.35s · finale 3s held). `fitFov()` widens
   vertical FOV on portrait screens so composed shots don't crop. Quaternion-
@@ -193,9 +193,9 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
 - **Per-stop entrances on phones (2026-09-17):** portrait + no-preference
   only, ≤600ms, one easing (`--ease-out`). Hi "develops" (blur/tint → colour),
   About slides in from both sides, How I Build lights the proof panel then
-  deals the repo cards, project stops get a recipe by position among project
-  stops (`PROJECT_REVEALS` in `panels.js` → `data-reveal` = scan / iris / deal
-  / wipe / shutter — by position, never by project name). Desktop unchanged.
+  deals the repo cards, project stops get a screenshot recipe (`PROJECT_REVEALS` in
+  `panels.js` → `data-reveal` = scan / iris / deal / wipe / shutter): assigned by position
+  at mount, redrawn at random on every arrival since 2026-10-13 (see **Flight feel**).
   Scan and wipe start from a 1-px sliver, never a full clip (2026-09-29): Chrome won't
   lazy-load a fully clipped image, and once 6aa7fa6 stopped the panel textures from
   warming the cache, those screenshots only began downloading on arrival.
@@ -269,6 +269,13 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   flight leaves the Opening. Phones: a two-row CSS grid (`grid-template-areas`
   — name/role + Copy email, then Work · About · icon links), availability
   text hidden, icons only. Replaces the old dossier button / waypoint rail.
+  **Since 2026-10-13 (Yarin):** the bar is set in the body font (Schibsted, 500,
+  no capitals; it was Doto mono caps) and every item is a glass pill (gradient,
+  inset highlight, `backdrop-filter`), Copy email the cyan one, Available the
+  green one. The full row is ~800 px, so 720-959 px wide shows the phone /
+  LinkedIn / GitHub pills as icons, like phones. The contact card followed the same day: role,
+  address, "click to copy", the © row and the finale's second line are in the body font too
+  (no Doto caps, no condensed address); only the name and "That's the tour." keep the display face.
 - **Director Mode** (`E`) and the FX/Transitions/UI/Assets panels
   (`B T U A`) are **dev-only**: gated by `DEV_TOOLS = import.meta.env.DEV ||
   ?edit` in the URL. Visitors never see them.
@@ -294,13 +301,14 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
 8. **Agent Control** — image right, the cyber-security stop (live demo at
    agent-control-demo.vercel.app), **also** AeroCy.
 9. **Thesis Agent** — image left, private build (his dad's M.A. thesis advisor).
-10. **Gate Opener** — image right, private build (geofenced gate PWA). Its panel
-    is 5:8 (15×24, save v22), filled by a 3× phone capture — in the default 16:10
-    frame the app was a narrow column adrift in empty space. `phone: true` in
-    `profile.js` caps its phone figure at 26vh so the stop clears the bar.
-11. **SHADIEZ** — image left, Landing pages group label, **also** SmartCut.
-    TEEPO left the flight 2026-09-29 but stays in the Timeline and How I Build.
-12. **Contact** — the door (2026-09-14): the network parts around the look
+10. **SHADIEZ** — image right (since v23, in Gate Opener's old slot, so the sides
+    keep alternating), Landing pages group label, **also** SmartCut. TEEPO left the
+    flight 2026-09-29 but stays in the Timeline and How I Build; **Gate Opener left
+    it 2026-10-13** (Yarin) and is a `work.shipped` row now, so the counters still
+    read 21 built. The `phone: true` 5:8 figure support stays (tested), unused.
+    A Writing stop (four build notes, a bar tab, `#writing`) stood here for part of 2026-10-13
+    (v24); Yarin had it deleted the same day (v25). Don't bring it back unasked.
+11. **Contact** — the door (2026-09-14): the network parts around the look
     axis (vertex-shader push, `uDoor`, R = 34), the nebula ember warms, and a
     contact card (name, role, mail, tel, GitHub · LinkedIn, build stamp)
     fades in once the door is ¾ open. Leaving, the door eases shut where it opened
@@ -334,10 +342,11 @@ folds a second featured project in as a compact row under the links.
 | `scripts/owner.js` / `scripts/stamp.js` | ~60 / ~170 | The owner's mark: bundle banners, humans.txt, the no-JS notice / XMP + EXIF in every image (see Owner's mark) |
 | `src/panels.js` | 96 | DOM stop layer: builds/shows/hides stops (inert + aria-hidden), count-up, print/copy |
 | `src/render.js` | ~210 | Pure HTML renderers (hi, about, timeline + lab card, build + build log, project + abilities / potential list, contact + finale) incl. the portrait-only `stop-img` figures, node-tested |
+| `src/exhibit.js` / `src/gateway.js` | ~140 / ~30 | Exhibit + walkthrough controllers (`initExhibit`, `initClip`) and the gateway's budget rule, node-tested (`tests/exhibit.test.js`) |
 | `src/bar.js` | 53 | Fixed top bar: name + role, availability, Work, About, phone / LinkedIn / GitHub, Copy email |
 | `src/hash.js` | 28 | Deep-link resolver: fragment/anchor → stop index, prototype-free, node-tested |
 | `src/printcv.js` | 54 | Print-only CV (moved out of the old dossier.js) |
-| `src/content/profile.js` | 269 | **Single source of truth** for bio, CV, intro/method/proof, 10 featured (7 flight stops + AeroCy/SmartCut rows + TEEPO for How I Build) + shipped/labs projects, links, status |
+| `src/content/profile.js` | 269 | **Single source of truth** for bio, CV, intro/method/proof, 9 featured (6 flight stops + AeroCy/SmartCut rows + TEEPO for How I Build) + shipped/labs projects, links, status |
 | `src/style.css` | ~1,260 | All styling incl. the phone tiers (portrait, small, SE, landscape — last in the file), the short-desktop tiers + print CV |
 | `index.html` | ~410 | Shell, loader, editor panels, JSON-LD, noscript skim path |
 | `public/previews/*.webp` | | teepo · aerocy · shadiez · smartcut · llm-gateway · sabai · agent-control · thesis · gate-opener · kiaras-club (1400–2400 px wide, except gate-opener: a 1000×1600 phone capture; panel canvases take a 1600 px long side on desktop, 1024 on touch). Cursor Buddy has none — `buddy.js` draws it |
@@ -395,6 +404,75 @@ Safari is still unchecked (the headless simulator can't be rotated from here).
   and on a short screen the contact card (`overflow: hidden`, so a flex item may shrink)
   clipped its © row instead of letting the stop scroll (`flex-shrink: 0`).
 
+### Flight feel and entrances (2026-10-13, Yarin: "smoother … a little bit faster, different entrance animations for each section")
+- **Pace:** `FLIGHT_PACE = 0.82` in `goTo()` scales every authored `dur` (a 1.35 s hop is 1.1 s);
+  a constant, so Director Mode still shows the authored numbers and no save changes.
+- **Curve:** the default is `smoother` (smootherstep: zero speed and acceleration at both ends,
+  top speed 1.9× the average where `easeInOut` peaked at 3×). The Transitions panel lists it first.
+- **Overlap:** a stop's entrance starts at `REVEAL_AT = 0.7` of the hop, while the camera settles,
+  not after it stops. Leaving, the stop gets `.out` (panels.js): it drifts past the camera
+  (scale 1.025) as it fades; arriving it comes up from .985.
+- **Headings:** every stop heading is `typedHeading()` (render.js): one unbreakable `.w` box per
+  word, one span per character (`--c` reading position, `--r` a fixed shuffled position), the
+  whole text in an `sr-only` twin.
+- **Random entrances** (same day, Yarin: "random transitions … not only type writer"):
+  `panels.js` draws a set on every arrival, never the same draw twice in a row (`pickFx`) —
+  `data-hfx` the heading (type · scramble · rise · drop · flip · blur · zoom · slide · glitch ·
+  scatter; scramble is JS, the glyph widths pinned so nothing reflows), `data-bfx` the rows
+  (`[data-rv]`, tagged per stop type by `ROWS`: rise · fall · left · right · blur · zoom · grow ·
+  flip · unroll · wipe · skew · flash), the row order (`rowDelays`: reading order, backwards,
+  shuffled → `--rv-delay`), `data-out` the exit (past · recede · sink · lift · left · right) and,
+  on a project stop, `data-reveal` for the phone screenshot. A draw lands with transitions off
+  (`.prep` + a style flush), or the rows would travel from the last visit's pose. The row rules
+  carry `#stops` so they outrank every older per-stop start state; the stops' own touches stay
+  (Timeline dots ping on their row's delay, notes draw their rule, counters count up). Touch
+  never draws blur / flash; reduced motion draws nothing (headings whole, rows fade). Contact
+  keeps its door-timed choreography.
+- **Random panel reveals** (desktop, Yarin: "randomize the 3D panels on desktop too"): every
+  panel material gets a shader hook (`panelFx()` in main.js: `onBeforeCompile`, one shared
+  program, `PlaneGeometry` 24 × 1 so the bend can curve). Each time a panel comes into view it
+  draws a mode from `PANEL_FX` — fade · scan · wipe · iris · pixels · blinds · glitch (masks,
+  most with a cyan leading edge) · flip · tilt · bend · drop (moves) · flash — never the same
+  twice in a row. The reveal is driven by the panel's light-up value `a` (distance + hop
+  progress, smoothstepped), so it plays forwards arriving and backwards leaving; while a mask
+  or move plays the material stays opaque and the shader does the revealing, and the bloom lift
+  (`_panelLit`) still follows `a`. Nothing may push a colour above 1.0: the stop's bloom
+  threshold is 1.0, and a ×1.7 flash on a white screenshot whited out the screen. Reduced
+  motion and Director Mode keep the fade. Dev only: `__voidPanelFx('iris', .45)` holds every
+  lit panel at one mode and progress (`null` releases it).
+
+### Exhibits and walkthrough clips (2026-10-12/13)
+From the living-systems handoff: a project stop may move instead of showing a still.
+- **LLM Gateway exhibit** (`profile.js` `exhibit`): two fictional scenarios (under the cap /
+  cap reached) as buttons in the text column; the verdict comes from `gateway.js`, which
+  mirrors the real gateway's rule (`spentToday >= dailyCap` blocks, before any model call,
+  compared in cents). Each scenario has a motion-studio clip + poster under
+  `public/exhibits/gateway/` — **stand-ins until Yarin approves the final clips**.
+- **Walkthroughs** (`profile.js` `clip`: SHADIEZ, Agent Control): a muted 16:10 loop of the
+  live site (Agent Control: landing → /app dashboard → /app/build — the public demo, fictional
+  company, mocked data), 1024×640 H.264 at 30 fps, < 2 MB each, poster = first frame. The first
+  cut (a CDP screencast of eased hops with 1.5-2.4 s holds, 19-22 s) read as slow and choppy to
+  Yarin ("too slow and looks at 2 fps"); since 2026-10-13 they are frame-stepped — each frame's
+  scroll position set, painted and captured on purpose — as one glide with ~0.35 s pauses
+  (SHADIEZ 9.4 s, Agent Control 7.6 s). Playback on the panel measured 30 decoded fps / 60 fps
+  render, so the fix was the recording, not the player. Sabai and Thesis Agent stay stills:
+  Sabai's live app holds real booking data and Thesis is a private build — don't record them.
+- One `<video>` per stop serves both screens: the phone figure shows it (a clip fades in over
+  its poster `<img>`, which keeps every `.shot` size rule and reveal), and on desktop
+  `drawExhibitCanvas` copies its frame into the panel canvas at ≤ 30 fps. Keyed off
+  `profile.js` like `animFor`, so no beat or save change. Nothing loads before the stop
+  opens; a clip restarts on every arrival, pauses on leave / hidden tab; reduced motion shows
+  the poster (the Gateway's "Play clip" still plays on request). Clips live under
+  `public/exhibits/` (not `public/assets/`, whose top level is cached for a year); the MP4s
+  carry the owner's name as metadata (`artist`, `copyright`), written with ffmpeg — the
+  stamper only knows WebP / JPEG.
+- **900-1179 px wide** (and taller than 520): the project column narrows to `min(29rem,
+  42vw - 1.5rem)` and the Hi column to `48vw` — the panels sat on the words by 23-99 px
+  there. The Gateway drops Problem / Decision at ≤ 920 px tall in that range and every
+  project stop its stack line at ≤ 600, or the links ran into the chevrons.
+- Known, pre-existing (the live site does it too): at 640 × 360 landscape How I Build's
+  words end 30 px under the fold, so the stop reads first.
+
 ### Owner's mark (2026-09-29, Yarin: "make sure that everything is watermarked to my name")
 Every file the site ships names him, all from `profile.js`:
 - **Page:** `<meta name="author">`, `<link rel="author" href="/humans.txt">`,
@@ -430,7 +508,7 @@ Mac's LAN IP (`http://10.x.x.x:4173`), not `http://[::1]:4173`.
 
 ### Persistence / migrations
 Path + FX config persists in **localStorage** `voidConfig`, currently **save
-version 22**. Any save below 16 has its beat array replaced wholesale with
+version 25**. Any save below 16 has its beat array replaced wholesale with
 `DEFAULT_BEATS` (the shape changed too much to patch) while the visitor's
 global FX/speed/ease settings are kept; v17 (2026-09-12) then rewrites
 `/previews/*.jpg` → `.webp` in whatever beat array survived (the JPGs are
@@ -444,7 +522,10 @@ the About `panels[]` (re-laid so the three never overlap) and the Hi `panel`
 photos — wholesale re-adopts `DEFAULT_BEATS` and resets the minimal-void globals
 (`starFrac`, `nodeFrac`, `lineFrac`, `pulse`, `flare`, `cursorDrive`) from
 `FX_DEFAULTS`; v22 (2026-09-29) re-adopts only the Gate Opener beat's `panel`
-(16:10 → 5:8). The v2–v14 patch migrations were
+(16:10 → 5:8); v23 (2026-10-13) drops the Gate Opener beat and re-adopts the
+SHADIEZ beat (it moved to the right, at z −465); v24 (2026-10-13) swaps a saved `easeInOut`
+curve for the new `smoother` default (it also inserted a Writing beat); v25 (same day) drops
+the Writing beat again — the beats are back to v23's fingerprint. The v2–v14 patch migrations were
 deleted on 2026-09-12: they only ever ran on beats the v14/v15 reset was about
 to discard. Any future
 `DEFAULT_BEATS` shape change needs its own migration step + version bump,
@@ -472,7 +553,7 @@ export tuned `BEATS` and paste into `DEFAULT_BEATS`.
 npm install
 npm run dev      # http://localhost:5173  (DEV_TOOLS on → E/B/T/U/A work)
 npm run build    # runs the test suite, then vite build → dist/
-npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash, save, assets, domain, lab, buddy, buildlog, owner, stamp, css (happy-dom for the DOM ones), 99 passing
+npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash, save, assets, domain, lab, buddy, buildlog, owner, stamp, css, exhibit (happy-dom for the DOM ones), 119 passing
 npm run stamp    # the owner's name into any new image under public/ (the test suite fails until it's done)
 npx vite preview --host   # the production build with vercel.json's headers (CSP) — `void-preview` in .claude/launch.json
 ```

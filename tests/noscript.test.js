@@ -12,12 +12,12 @@ const root = fileURLToPath(new URL('..', import.meta.url)).replace(/[\\/]$/, '')
 
 test('the no-JS Work list follows the flight and names every project stop and its also-row', () => {
   const order = flightOrder(main);
-  assert.equal(order.length, 7);
+  assert.equal(order.length, 6);
   const list = workList(PROFILE, order);
   for (const { id, also } of order) {
     for (const x of [id, also].filter(Boolean)) assert.ok(list.includes(PROFILE.work.featured.find((p) => p.id === x).name.replace(/’/g, '’')), x);
   }
-  assert.ok(!/Focus/.test(list), 'Focus left the flight');
+  assert.ok(!/Focus|Gate Opener/.test(list), 'Focus and Gate Opener left the flight');
   assert.ok(html.includes('<!-- noscript:work'), 'index.html keeps the marker vite.config.js fills');
 });
 

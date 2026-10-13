@@ -116,3 +116,27 @@ test('copy email: swallows the mailto only when the clipboard write succeeds', a
   await tick(1900);
   assert.equal(small.textContent, original);
 });
+
+test('random entrances: a draw never repeats the last one, row delays cover every row once', async () => {
+  const { pickFx, rowDelays, HEADING_FX, ROW_FX, ROW_STEP, ROW_AT } = await import('../src/panels.js');
+  let last;
+  for (let k = 0; k < 200; k++) { const x = pickFx(HEADING_FX, last); assert.ok(HEADING_FX.includes(x)); assert.notEqual(x, last); last = x; }
+  assert.equal(pickFx(['only'], 'only'), 'only', 'a one-name pool still answers');
+  assert.equal(pickFx(ROW_FX, undefined, () => 0.9999), ROW_FX.at(-1), 'rand near 1 stays in range');
+  const want = [...Array(6).keys()].map((k) => k * ROW_STEP + ROW_AT);
+  assert.deepEqual(rowDelays(6, 'flow'), want);
+  assert.deepEqual(rowDelays(6, 'reverse'), [...want].reverse());
+  assert.deepEqual([...rowDelays(6, 'shuffle')].sort((a, b) => a - b), want, 'shuffle is a permutation');
+});
+
+test('every stop with text rows tags them for the draw; reduced motion keeps a plain fade', () => {
+  const { panels } = mount();
+  for (const k of ['hi', 'about', 'timeline', 'build', 'project']) {
+    const sec = panels.el(I[k]);
+    assert.ok(sec.querySelectorAll('[data-rv]').length >= 2, `${k} has rows`);
+    assert.equal(sec.dataset.bfx, 'fade');
+    assert.ok(!sec.querySelector('h2[data-rv], .title[data-rv]'), `${k}: the heading has its own entrance`);
+  }
+  panels.show(I.about);
+  assert.equal(panels.el(I.about).dataset.hfx, 'type', 'no random draw under reduced motion');
+});

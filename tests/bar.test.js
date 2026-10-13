@@ -110,3 +110,4 @@ test('Copy email writes the email and flips the label, or reports failure', asyn
   await tick(1900);
   assert.equal(btn.textContent, 'Copy email');
 });
+

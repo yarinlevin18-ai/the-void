@@ -114,7 +114,6 @@ export const PROFILE = {
   ],
   // stop 04 repo block: which featured ids get the lead card and the two compact rows
   buildStop: { lead: 'llm-gateway', rows: ['teepo', 'shadiez'] },
-
   links: {
     email: 'yarinlevin18@gmail.com',
     phone: '054-8029820', // Yarin approved publishing (site + PDF), 2026-08-29
@@ -234,6 +233,8 @@ export const PROFILE = {
         outcome: 'Paid client work, in production.',
         stack: 'Next.js 16 · R3F · Tailwind v4 · Framer Motion · Lenis',
         url: 'https://shadiez.vercel.app', repo: 'https://github.com/yarinlevin18-ai/shadiez',
+        // a scroll through the live page, recorded 2026-10-13 — plays on the panel / phone figure
+        clip: { src: '/exhibits/shadiez/walkthrough.mp4', poster: '/exhibits/shadiez/poster.webp', alt: 'A scroll through the live SHADIEZ landing page' },
       },
       {
         id: 'smartcut', name: 'SmartCut', group: 'landing', kind: 'Booking CRM', tag: 'Client work', year: 2026,
@@ -257,6 +258,15 @@ export const PROFILE = {
           { t: 'Agency client portal', d: 'Each client sees its own usage, approvals and activity, on its own page.' },
           { t: 'Local-first router', d: 'Easy tasks to a local model, hard ones to Claude, behind one endpoint.' },
         ],
+        // The exhibit (2026-10-12): one fictional request per scenario, clip and poster rendered
+        // in motion-studio (projects/gateway-exhibit, same numbers), the verdict from gateway.js.
+        exhibit: {
+          alt: 'Animated trace of one fictional request through routing, policy and the budget check',
+          scenarios: [
+            { id: 'allowed', label: 'Under the cap', dailyCap: 10, spentToday: 8, requestCost: 0.42, clip: '/exhibits/gateway/allowed.mp4', poster: '/exhibits/gateway/allowed.webp' },
+            { id: 'blocked', label: 'Cap reached', dailyCap: 10, spentToday: 10, requestCost: 0.42, clip: '/exhibits/gateway/blocked.mp4', poster: '/exhibits/gateway/blocked.webp' },
+          ],
+        },
         url: 'https://shaar-ai-landing.vercel.app',
       },
       {
@@ -301,6 +311,8 @@ export const PROFILE = {
           { t: 'Back-office autopilot', d: 'Invoices, supplier mail and stock checks, with a manager past a set limit.' },
         ],
         url: 'https://agent-control-demo.vercel.app',
+        // the public demo (fictional company, mocked data), recorded 2026-10-13: landing, dashboard, agent builder
+        clip: { src: '/exhibits/agent-control/walkthrough.mp4', poster: '/exhibits/agent-control/poster.webp', alt: 'A walk through the Agent Control demo: the landing page, the admin dashboard and the agent builder' },
       },
       {
         id: 'thesis', name: 'Thesis Agent', group: 'saas', kind: 'AI research advisor', tag: 'Private build', year: 2026,
@@ -311,18 +323,10 @@ export const PROFILE = {
         stack: 'Next.js · Supabase · Claude API · Vitest',
         url: '',
       },
-      {
-        id: 'gate-opener', name: 'Gate Opener', group: 'saas', kind: 'Geofenced web app', tag: 'Private build', year: 2026,
-        tint: '#3fc978', img: '/previews/gate-opener.webp', private: true, phone: true,   // a 5:8 phone capture: 5:8 panel on desktop, a shorter figure on phones
-        problem: 'Opening the family gate meant stopping the car and finding an app, every single time.',
-        decision: 'No open button: a geofence state machine that GPS drift can’t fire twice, and gate tokens encrypted server-side.',
-        outcome: 'Pulling up to the gate is the trigger.',
-        stack: 'Next.js · Supabase · TypeScript · PWA',
-        url: '',
-      },
     ],
     shipped: [
       { name: 'Focus', what: 'WIP-capped project board — at most three active projects, enforced in the CLI, the API and the dashboard.', built: 'Node, SQLite, Astro dashboard. Left the flight 2026-09-29 for Cursor Buddy.', year: 2026 },
+      { name: 'Gate Opener', what: 'Geofenced gate PWA — pulling up to the family gate is the trigger, no open button.', built: 'Next.js, Supabase, TypeScript; a geofence state machine GPS drift can’t fire twice. Left the flight 2026-10-13.', year: 2026 },
       { name: 'Worldiez', what: 'Automated YouTube Shorts pipeline — clip in, branded 9:16 short out, scheduled to YouTube.', built: 'FFmpeg prep, Remotion compositions, Postiz scheduling, agent-orchestrated.', year: 2026 },
       { name: 'Mentorship', what: 'Shared app for a mentor and mentee — sessions, summaries, homework.', built: 'Next.js 16 Server Actions + Supabase Postgres, role-per-device.', year: 2026 },
       { name: 'dira-lease', what: 'Hebrew-RTL landing page that ranks apartment-sublease leads.', built: 'Next.js + Framer Motion, three-step funnel into Google Sheets.', year: 2026 },

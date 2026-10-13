@@ -215,3 +215,17 @@ test('contact: the finale lead-in types per character but reads whole to screen 
   assert.ok(h.includes(`<span class="sr-only">${esc(PROFILE.finale.line)}</span>`));
   assert.equal((h.match(/style="--c:/g) || []).length, [...PROFILE.finale.lead].length + [...PROFILE.finale.line].length);
 });
+
+test('headings type in per character but read whole to screen readers', async () => {
+  const { typedHeading } = await import('../src/render.js');
+  const h = typedHeading('A & B');
+  assert.ok(h.startsWith('<span class="sr-only">A &amp; B</span><span class="tw" aria-hidden="true">'));
+  assert.equal((h.match(/style="--c:/g) || []).length, 3, 'one span per character, the spaces between word boxes');
+  assert.equal((h.match(/<span class="w">/g) || []).length, 3, 'one unbreakable box per word');
+  const r = [...h.matchAll(/--r:(\d+)/g)].map((m) => +m[1]).sort();
+  assert.deepEqual(r, [0, 1, 2], 'the scatter order is a permutation of the characters');
+  for (const html of [renderHi(PROFILE), renderAbout(PROFILE), renderTimeline(PROFILE), renderProject(PROFILE.work.featured[0], 'left')]) {
+    assert.match(html, /<h2[^>]*><span class="sr-only">[^<]+<\/span><span class="tw" aria-hidden="true">/);
+  }
+});
+
