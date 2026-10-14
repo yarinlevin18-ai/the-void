@@ -1,9 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { PROFILE } from '../src/content/profile.js';
 
 const featured = PROFILE.work.featured;
+// The project ids DEFAULT_BEATS flies to. Only these need imagery: a project that is only an
+// Also row or a How I Build card ships no screenshot (TEEPO / AeroCy / SmartCut, 2026-10-14).
+const MAIN = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+const BEATS_SRC = (() => { const a = MAIN.slice(MAIN.indexOf('const DEFAULT_BEATS = [')); return a.slice(0, a.indexOf('\n];')); })();
+const stopIds = [...BEATS_SRC.matchAll(/\bid: '([a-z-]+)'/g)].map((m) => m[1]);
 
 test('hi, about and timeline carry the person chapter', () => {
   assert.ok(PROFILE.hi.greeting.startsWith('Hi, I’m'));
@@ -34,11 +39,11 @@ test('featured projects: 4 landing then 4 saas, in spec order', () => {
   assert.deepEqual(featured.map((p) => p.group), ['landing', 'landing', 'landing', 'landing', 'saas', 'saas', 'saas', 'saas']);
 });
 
-test('every featured project has problem/decision/outcome, image, tint, stack', () => {
+test('every featured project has problem/decision/outcome, tint, stack; every flight stop has imagery', () => {
   for (const p of featured) {
     for (const k of ['problem', 'decision', 'outcome', 'tint', 'stack']) assert.ok(p[k], `${p.id} missing ${k}`);
-    assert.ok(p.img || p.anim, `${p.id} needs a screenshot or an animation`);
     assert.match(p.tint, /^#[0-9a-f]{6}$/i);
+    if (stopIds.includes(p.id)) assert.ok(p.img || p.anim, `${p.id} is a flight stop: it needs a screenshot or an animation`);
   }
 });
 
@@ -108,7 +113,8 @@ test('public entries have live url and repo; every img matches its id', () => {
       assert.match(p.repo, /^https:\/\/github\.com\//, `${p.id} repo`);
     }
     if (p.anim) assert.equal(p.img, '', `${p.id}: an animated stop ships no screenshot`);
-    else assert.equal(p.img, `/previews/${p.id}.webp`, `${p.id} img`);
+    else if (p.img) assert.equal(p.img, `/previews/${p.id}.webp`, `${p.id} img`);
+    if (!stopIds.includes(p.id)) assert.equal(p.img, '', `${p.id} is not a flight stop: no stop would show its screenshot`);
   }
 });
 
@@ -126,11 +132,13 @@ test('every project id DEFAULT_BEATS hardcodes exists in the profile', () => {
   for (const id of [...ids, ...also]) assert.ok(featured.map((p) => p.id).includes(id), id);
 });
 
-test('buildStop ids exist in featured and every featured preview file is on disk', () => {
+test('buildStop ids exist in featured, every featured preview file is on disk, and none ships unused', () => {
   const ids = featured.map((p) => p.id);
   assert.ok(ids.includes(PROFILE.buildStop.lead), PROFILE.buildStop.lead);
   for (const r of PROFILE.buildStop.rows) assert.ok(ids.includes(r), r);
   for (const p of featured) if (p.img) assert.ok(existsSync(new URL(`../public${p.img}`, import.meta.url)), p.img);
+  const used = new Set([...featured.map((p) => p.img), ...[...BEATS_SRC.matchAll(/img: '([^']+)'/g)].map((m) => m[1])]);
+  for (const f of readdirSync(new URL('../public/previews/', import.meta.url))) assert.ok(used.has(`/previews/${f}`), `public/previews/${f} ships but nothing shows it`);
 });
 
 // Claims that were retired in the 2026-09-14 wording rework. They must not

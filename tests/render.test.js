@@ -35,23 +35,23 @@ test('about renders title, three paragraphs, side right, and the two photos as p
 test('hi and project carry their imagery as a portrait-only figure with alt text', () => {
   const hi = renderHi(PROFILE);
   assert.ok(hi.includes(`class="stop-img portrait"`) && hi.includes(`src="${PROFILE.hi.portrait}"`));
-  const teepo = PROFILE.work.featured.find((p) => p.id === 'teepo');
-  const hp = renderProject(teepo, 'left');
-  assert.ok(hp.includes(`class="stop-img shot"`) && hp.includes(`src="${teepo.img}"`) && hp.includes('alt="TEEPO — screenshot"'));
+  const thesis = PROFILE.work.featured.find((p) => p.id === 'thesis');
+  const hp = renderProject(thesis, 'left');
+  assert.ok(hp.includes(`class="stop-img shot"`) && hp.includes(`src="${thesis.img}"`) && hp.includes('alt="Thesis Agent — screenshot"'));
   assert.ok(hp.indexOf('stop-img') < hp.indexOf('class="eyebrow"'), 'figure comes before the words');
-  assert.ok(!renderProject({ ...teepo, img: '' }, 'left').includes('<img'), 'no figure without an image');
-  assert.ok(renderProject({ ...teepo, phone: true }, 'left').includes(`class="stop-img shot phone"`), 'a phone capture gets the shorter phone figure');
+  assert.ok(!renderProject({ ...thesis, img: '' }, 'left').includes('<img'), 'no figure without an image');
+  assert.ok(renderProject({ ...thesis, phone: true }, 'left').includes(`class="stop-img shot phone"`), 'a phone capture gets the shorter phone figure');
 });
 
 // Landscape phones (2026-09-30) put the picture beside the words: the article's children are
 // the figure(s) and one .stop-txt block holding every word, in that order.
 test('hi, about and project keep their words in one .stop-txt block after the picture', () => {
-  const teepo = PROFILE.work.featured.find((p) => p.id === 'teepo');
+  const thesis = PROFILE.work.featured.find((p) => p.id === 'thesis');
   const also = PROFILE.work.featured.find((p) => p.id === 'smartcut');
   for (const [name, h, first, last] of [
     ['hi', renderHi(PROFILE), 'class="eyebrow"', 'class="line"'],
     ['about', renderAbout(PROFILE), 'class="eyebrow"', 'class="para"'],
-    ['project', renderProject(teepo, 'left', also), 'class="eyebrow"', 'class="also"'],
+    ['project', renderProject(thesis, 'left', also), 'class="eyebrow"', 'class="also"'],
   ]) {
     const art = h.slice(0, h.indexOf('</article>'));
     const txt = art.indexOf('<div class="stop-txt">');

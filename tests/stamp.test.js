@@ -64,7 +64,7 @@ test('a JPEG keeps JFIF first, gains EXIF + XMP, and keeps its scan data', () =>
 
 test('every image the site ships carries the owner\'s name (run `npm run stamp` after adding one)', () => {
   const files = publicImages(`${root}/public`);
-  assert.ok(files.length >= 12, `found ${files.length} images`);   // 14 after 2026-10-14 (Sabai, Agent Control's screenshot and the loader poster left)
+  assert.ok(files.length >= 8, `found ${files.length} images`);   // a floor, so a walker that finds nothing can't pass: 10 after 2026-10-14 (kiaras-club, teepo, aerocy and smartcut left with their stops)
   for (const f of files) {
     const buf = readFileSync(f), s = readStamp(buf), rel = f.slice(root.length + 1);
     assert.ok(isStamped(buf, PROFILE.name), `${rel} is not stamped — run npm run stamp`);

@@ -404,7 +404,7 @@ folds a second featured project in as a compact row under the links.
 | `src/content/profile.js` | ~345 | **Single source of truth** for bio, CV, intro/method/proof, 8 featured (5 flight stops + AeroCy/SmartCut rows + TEEPO for How I Build) + shipped/labs projects, links, status |
 | `src/style.css` | ~1,395 | All styling incl. the phone tiers (portrait, small, SE, landscape — last in the file), the short-desktop tiers + print CV |
 | `index.html` | ~355 | Shell, loader, editor panels, JSON-LD, noscript skim path |
-| `public/previews/*.webp` | | teepo · aerocy · shadiez · smartcut · llm-gateway · thesis (1400–2400 px wide; gate-opener and kiaras-club left with their stops; no stop shows teepo / aerocy / smartcut (they are `also` rows or How I Build cards), but `tests/profile.test.js` wants every featured entry to carry its `img`; panel canvases take a 1600 px long side on desktop, 1024 on touch). Cursor Buddy and Agent Control have none — `buddy.js` / `agent.js` draw them |
+| `public/previews/*.webp` | | shadiez · llm-gateway · thesis (1400–2400 px wide; panel canvases take a 1600 px long side on desktop, 1024 on touch) — only the flight's still-image stops. TEEPO, AeroCy and SmartCut (How I Build cards / Also rows) ship no screenshot since 2026-10-14 (`img: ''`); `tests/profile.test.js` wants imagery on every flight stop and fails on any preview file nothing shows. Cursor Buddy and Agent Control have none — `buddy.js` / `agent.js` draw them |
 | `public/assets/me/` | | portrait 4:5 (1000×1250, centred, head to knees; 19.2×24 panel) + 2 About panels: FIDF stage 4:3 (logo + speaker, no black rig band; 18×13.5) and the Nova memorial at Re’im 3:4 (10.5×14). Re-cut 2026-09-29 from the originals in `~/.claude/uploads/…` (mild grade + unsharp, q88); the lectern shot was a crop of the stage and is gone. Panel textures keep the panel's aspect (long side 1600, 1024 on touch) — until 2026-09-29 the height was capped at 1024, so every portrait panel was a stretched square |
 
 Deps: `three` 0.169 and `vite` 8 (+ `happy-dom` for tests). No React.
@@ -573,7 +573,7 @@ page / request errors and for words under the bar, the chevrons or the fold — 
   went through cmd.exe, which read the `|` in `--format` as a pipe. `__BUILDLOG__` ships only
   `{ tests, commits, activeDays }`, the three fields the page reads.
 - **Dead code out:** the CSS3D layer and hero screens (main.js, index.html, style.css), the
-  `uiHint` FX key, `kiaras-club.webp`; dev-only logs gated on `DEV_TOOLS`; `npm audit fix`.
+  `uiHint` FX key, `kiaras-club.webp` and the unshown teepo / aerocy / smartcut previews; dev-only logs gated on `DEV_TOOLS`; `npm audit fix`.
 - **Gateway fits:** at 1180+ wide and 641-820 tall its PROBLEM / DECISION run in (1366 × 768
   held the wheel by 78 px); the tier starts at 641 because its specificity beat the ≤ 640 rule
   that hides them (1280 × 600 ran 20 px off). 900-1179 × ≤ 600 drops the Also row's line.

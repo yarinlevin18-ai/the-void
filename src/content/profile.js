@@ -209,7 +209,7 @@ export const PROFILE = {
     featured: [
       {
         id: 'teepo', name: 'TEEPO', group: 'landing', kind: 'Study platform', tag: 'Product · live', year: 2026,
-        tint: '#3fc978', img: '/previews/teepo.webp',
+        tint: '#3fc978', img: '',   // not a flight stop: no screenshot ships (2026-10-14)
         problem: 'Israeli students juggle Moodle, grades and deadlines across sites that never talk to each other.',
         decision: 'One Hebrew-RTL platform with real auth and a Chrome-extension scraper; Google Drive as the datastore instead of a backend nobody asked for.',
         outcome: 'Live all semester, with real auth and the real Moodle data.',
@@ -218,7 +218,7 @@ export const PROFILE = {
       },
       {
         id: 'aerocy', name: 'AeroCy', group: 'landing', kind: 'Business site', tag: 'Client work', year: 2026,
-        tint: '#9fd8ff', img: '/previews/aerocy.webp',
+        tint: '#9fd8ff', img: '',   // an Also row: no screenshot ships
         problem: 'An aviation-security company had no credible bilingual web presence.',
         decision: 'One Next.js site in English and Hebrew, one motion idea per section, no CMS.',
         outcome: 'The company’s live site, shipped in days.',
@@ -238,7 +238,7 @@ export const PROFILE = {
       },
       {
         id: 'smartcut', name: 'SmartCut', group: 'landing', kind: 'Booking CRM', tag: 'Client work', year: 2026,
-        tint: '#eab04e', img: '/previews/smartcut.webp',
+        tint: '#eab04e', img: '',   // an Also row: no screenshot ships
         problem: 'A grooming studio paid for Wix Bookings and still handled reschedules by phone.',
         decision: 'Self-hosted slot booking on Supabase with an approval workflow and customer self-service.',
         outcome: 'A booking CRM designed for a grooming studio: slots, approvals and customer self-service.',
