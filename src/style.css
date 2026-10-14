@@ -820,7 +820,7 @@ span.pill { cursor: default; }   /* "Private build", "Personal app", "Private re
 .xl-strip { display: none; }
 @media (min-width: 1100px) and (min-height: 600px) {
   .xl-flow { display: none; }
-  .xl-strip { display: block; position: absolute; top: 65vh; width: min(41vw, 46rem); opacity: 0; transform: translateY(10px); transition: opacity .45s ease .3s, transform .45s var(--ease-out) .3s; }
+  .xl-strip { display: block; position: absolute; top: max(65vh, var(--pb, 0px)); width: min(41vw, 46rem); opacity: 0; transform: translateY(10px); transition: opacity .45s ease .3s, transform .45s var(--ease-out) .3s; }
   .stop.in .xl-strip { opacity: 1; transform: none; }
   .stop-project[data-side="right"] .xl-strip { left: max(48vw, calc(6vw + 30rem)); }   /* the text column ends at 6vw + 29rem */
   .stop-project[data-side="left"] .xl-strip { right: max(48vw, calc(6vw + 30rem)); }

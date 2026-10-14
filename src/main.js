@@ -885,7 +885,7 @@ const DEFAULT_BEATS = [
   // stop becomes three (Agent Control, Thesis Agent, Gate Opener) — TEEPO stays in
   // the Timeline and the How I Build cards. AeroCy rides along on Agent Control
   // (both security), SmartCut on SHADIEZ, which now opens the Landing pages group.
-  /* 5 */ { name: 'LLM Gateway', stop: 'project', id: 'llm-gateway', side: 'left', groupLabel: 'SaaS', cam: [4, 3, -115], look: [4, 3, -215], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/llm-gateway.webp', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -115, 'left') },
+  /* 5 */ { name: 'LLM Gateway', stop: 'project', id: 'llm-gateway', side: 'left', groupLabel: 'SaaS', cam: [4, 3, -115], look: [4, 3, -215], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/llm-gateway.webp', link: '', fx: { ...VOID_FX }, panel: (() => { const p = P(4, 3, -115, 'left'); p.size = [28, 15.75]; return p; })() },   // 16:9 like its clips (v26)
   /* 6 */ { name: 'Cursor Buddy', stop: 'project', id: 'cursor-buddy', side: 'right', cam: [-4, 3, -185], look: [-4, 3, -285], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '', anim: 'buddy', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -185, 'right') },
   /* 7 */ { name: 'Sabai', stop: 'project', id: 'sabai', side: 'left', cam: [4, 3, -255], look: [4, 3, -355], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/sabai.webp', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -255, 'left') },
   /* 8 */ { name: 'Agent Control', stop: 'project', id: 'agent-control', also: 'aerocy', side: 'right', cam: [-4, 3, -325], look: [-4, 3, -425], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/agent-control.webp', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -325, 'right') },
@@ -1063,6 +1063,12 @@ function load() {
           beats = beats.filter((b) => b.stop !== 'writing');
           if (beats.length !== n) migrated = true;
         }
+        if (!(d.version >= 26)) {
+          // v26 (2026-10-14, Yarin: "fit the display"): the LLM Gateway panel turns 16:9 like its
+          // clips, which letterboxed into the 16:10 panel — re-adopt that beat's panel only.
+          const was = beats.find((b) => b.id === 'llm-gateway'), now = DEFAULT_BEATS.find((b) => b.id === 'llm-gateway');
+          if (was && now) { was.panel = structuredClone(now.panel); migrated = true; }
+        }
         beats.forEach(backfillBeat); // bring older saves up to the current schema
         if (migrated) save();
         return;
@@ -1074,7 +1080,7 @@ function load() {
 }
 function save() {
   const g = {}; for (const k of GLOBAL_KEYS) g[k] = FX[k]; g.ease = txEaseName;
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 25 })); }
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 26 })); }
   catch (e) { console.warn('[save]', e); }   // private mode / quota: never let a failed write abort the boot
 }
 // push the global (saved) FX/UX/transition state into the live scene + DOM
@@ -1297,7 +1303,7 @@ function drawAnimCanvas(b, cv, sec) {
 }
 function makeAnimCanvas(b) {
   if (isCompact() && !editMode) return panelStandIn();   // phones animate the DOM figure instead
-  const W = 1024, H = Math.round(W * (b.panel.size[1] / b.panel.size[0]));
+  const W = exhibitW(innerWidth * 0.45 * renderer.getPixelRatio()), H = Math.round(W * (b.panel.size[1] / b.panel.size[0]));   // panelFit corrects it on landing
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   drawAnimCanvas(b, cv, PREFERS_REDUCED ? 11 : 0);   // reduced motion: one still frame, the answer on screen
   return cv;
@@ -1316,8 +1322,12 @@ function paintAnimFigure(sec) {             // phones: the DOM figure in the ope
 // Exhibit panels (2026-10-12): a project with `exhibit` in profile.js (LLM Gateway) shows
 // its scenario clip on the panel. The clip is the stop's own <video> (exhibit.js owns it and
 // the phone figure shows it); the panel canvas draws its current frame, or the scenario's
-// poster until the clip has one, letterboxed (the clips are 16:9, the panel 16:10) inside the
-// same hairline frame as every panel. Keyed off profile.js like animFor, so DEFAULT_BEATS and
+// poster until the clip has one, contained (since v26 the Gateway panel is 16:9 like its clips,
+// the walkthroughs 16:10 like theirs, so nothing letterboxes) inside the same hairline frame as
+// every panel. Sharp (2026-10-14, Yarin: "sharpen"): the canvas — this one and Cursor Buddy's —
+// is sized to the panel's on-screen pixels once the stop lands (panelFit), so the GPU samples it about 1:1 — a fixed
+// 1280 px canvas shown 808 px wide went through the mipmaps and read soft — and the frame is
+// scaled down by the browser's high-quality filter, with the full anisotropy for the 15° yaw. Keyed off profile.js like animFor, so DEFAULT_BEATS and
 // the save version stay as they are. A `clip` (2026-10-13: SHADIEZ, Agent Control — a recorded
 // walk through the live site, 16:10 like the panel) rides the same path through initClip.
 const exhibitFor = (b) => { const p = b.id && PROFILE.work.featured.find((q) => q.id === b.id); return (p && (p.exhibit || p.clip)) || null; };
@@ -1325,9 +1335,21 @@ const exhibitPanels = [];
 const exhibits = [];   // { i, ctl } — mounted with the stops (mountExhibits)
 function makeExhibitCanvas(b) {
   if (isCompact() && !editMode) return panelStandIn();   // phones show the clip in the stop's figure
-  const W = IS_TOUCH ? 1024 : 1280, H = Math.round(W * (b.panel.size[1] / b.panel.size[0]));
+  const W = exhibitW(innerWidth * 0.45 * renderer.getPixelRatio()), H = Math.round(W * (b.panel.size[1] / b.panel.size[0]));   // a first guess; panelFit corrects it on landing
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   return cv;
+}
+const exhibitW = (px) => Math.max(512, Math.min(IS_TOUCH ? 1024 : 1600, Math.round(px / 16) * 16));   // 1600: the clips' own width
+const _fitV = new THREE.Vector3();
+function panelFit(a) {                      // the landed panel's width in device pixels → canvas width; true if it changed
+  const [w, h] = a.b.panel.size, xs = [];
+  a.mesh.updateMatrixWorld();
+  for (const [x, y] of [[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]]) xs.push(_fitV.set(x, y, 0).applyMatrix4(a.mesh.matrixWorld).project(camera).x);
+  const W = exhibitW((Math.max(...xs) - Math.min(...xs)) / 2 * innerWidth * renderer.getPixelRatio());
+  if (Math.abs(W - a.cv.width) / a.cv.width < 0.12) return false;
+  a.cv.width = W; a.cv.height = Math.round(W * h / w);
+  a.tex.dispose(); a.key = '';               // a new size needs a new GL texture
+  return true;
 }
 function drawExhibitCanvas(a) {
   const ctl = exhibits.find((e) => e.i === a.i)?.ctl;
@@ -1337,6 +1359,7 @@ function drawExhibitCanvas(a) {
   if (key === a.key) return false;           // same frame as last time: no draw, no upload
   a.key = key;
   const { cv } = a, ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
+  ctx.imageSmoothingQuality = 'high';
   ctx.fillStyle = 'rgba(8,16,26,0.93)'; ctx.fillRect(0, 0, W, H);
   if (src) {
     const sw = live ? src.videoWidth : src.width, sh = live ? src.videoHeight : src.height;
@@ -1359,18 +1382,35 @@ function mountExhibits() {
 function tickExhibits() {
   for (const e of exhibits) e.ctl.tick(!editMode && !!panels?.el(e.i)?.classList.contains('in'));
 }
+// The abilities / potential strip sits under the image panel at 65vh (style.css); while the
+// camera is still settling (the stop shows at 70 % of the hop) the panel stands taller than
+// that and the strip's first row ran over it (2026-10-14). --pb is the panel's projected
+// bottom edge plus a gap; the strip takes whichever is lower.
+const _pbV = new THREE.Vector3();
+function syncStripTop() {
+  const sec = panels?.el(index), st = sec && sec.classList.contains('in') && sec.querySelector('.xl-strip'), m = panelMeshes[index];
+  if (!st || !m || !m.visible || !beats[index].panel) return;
+  const [w, h] = beats[index].panel.size;
+  m.updateMatrixWorld();
+  let y1 = 0;
+  for (const x of [-w / 2, w / 2]) { _pbV.set(x, -h / 2, 0).applyMatrix4(m.matrixWorld).project(camera); y1 = Math.max(y1, (1 - _pbV.y) / 2 * innerHeight); }
+  const v = Math.round(y1 + 22);
+  if (v !== st._pb) { st._pb = v; st.style.setProperty('--pb', `${v}px`); }
+}
 function tickAnimPanels(now) {
   if (now - _animLast < 33) return;          // ≤ 30 fps
   _animLast = now;
   for (const a of exhibitPanels) {            // before the reduced-motion return: a clip asked for still plays
     if (a.cv.width <= 2 || !a.mesh.visible || a.mesh.material.opacity <= 0.01) continue;
+    if (_stopOpen && index === a.i && !editMode) panelFit(a);
     if (drawExhibitCanvas(a)) a.tex.needsUpdate = true;
   }
   paintAnimFigure(now / 1000);
-  if (PREFERS_REDUCED) return;               // the panel canvases already hold their still frame
   for (const a of animPanels) {
-    if (!a.mesh.visible || a.mesh.material.opacity <= 0.01) continue;
-    drawAnimCanvas(a.b, a.cv, now / 1000); a.tex.needsUpdate = true;
+    if (a.cv.width <= 2 || !a.mesh.visible || a.mesh.material.opacity <= 0.01) continue;
+    const resized = _stopOpen && index === a.i && !editMode && panelFit(a);
+    if (PREFERS_REDUCED && !resized) continue;   // the canvas already holds its still frame
+    drawAnimCanvas(a.b, a.cv, PREFERS_REDUCED ? 11 : now / 1000); a.tex.needsUpdate = true;
   }
 }
 // The animation comes from profile.js by project id (like the chapter tints), not only
@@ -1433,14 +1473,14 @@ function makePanelMesh(b, i) {
   const isExhibit = !!exhibitFor(b);
   if (isExhibit || animFor(b) === 'buddy') {
     const cv = isExhibit ? makeExhibitCanvas(b) : makeAnimCanvas(b), tex = new THREE.CanvasTexture(cv);
-    tex.colorSpace = THREE.NoColorSpace; tex.anisotropy = 4;
+    tex.colorSpace = THREE.NoColorSpace; tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
     const mesh = new THREE.Mesh(panelGeo(b), panelFx(new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide }), b.panel.size[0], b.panel.size[1]));
     mesh.position.set(...b.panel.pos);
     const rot = b.panel.rot || [0, 0, 0];
     mesh.rotation.set(rot[0] * Math.PI / 180, rot[1] * Math.PI / 180, rot[2] * Math.PI / 180);
     mesh.userData = { type: 'panel', i }; mesh.renderOrder = 2;
     if (isExhibit) { const a = { b, i, cv, tex, mesh, key: '' }; if (cv.width > 2) drawExhibitCanvas(a); exhibitPanels.push(a); }
-    else animPanels.push({ b, cv, tex, mesh });
+    else animPanels.push({ b, i, cv, tex, mesh });
     return mesh;
   }
   const tex = new THREE.CanvasTexture(drawPanelCanvas(b));
@@ -1940,7 +1980,7 @@ const overlay = document.querySelector('#overlay');
 const hudBeat = document.querySelector('#hud-beat');
 const hudProgress = document.querySelector('#hud-progress');
 const hudEl = document.querySelector('#hud');
-let _stopOpen = false, _dimV = 1;   // is a stop's DOM block showing → how far the void has stepped back (1 = full)
+let _stopOpen = false, _dimV = 1, _apK = 1;   // is a stop's DOM block showing → how far the void has stepped back (1 = full)
 const hudUp = document.querySelector('#hud-up'), hudDown = document.querySelector('#hud-down'), hudRail = document.querySelector('#hud-rail');
 // 2026-09-17: chevrons replace the page counter for visitors (the counter stays for
 // screen readers). Both route through goTo like every other input.
@@ -3057,6 +3097,7 @@ function animate() {
       setBar(progress > 0.02);                       // the bar arrives once the flight leaves the wordmark
     }
   }
+  syncStripTop();
 
   {                                          // the void steps back while a stop is open (2026-09-17)
     // Reviewer feedback: the network fought the words. Nodes, links and the nebula
@@ -3159,7 +3200,12 @@ function animate() {
     }
     bokeh.uniforms.focus.value = Math.max(1, camera.position.distanceTo(_focusV));
     bokeh.uniforms.maxblur.value = curFX.dofBlur;        // per-section blur (keyframed)
-    bokeh.uniforms.aperture.value = curFX.dofAperture;
+    // A landed panel stop (2026-10-14, "sharpen"): the panel is yawed 15°, so its edges sit
+    // ±3.6 units off the focal plane — ~3 px of blur at .0004. A quarter of the aperture keeps
+    // them under 1 px, and the void 50+ units behind still clamps at maxblur, so it stays soft.
+    const pStop = _stopOpen && !!(beats[index]?.panel || beats[index]?.panels);
+    _apK += ((pStop ? 0.25 : 1) - _apK) * (PREFERS_REDUCED ? 1 : 0.08);
+    bokeh.uniforms.aperture.value = curFX.dofAperture * _apK;
   }
   {                                          // warp streaks — world-anchored, stream along actual camera travel
     const { data, pos, geo, mat, R } = warp;

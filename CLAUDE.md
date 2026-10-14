@@ -1,7 +1,7 @@
 # CLAUDE.md — context for "The Void" portfolio
 
 Read this first. It captures the locked decisions and where everything lives so
-you can pick up the build with full context. Last synced to code: **v25 — random entrances on every stop and every desktop panel, re-recorded walkthroughs, the Writing stop removed again (2026-10-13)**; v24 — a smoother and faster flight; v23 — Gate Opener out of the flight, the Gateway exhibit, walkthrough clips on SHADIEZ and Agent Control, the glass-pill bar (2026-10-13); before that v22 — wrap-up review + owner's mark (2026-09-29), every phone size and short desktop windows (2026-09-30).
+you can pick up the build with full context. Last synced to code: **v26 — the final Gateway clips on a 16:9 panel, screen-sized panel canvases, a new Cursor Buddy scene (2026-10-14)**; v25 — random entrances on every stop and every desktop panel, re-recorded walkthroughs, the Writing stop removed again (2026-10-13); v24 — a smoother and faster flight; v23 — Gate Opener out of the flight, the Gateway exhibit, walkthrough clips on SHADIEZ and Agent Control, the glass-pill bar (2026-10-13); before that v22 — wrap-up review + owner's mark (2026-09-29), every phone size and short desktop windows (2026-09-30).
 
 ## What this is
 A 3D, scroll-driven portfolio for **Yarin Levin — AI-native developer**. The
@@ -122,7 +122,9 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   and Agent Control list three products each could become (`potential`, always framed
   as potential). `renderProject` emits the list twice: `.xl-flow`, titles only, in the
   text column (phones, narrow screens), and `.xl-strip`, cards with one-liners, as a
-  sibling of the article that sits under the image panel from 1100 × 600 (`top: 65vh`,
+  sibling of the article that sits under the image panel from 1100 × 600 (`top: max(65vh,
+  var(--pb))` — `syncStripTop()` in main.js sets `--pb` to the panel's projected bottom + 22 px,
+  since while the camera settles the panel stands taller and the strip ran over it, 2026-10-14;
   from `max(48vw, 6vw + 30rem)` on the panel's side, so it never reaches the text column;
   `pointer-events: none`, it has no links and sits above the chevrons in z-order). One-liners
   only where the cards clear the chevrons, from a measured 1100-1600 × 600-860 grid: eight
@@ -221,12 +223,16 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   Timeline is open.
 - **Cursor Buddy is animated, not a screenshot (2026-09-29, `src/buddy.js`):**
   a beat/featured entry with `anim: 'buddy'` gets a 16 s product loop drawn on
-  a canvas — a code editor, the macOS pointer, the Line-bot robot following it
-  (idle → listening bars → thinking → green "^^" answer bubble streaming "What
-  does this error mean?"). Shapes, colours and timings come from the Swift
+  a canvas — a Mac desktop (since 2026-10-14, Yarin: "a better image of illustration"; it was
+  grey bars in a flat window): wallpaper, the menu bar with Cursor Buddy's own icon lit in the
+  state colour, an editor with a file tree, highlighted TypeScript on the font's measured
+  column grid (line 42, `response.body.items`, is the bug the answer names; `pointerAt`'s rest
+  point sits on its squiggle) and a status bar; then the macOS pointer, the Line-bot robot
+  following it (idle → listening bars → thinking → green "^^" answer bubble streaming "What
+  does this error mean?"). Robot shapes, colours and timings come from the Swift
   source (GhostCursorShape, GhostPalette, GhostEngine, BuddyView). Desktop:
-  the panel texture is redrawn ≤ 30 fps at 1024 px while lit
-  (`tickAnimPanels`); phones: a `<canvas data-anim>` figure. Reduced motion:
+  the panel texture is redrawn ≤ 30 fps while lit, at the panel's on-screen size
+  (`panelFit`, see **Exhibits**); phones: a `<canvas data-anim>` figure. Reduced motion:
   one still frame with the answer.
 - **Finale lead-in (2026-09-29):** "That's the tour. / Have a role or a
   project? Let's build it." types in per character above the contact card as
@@ -447,7 +453,13 @@ From the living-systems handoff: a project stop may move instead of showing a st
   cap reached) as buttons in the text column; the verdict comes from `gateway.js`, which
   mirrors the real gateway's rule (`spentToday >= dailyCap` blocks, before any model call,
   compared in cents). Each scenario has a motion-studio clip + poster under
-  `public/exhibits/gateway/` — **stand-ins until Yarin approves the final clips**.
+  `public/exhibits/gateway/` — the finals since 2026-10-14 (the 720p stand-ins are gone): the
+  "Motion - Void" session's 12 Oct 23:11 renders (`motion-studio/projects/gateway-exhibit/
+  renders/`, 1080p, 20 s), encoded 1600×900 H.264 CRF 26, ~1.8 MB each, posters = the
+  settled verdict frame (17.5 s) as 1600 px WebP. The masters are full-range BT.601
+  (`yuvj420p`, `bt470bg`): re-encode with `scale=…:in_range=pc:out_range=tv` and tag
+  `-colorspace smpte170m`, or the dark background shifts (tagging bt709 without converting
+  read 4,21,33 instead of 7,23,35).
 - **Walkthroughs** (`profile.js` `clip`: SHADIEZ, Agent Control): a muted 16:10 loop of the
   live site (Agent Control: landing → /app dashboard → /app/build — the public demo, fictional
   company, mocked data), 1024×640 H.264 at 30 fps, < 2 MB each, poster = first frame. The first
@@ -460,7 +472,15 @@ From the living-systems handoff: a project stop may move instead of showing a st
 - One `<video>` per stop serves both screens: the phone figure shows it (a clip fades in over
   its poster `<img>`, which keeps every `.shot` size rule and reveal), and on desktop
   `drawExhibitCanvas` copies its frame into the panel canvas at ≤ 30 fps. Keyed off
-  `profile.js` like `animFor`, so no beat or save change. Nothing loads before the stop
+  `profile.js` like `animFor` (the Gateway panel's 16:9 shape is the one beat change, v26).
+  **Sharp panels (2026-10-14, Yarin: "sharpen and fit the display"):** the exhibit and Cursor
+  Buddy canvases are sized to the panel's on-screen device pixels once the stop lands
+  (`panelFit`: projected width, 512-1600 px, resized only past a 12 % change, which disposes
+  the GL texture) — a fixed 1280 px canvas shown ~800 px wide went through the mipmaps and
+  read soft — drawn with `imageSmoothingQuality: 'high'` and full anisotropy for the 15° yaw.
+  The yaw also put the panel's edges ±3.6 units off the DOF focal plane (~3 px of blur), so a
+  landed panel stop eases the aperture to a quarter (`_apK`); the void 50+ units behind still
+  clamps at `maxblur`, so it stays soft. Nothing loads before the stop
   opens; a clip restarts on every arrival, pauses on leave / hidden tab; reduced motion shows
   the poster (the Gateway's "Play clip" still plays on request). Clips live under
   `public/exhibits/` (not `public/assets/`, whose top level is cached for a year); the MP4s
@@ -508,7 +528,7 @@ Mac's LAN IP (`http://10.x.x.x:4173`), not `http://[::1]:4173`.
 
 ### Persistence / migrations
 Path + FX config persists in **localStorage** `voidConfig`, currently **save
-version 25**. Any save below 16 has its beat array replaced wholesale with
+version 26**. Any save below 16 has its beat array replaced wholesale with
 `DEFAULT_BEATS` (the shape changed too much to patch) while the visitor's
 global FX/speed/ease settings are kept; v17 (2026-09-12) then rewrites
 `/previews/*.jpg` → `.webp` in whatever beat array survived (the JPGs are
@@ -525,7 +545,8 @@ photos — wholesale re-adopts `DEFAULT_BEATS` and resets the minimal-void globa
 (16:10 → 5:8); v23 (2026-10-13) drops the Gate Opener beat and re-adopts the
 SHADIEZ beat (it moved to the right, at z −465); v24 (2026-10-13) swaps a saved `easeInOut`
 curve for the new `smoother` default (it also inserted a Writing beat); v25 (same day) drops
-the Writing beat again — the beats are back to v23's fingerprint. The v2–v14 patch migrations were
+the Writing beat again — the beats are back to v23's fingerprint; v26 (2026-10-14) re-adopts only
+the LLM Gateway beat's `panel` (28 × 17.6 → 28 × 15.75, 16:9 like its clips). The v2–v14 patch migrations were
 deleted on 2026-09-12: they only ever ran on beats the v14/v15 reset was about
 to discard. Any future
 `DEFAULT_BEATS` shape change needs its own migration step + version bump,
