@@ -514,6 +514,13 @@ Every file the site ships names him, all from `profile.js`:
   (pixels verified identical). The panels carry no text on purpose, so the mark
   is metadata, not a visible stamp. `tests/stamp.test.js` fails the build on
   any unstamped image — run `npm run stamp` after adding one.
+- **Favicon (2026-10-14, Yarin: "something better"):** the brand mark from motion-studio's
+  Void kit (`portfolio-reel/assets/brand/logos/yl-dark.svg`): "YL" in Bricolage 800 with a
+  cyan full stop on a navy tile. A favicon can't load the web font, so it's rendered in the
+  browser from `/fonts/BricolageGrotesque.woff2` at 512 px and shipped as PNGs —
+  `favicon-16.png`, `favicon-32.png`, `apple-touch-icon.png` (180, flattened: iOS rounds it
+  itself). The stamper doesn't know PNG, so their EXIF Artist / Copyright was written with sharp.
+  It replaced a data-URI SVG (a cyan ring) that said nothing about the site.
 - `tests/owner.test.js` holds all of it to `profile.js`, and no source file may
   spell the name out (the loader and Opening wordmarks used to).
 
