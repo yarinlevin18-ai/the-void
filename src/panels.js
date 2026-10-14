@@ -28,7 +28,7 @@ const ROWS = {
   hi: '.stop-txt > :not(.greeting)',
   about: '.stop-txt > :not(.about-title)',
   timeline: ':scope > .eyebrow, .tl-row, [data-print-cv]',
-  build: '.blog, .method .line, .proof-item, .repo',
+  build: '.wf, .method .line, .proof-item, .repo',
   project: '.group-label, .stop-txt > :not(.title)',
 };
 export const ROW_STEP = 70, ROW_AT = 220;   // ms between rows, ms before the first

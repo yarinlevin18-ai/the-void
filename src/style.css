@@ -4,7 +4,9 @@
 /* Type system (v15) — three self-hosted OFL faces, Latin-subset woff2, no external requests.
    Display: Bricolage Grotesque (condensed-black at display sizes, calm at small).
    Body:    Schibsted Grotesk.
-   Labels:  Doto (dot-matrix) for eyebrows, stack lines, counters. */
+   Labels:  the body face too since 2026-10-14 (Yarin: "anything that has this font, change it to
+            the font of the website") — Doto, the dot-matrix face, is gone. Labels keep their caps
+            and colour at .1em tracking; the counters are set in the display face. */
 @font-face {
   font-family: "Bricolage";
   src: url("/fonts/BricolageGrotesque.woff2") format("woff2");
@@ -15,15 +17,9 @@
   src: url("/fonts/SchibstedGrotesk.woff2") format("woff2");
   font-weight: 400 900; font-style: normal; font-display: swap;
 }
-@font-face {
-  font-family: "Doto";
-  src: url("/fonts/Doto.woff2") format("woff2");
-  font-weight: 100 900; font-style: normal; font-display: swap;
-}
 :root {
   --f-display: "Bricolage", "Helvetica Neue", Arial, sans-serif;
   --f-body: "Schibsted", "Helvetica Neue", Arial, sans-serif;
-  --f-mono: "Doto", ui-monospace, Menlo, monospace;
   --f: var(--f-body);   /* legacy alias: dev panels, HUD, loader, print CV keep working */
   --ease-out: cubic-bezier(.22, 1, .36, 1);   /* the site's one easing curve (the Timeline lab card shows it live) — global since 2026-09-29: the desktop strip's transition needs it too */
 }
@@ -63,22 +59,42 @@ html, button, a { touch-action: manipulation; }
   justify-content: center;
   pointer-events: none;
   text-align: center;
-  text-shadow: 0 0 34px rgba(79, 210, 255, 0.35);
+  padding: 0 16px;
   transition: opacity 0.4s ease;
 }
 #overlay h1 {
-  /* visually hidden — the particle wordmark (openingFX in main.js) is the name people see —
-     but still the page's h1 for screen readers (it was display:none until 2026-09-29) */
-  position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
-  font-family: var(--f);
-  font-size: clamp(2rem, 7.2vw, 5.4rem);   /* mono runs ~30% wider than the old serif — size down, not out */
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: #eaf4ff;
-  opacity: 0; transform: translateY(24px); filter: blur(7px);
-  transition: opacity 1s ease, transform 1s cubic-bezier(0.22, 1, 0.36, 1), filter 1s ease;
+  /* The name (2026-10-14, Yarin: "replace with display type"): the display face, big and crisp,
+     one line per word, each rising through its own mask once the iris opens. main.js (opening)
+     builds the lines from profile.js and keeps the whole name in an sr-only twin. */
+  margin: 0; font-family: var(--f-display); font-weight: 800; font-optical-sizing: auto;
+  font-size: clamp(3rem, min(15vw, 17vh), 9.5rem); line-height: .86; letter-spacing: -.035em;
+  color: #eef6ff;
 }
+/* The mask is a clip-path, not overflow: hidden — a clipped box also cut the letters' glow into
+   visible rectangles behind each line (Yarin: "there are boxes around it"). It only clips the
+   bottom (the rise) and lets go once the rise has landed, so the glow spreads freely. */
+#overlay .op-line { display: block; padding: .02em .06em .14em; margin-bottom: -.12em; clip-path: inset(-1em -1em 0 -1em); }
+#overlay.revealed .op-line { clip-path: inset(-1em -1em -1em -1em); transition: clip-path 0s linear 1.3s; }
+/* "a touch of the void": the letters are lit from above and cool towards the void below, the
+   bottom edge a little see-through so the network shows faintly in them, a soft cyan glow
+   around them and a slow light sweep across the name every few seconds. */
+#overlay .op-w {
+  display: inline-block; transform: translateY(112%); transition: transform 1.05s var(--ease-out) var(--d, 0ms);
+  color: transparent; -webkit-text-fill-color: transparent;
+  background:
+    linear-gradient(105deg, transparent 40%, rgba(79,210,255,.85) 46%, #ffffff 50%, rgba(79,210,255,.85) 54%, transparent 60%) 160% 0 / 250% 100% no-repeat,
+    linear-gradient(180deg, #f2f7fc 0%, #d8e8f5 48%, rgba(140,198,236,.84) 82%, rgba(100,178,230,.62) 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 22px rgba(79, 210, 255, .28)) drop-shadow(0 1px 0 rgba(10, 30, 50, .5));
+}
+#overlay.revealed .op-w { animation: opSheen 7s ease-in-out calc(1.6s + var(--d, 0ms)) infinite; }
+@keyframes opSheen { 0% { background-position: 160% 0, 0 0; } 32%, 100% { background-position: -60% 0, 0 0; } }
+#overlay .op-dot { color: #4fd2ff; -webkit-text-fill-color: #4fd2ff; }   /* the brand mark's cyan full stop (the favicon's "YL."), a real glyph so the 3D name can measure it */
+/* The name in the void (src/name3d.js): once the display face has loaded, the glyphs are planes in
+   the scene and this h1 only lays them out — still in the page for its size, its phone tiers and
+   its sr-only twin, but invisible and still (a rise here would move the boxes being measured). */
+#overlay.gl-name .op-line { visibility: hidden; clip-path: none; }
+#overlay.gl-name .op-w { transform: none; transition: none; animation: none; filter: none; }
 
 /* Hero project screens — liquid-glass pane laid over each screen (ported 1:1 from demo-hero-screens.html) */
 .hero-screen { position: relative; will-change: transform; }
@@ -109,30 +125,38 @@ html, button, a { touch-action: manipulation; }
 .hero-screen.wet .frame { box-shadow: 0 64px 120px -36px rgba(0,0,0,.9), 0 0 100px -10px rgba(100,190,255,.55); }
 .hero-screen.wet .glass::before { animation-duration: 3.4s; }
 .hero-screen.wet .cap { color: #cfeaff; }
-#overlay.revealed h1 { opacity: 1; transform: none; filter: none; }
-#overlay.revealed .sub { opacity: 1; transform: none; }
-#overlay.revealed .hint { opacity: 1; }
+#overlay.revealed .op-w { transform: none; }
+#overlay.revealed .sub, #overlay.revealed .op-act > * { opacity: 1; transform: none; }
 #overlay .sub {
-  font-family: var(--f);
-  margin-top: 0.6rem;
-  font-size: 0.82rem;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  color: #8fb0cc;
-  opacity: 0; transform: translateY(12px);
-  transition: opacity .8s ease .2s, transform .8s ease .2s;
+  margin: 1.15rem 0 0; font-family: var(--f-body); font-weight: 500;
+  font-size: clamp(1rem, .7rem + .9vw, 1.35rem); letter-spacing: .01em; color: #9fc2e0;
+  opacity: 0; transform: translateY(14px);
+  transition: opacity .7s ease .34s, transform .8s var(--ease-out) .34s;
 }
-#overlay .hint {
-  font-family: var(--f);
-  position: absolute;
-  bottom: calc(4.4rem + env(safe-area-inset-bottom, 0px));   /* clear of the HUD chevrons (2.4rem tall at 1.1rem from the bottom) */
-  left: 0; right: 0;
-  font-size: 0.75rem;
-  letter-spacing: 0.32em;
-  text-transform: uppercase;
-  color: #68859e;   /* was #5b768f ≈ 3.9:1 on the void — now ≥4.5:1 */
-  opacity: 0; transition: opacity .8s ease .45s;
+#overlay .op-act { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .65rem; margin-top: 1.9rem; }
+#overlay .op-act > * {
+  display: inline-flex; align-items: center; gap: .5rem; border-radius: 999px; white-space: nowrap;
+  font-family: var(--f-body); font-weight: 500; font-size: .92rem; letter-spacing: .01em;
+  padding: .62rem 1.1rem; border: 1px solid rgba(207,232,255,.16);
+  backdrop-filter: blur(10px) saturate(140%); -webkit-backdrop-filter: blur(10px) saturate(140%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.16), inset 0 -1px 0 rgba(0,0,0,.25), 0 6px 20px rgba(0,0,0,.3);
+  opacity: 0; transform: translateY(10px) scale(.98);
+  transition: opacity .6s ease .5s, transform .7s var(--ease-out) .5s, background .2s ease, box-shadow .2s ease, border-color .2s ease;
 }
+#overlay .op-avail { color: #b8f0cf; border-color: rgba(63,201,120,.3); background: linear-gradient(180deg, rgba(63,201,120,.16), rgba(63,201,120,.04) 60%, rgba(63,201,120,.08)); }
+#overlay .op-avail i { position: relative; width: 7px; height: 7px; border-radius: 50%; background: #3fc978; box-shadow: 0 0 8px #3fc978; }
+#overlay .op-avail i::after { content: ""; position: absolute; inset: -5px; border-radius: 50%; border: 1px solid #3fc978; opacity: 0; animation: opPing 2.4s ease-out 1.6s infinite; }
+@keyframes opPing { 0% { transform: scale(.4); opacity: .8; } 80%, 100% { transform: scale(1.5); opacity: 0; } }
+#overlay .op-cta {
+  pointer-events: auto; cursor: pointer; font-weight: 600; color: #eaf8ff; transition-delay: .62s, .62s, 0s, 0s, 0s;
+  border-color: rgba(79,210,255,.5); background: linear-gradient(180deg, rgba(79,210,255,.3), rgba(79,210,255,.1) 60%, rgba(79,210,255,.18));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 0 18px rgba(79,210,255,.22), 0 6px 20px rgba(0,0,0,.3);
+}
+#overlay .op-cta svg { width: 15px; height: 15px; transition: transform .25s var(--ease-out); }
+#overlay .op-cta:hover { background: linear-gradient(180deg, rgba(79,210,255,.42), rgba(79,210,255,.16) 60%, rgba(79,210,255,.26)); box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 0 26px rgba(79,210,255,.38), 0 6px 20px rgba(0,0,0,.3); }
+#overlay .op-cta:hover svg { transform: translateY(2px); }
+#overlay .op-cta:focus-visible { outline: 2px solid #4fd2ff; outline-offset: 3px; }
+#overlay[inert] .op-cta { pointer-events: none; }
 
 /* ---- Heads-up display (2026-09-17): two chevrons bottom-centre + a hairline of progress
    along the bottom edge. The stop name / count lives on for screen readers only. ---- */
@@ -164,7 +188,7 @@ html, button, a { touch-action: manipulation; }
 #phone-note p { margin: 0; }
 #phone-note b { color: #ffd27a; font-weight: 700; }
 #phone-note .pn-icon { width: 1.9rem; height: 1.9rem; border-radius: 50%; display: grid; place-items: center; background: #eab04e; color: #1a1207;
-  font-family: var(--f-mono); font-weight: 800; font-size: 1.1rem; box-shadow: 0 0 14px rgba(234,176,78,.6); animation: pnPulse 1.6s ease-in-out 3; }
+  font-family: var(--f-body); font-weight: 800; font-size: 1.1rem; box-shadow: 0 0 14px rgba(234,176,78,.6); animation: pnPulse 1.6s ease-in-out 3; }
 #phone-note button { font: inherit; font-weight: 600; padding: .45rem .8rem; border-radius: 999px; border: 1px solid rgba(255,210,122,.6); background: rgba(234,176,78,.16); color: #ffd27a; cursor: pointer; white-space: nowrap; }
 @keyframes pnIn { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
 @keyframes pnPulse { 50% { box-shadow: 0 0 0 8px rgba(234,176,78,0), 0 0 14px rgba(234,176,78,.6); } }
@@ -358,51 +382,26 @@ html, button, a { touch-action: manipulation; }
 .sidepanel .fx-chk { display: flex; align-items: center; gap: 0.4rem; color: #8fb0cc; cursor: pointer; margin-top: 0.15rem; }
 .sidepanel .fx-chk input { accent-color: #4fd2ff; }
 
-/* ---- Intro loader — the void wiring itself up ---------------------------- */
-/*  A small rehearsal of the real thing, in the site's own visual language: a
-    constellation of nodes links itself together behind a mono wordmark that
-    decodes character by character, a tick meter fills, and on exit the whole
-    lattice stretches toward the viewer and hands off to the first flight
-    (lab departure curve — cubic-bezier(.5,0,.75,0): leave with gravity).      */
+/* ---- Intro loader: Aperture (2026-10-14) ----------------------------------- */
+/*  A black sheet with an iris cut into it: the mask's hole (--r, set per frame by main.js)
+    shows the live void rendering behind. A hairline ring traces the iris, its arc is the
+    progress and the counter rides the arc's head; on arrival the iris snaps wide.          */
 #loader {
-  position: fixed; inset: 0; z-index: 50;
-  background: radial-gradient(125% 95% at 50% 46%, #0a1f2b 0%, #06141c 64%);
-  display: grid; place-items: center;
-  transition: opacity .8s cubic-bezier(0.5, 0, 0.75, 0),
-              transform .8s cubic-bezier(0.5, 0, 0.75, 0),
-              filter .8s cubic-bezier(0.5, 0, 0.75, 0);
+  position: fixed; inset: 0; z-index: 50; pointer-events: none; --r: 0px;
+  background: #020609;
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent var(--r), #000 calc(var(--r) + 1px));
+  mask-image: radial-gradient(circle at 50% 50%, transparent var(--r), #000 calc(var(--r) + 1px));
 }
-#loader.done { opacity: 0; transform: scale(1.09); filter: blur(7px); pointer-events: none; }
-#loader.done .ld-mark { opacity: 0; transition: opacity .22s ease; }   /* the particle name is already in its place — drop the DOM mark before the panel scales */
-#ld-loop { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .9s ease; }   /* the Higgsfield void loop: poster first, fades in on canplay */
-#ld-loop.on { opacity: 1; }
-#ld-canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .5; }   /* the constellation wires up over the loop */
-#loader .ld-core { position: relative; display: flex; flex-direction: column; align-items: center; gap: 1.7rem; padding: 0 5vw; }
-#loader .ld-mark {
-  font-family: var(--f-display); font-weight: 800; white-space: nowrap;
-  font-size: clamp(1.05rem, 4.3vw, 2.9rem);
-  letter-spacing: 0.04em; text-indent: 0.04em;   /* indent cancels the trailing track so it stays optically centred */
-  color: #eaf4ff; text-shadow: 0 0 30px rgba(79, 210, 255, 0.45);
-}
-#loader .ld-mark i { font-style: normal; display: inline-block; transition: color .18s linear; }
-#loader .ld-mark i.pend { color: #2c5b76; text-shadow: none; }   /* unresolved slots sit back in the dark */
-#loader .ld-meter { display: flex; align-items: center; gap: 1.1rem; }
-#loader .ld-ticks { display: flex; gap: 3px; }
-#loader .ld-ticks b {
-  display: block; width: 3px; height: 11px; background: rgba(143, 176, 204, 0.16);
-  transition: background .3s ease, box-shadow .3s ease, transform .3s ease; transform-origin: center;
-}
-#loader .ld-ticks b.on { background: #4fd2ff; box-shadow: 0 0 8px rgba(79, 210, 255, 0.85); transform: scaleY(1.35); }
+#loader .ld-ring { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+#ld-track { fill: none; stroke: rgba(143, 176, 204, .18); stroke-width: 1; }
+#ld-arc { fill: none; stroke: #4fd2ff; stroke-width: 1.6; stroke-linecap: round; filter: drop-shadow(0 0 6px rgba(79, 210, 255, .8)); }
 #loader .ld-num {
-  font-family: var(--f); font-size: 0.9rem; font-weight: 500; color: #eaf4ff;
-  font-variant-numeric: tabular-nums; letter-spacing: 0.08em; min-width: 3.4em; text-align: right;
+  position: absolute; left: 0; top: 0; will-change: transform;
+  font-family: var(--f-body); font-size: .9rem; font-weight: 600; color: #eaf4ff;
+  font-variant-numeric: tabular-nums; letter-spacing: .06em; white-space: nowrap;
 }
-#loader .ld-unit { color: #4fd2ff; margin-left: 0.15em; }
-#loader .ld-label {
-  font-family: var(--f); font-size: 0.75rem; letter-spacing: 0.34em;
-  text-transform: uppercase; color: #5b768f; min-height: 1em;
-  transition: opacity .3s ease;
-}
+#loader .ld-unit { color: #4fd2ff; margin-left: .1em; }
+#loader.done .ld-num { opacity: 0; transition: opacity .2s ease; }
 
 /* beat list rows */
 #ed-beatlist { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; }
@@ -503,7 +502,7 @@ html, button, a { touch-action: manipulation; }
 .stop.in > * { pointer-events: auto; }
 .stop a { color: #7fe0ff; text-decoration: none; }
 .eyebrow, .stack, .group-label, .proof-item span, .repo .links, .mail small {
-  font-family: var(--f-mono); font-weight: 700; font-size: 0.75rem; letter-spacing: 0.14em; text-transform: uppercase; color: #4fd2ff;
+  font-family: var(--f-body); font-weight: 600; font-size: 0.75rem; letter-spacing: .1em; text-transform: uppercase; color: #4fd2ff;
 }
 .eyebrow { margin-bottom: 1rem; }
 .stack { color: #7fa8c8; }
@@ -518,7 +517,7 @@ span.pill { cursor: default; }   /* "Private build", "Personal app", "Private re
 .stop-hi, .stop-about { justify-content: safe flex-end; }
 .hi, .about { max-width: 34rem; }
 .hi .greeting, .about .about-title { font-family: var(--f-display); font-weight: 800; font-stretch: 78%; font-size: clamp(2rem, 6vw, 4.2rem); line-height: .95; letter-spacing: -0.02em; color: #eaf4ff; margin: 0 0 .8rem; }
-.hi .status { font-family: var(--f-mono); font-weight: 700; font-size: .75rem; letter-spacing: .14em; text-transform: uppercase; color: #4fd2ff; margin-bottom: 1.4rem; }
+.hi .status { font-family: var(--f-body); font-weight: 600; font-size: .9rem; letter-spacing: .01em; color: #4fd2ff; margin-bottom: 1.4rem; }
 .hi .line { font-family: var(--f-display); font-weight: 500; font-stretch: 90%; font-size: clamp(1.15rem, 2.4vw, 1.8rem); line-height: 1.25; color: #eaf4ff; max-width: 34ch; margin: 0 0 .5em; }
 .about .para { font-size: clamp(.95rem, 1.5vw, 1.05rem); line-height: 1.55; color: #b8d4ea; max-width: 46ch; margin: 0 0 .9em; }
 .hi .greeting, .hi .line, .about .about-title, .about .para { opacity: 0; transform: translateY(12px); transition: opacity .45s ease, transform .45s cubic-bezier(.22,1,.36,1); transition-delay: calc(var(--i) * 60ms); }
@@ -610,38 +609,13 @@ span.pill { cursor: default; }   /* "Private build", "Personal app", "Private re
   .stop.in[data-reveal="shutter"] .stop-img.shot img { opacity: 1; filter: none; }
 }
 
-/* ---- Build log (2026-09-29; replaced the Bluesky live strip): this repo's git history ----
-   Heatmap left, counts + latest commits right on desktop; heatmap + counts on phones. */
-.blog { margin: .2rem 0 1.1rem; max-width: 60rem; border: 1px solid rgba(79,210,255,.28); border-radius: 8px; background: rgba(6,12,20,.72); padding: .6rem .8rem .65rem; font-family: var(--f-mono); font-weight: 700; font-size: .75rem; letter-spacing: .06em; color: #9fc2e0; }
-.blog-hd { display: flex; justify-content: space-between; gap: .8rem; align-items: baseline; text-transform: uppercase; letter-spacing: .14em; color: #4fd2ff; margin-bottom: .55rem; }
-.blog-state { display: inline-flex; align-items: center; gap: .4rem; color: #3fc978; white-space: nowrap; }
-.blog-state i { width: 7px; height: 7px; border-radius: 50%; background: #3fc978; box-shadow: 0 0 8px #3fc978; }
-.blog-body { display: grid; grid-template-columns: auto 1fr; gap: .4rem 1.4rem; align-items: start; }
-.blog-grid { display: grid; grid-template-rows: repeat(7, 11px); grid-auto-columns: 11px; grid-auto-flow: column; gap: 3px; }
-.blog-grid i { border-radius: 2px; background: rgba(79,210,255,.09); opacity: 0; transform: scale(.4); transition: opacity .25s ease, transform .3s var(--ease-out, ease); transition-delay: calc(var(--w) * 26ms + 120ms); }
-.blog-grid i[data-l="x"] { visibility: hidden; }
-.blog-grid i[data-l="1"] { background: rgba(79,210,255,.35); }
-.blog-grid i[data-l="2"] { background: rgba(79,210,255,.62); }
-.blog-grid i[data-l="3"] { background: #4fd2ff; box-shadow: 0 0 5px rgba(79,210,255,.7); }
-.blog-grid i[data-l="4"] { background: #eaf4ff; box-shadow: 0 0 8px #9fd8ff; }
-.stop.in .blog-grid i { opacity: 1; transform: none; }
-.blog-kv { display: grid; grid-template-columns: repeat(4, auto 1fr); gap: .25rem .6rem; align-items: baseline; text-transform: uppercase; }
-.blog-kv b { color: #eaf4ff; font-variant-numeric: tabular-nums; text-transform: none; letter-spacing: .04em; white-space: nowrap; }
-.blog-feed { margin-top: .45rem; padding-top: .4rem; border-top: 1px solid rgba(159,216,255,.12); line-height: 1.65; color: #9fc2e0; font-weight: 400; letter-spacing: .02em; white-space: nowrap; min-width: 0; }
-.blog-feed div { overflow: hidden; text-overflow: ellipsis; }
-.blog-feed .h { color: #4fd2ff; }
-.blog-side { min-width: 0; }
-@media (max-width: 1100px) { .blog-kv { grid-template-columns: repeat(2, auto 1fr); } }
-@media (prefers-reduced-motion: reduce) { .blog-grid i { opacity: 1; transform: none; transition: none; } }
-@media (max-width: 640px), (max-height: 520px) {   /* phones and landscape phones: heatmap + counts, no feed */
-  .blog { margin-bottom: .5rem; padding: .4rem .6rem .4rem; }
-  .blog .more { display: none; }
-  .blog-hd { margin-bottom: .3rem; white-space: nowrap; }
-  .blog-body { grid-template-columns: 1fr; gap: .3rem; }
-  .blog-grid { grid-template-rows: repeat(7, 3px); grid-auto-columns: 1fr; gap: 2px; }
-  .blog-kv { grid-template-columns: repeat(2, auto 1fr); gap: .15rem .45rem; }
-  .blog-kv > :nth-child(n+5) { display: none; }   /* commits + days shipped: one row, so the repo cards still clear the chevrons */
-  .blog-feed { display: none; }
+/* How I Build's workflow (2026-10-14, src/workflow.js; it replaced the build-log heatmap): a canvas
+   drawn at its own device pixels. Wide and short it draws the five-step rail; from 1100 px wide
+   and 641 px tall it sits beside the method as the full stage (the tier near the end of the file). */
+.wf { margin: .2rem 0 1.1rem; max-width: 60rem; }
+.wf-cv { display: block; width: 100%; height: auto; aspect-ratio: 6.6; }
+@media (max-width: 640px), (max-height: 520px) {   /* phones and landscape phones */
+  .wf-cv { aspect-ratio: 3.7; }   /* the rail at a phone's width */
 }
 
 /* 03 Timeline — rows on a rail that grows top to bottom; dots light with their row */
@@ -653,7 +627,7 @@ span.pill { cursor: default; }   /* "Private build", "Personal app", "Private re
 .stop.in .tl-row { opacity: 1; transform: none; }
 .tl-dot { position: absolute; left: -1.4rem; top: 1.05rem; width: 7px; height: 7px; margin-left: .3rem; transform: translateX(-50%); border-radius: 50%; background: #4fd2ff; box-shadow: 0 0 10px #4fd2ff; opacity: 0; transition: opacity .3s ease; transition-delay: calc(var(--i) * 70ms + 200ms); }
 .stop.in .tl-dot { opacity: 1; }
-.tl-when { font-family: var(--f-mono); font-weight: 700; font-size: .75rem; letter-spacing: .14em; text-transform: uppercase; color: #4fd2ff; }
+.tl-when { font-family: var(--f-body); font-weight: 600; font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; color: #4fd2ff; }
 .tl-what { display: block; font-weight: 600; color: #eaf4ff; font-size: .95rem; }
 .tl-line { display: block; font-size: .82rem; color: #9fc2e0; line-height: 1.45; }
 .stop-timeline .pill { margin-top: 1.2rem; align-self: flex-start; }
@@ -665,10 +639,10 @@ span.pill { cursor: default; }   /* "Private build", "Personal app", "Private re
   .stop-timeline .timeline { max-width: min(56rem, calc(88vw - min(28rem, 33vw) - 4rem)); }
   .lab { display: block; position: absolute; right: 6vw; top: 50%; width: min(28rem, 33vw); transform: translateY(-46%);
     border: 1px solid rgba(79,210,255,.28); border-radius: 10px; background: rgba(6,12,20,.78); padding: .8rem .9rem .85rem;
-    font-family: var(--f-mono); font-weight: 700; font-size: .75rem; letter-spacing: .06em; color: #9fc2e0;
+    font-family: var(--f-body); font-weight: 700; font-size: .75rem; letter-spacing: .06em; color: #9fc2e0;
     opacity: 0; transition: opacity .5s ease .25s, transform .55s var(--ease-out, cubic-bezier(.22,1,.36,1)) .25s; }
   .stop.in .lab { opacity: 1; transform: translateY(-50%); }
-  .lab-hd { display: flex; justify-content: space-between; align-items: center; gap: .6rem; text-transform: uppercase; letter-spacing: .14em; color: #4fd2ff; margin-bottom: .7rem; }
+  .lab-hd { display: flex; justify-content: space-between; align-items: center; gap: .6rem; text-transform: uppercase; letter-spacing: .1em; color: #4fd2ff; margin-bottom: .7rem; }
   .lab-tabs { display: inline-flex; border: 1px solid rgba(79,210,255,.3); border-radius: 999px; overflow: hidden; }
   .lab button { font: inherit; letter-spacing: .1em; text-transform: uppercase; color: #9fc2e0; background: none; border: 0; cursor: pointer; }
   .lab-tabs button { padding: .3rem .7rem; }
@@ -711,11 +685,11 @@ span.pill { cursor: default; }   /* "Private build", "Personal app", "Private re
   opacity: 0; transform: translateY(12px); transition: opacity .45s ease, transform .45s ease; transition-delay: calc(var(--i) * 60ms); }
 .stop.in .method .line { opacity: 1; transform: none; }
 .proof { display: grid; grid-template-columns: 1fr; gap: .8rem; margin: 1.6rem 0; }
-.proof-item .num { display: block; font-family: var(--f-mono); font-weight: 800; font-size: clamp(1.8rem, 9vw, 4rem); color: #eaf4ff; font-variant-numeric: tabular-nums; }
+.proof-item .num { display: block; font-family: var(--f-display); font-weight: 800; font-size: clamp(1.8rem, 9vw, 4rem); color: #eaf4ff; font-variant-numeric: tabular-nums; }
 .repos { display: grid; grid-template-columns: 1fr; gap: .6rem; max-width: 60rem; }
 .repo { border: 1px solid rgba(159,216,255,.16); border-radius: 8px; padding: .8rem 1rem; background: rgba(8,16,26,.55); transition: transform .3s ease, border-color .3s ease; }
 .repo:hover { transform: translateY(-4px); border-color: rgba(79,210,255,.6); }
-.repo b { font-family: var(--f-mono); font-size: .85rem; letter-spacing: .06em; color: #eaf4ff; }
+.repo b { font-family: var(--f-body); font-size: .85rem; letter-spacing: .06em; color: #eaf4ff; }
 .repo p { font-size: .82rem; color: #9fc2e0; margin: .4rem 0; line-height: 1.45; }
 .repo .stack { display: block; margin-top: .3rem; }
 .repo .links { margin-top: .5rem; }
@@ -738,7 +712,7 @@ span.pill { cursor: default; }   /* "Private build", "Personal app", "Private re
      and the longest project stop by 6 px. */
   .stop-timeline, .stop-project { padding-top: 15vh; padding-bottom: 10vh; }
   .stop-build { padding-top: 9vh; padding-bottom: 6.5vh; }
-  .stop-build .blog { margin-bottom: .5rem; }
+  .stop-build .wf { margin-bottom: .5rem; }
   .stop-build .method .line { font-size: 1.15rem; margin-bottom: .35em; }
   .stop-build .proof { margin: .7rem 0; }
   .stop-build .proof-item .num { font-size: 2.2rem; }
@@ -760,11 +734,9 @@ span.pill { cursor: default; }   /* "Private build", "Personal app", "Private re
   .stop-build .proof-item .num { font-size: 1.9rem; }
   /* 2026-09-30, measured at a true 1366×657 (earlier checks on localhost:5173 ran at the browser's
      saved 80 % zoom, i.e. 1.25× the stated size): Agent Control and SHADIEZ ran 20 px off the bottom
-     edge and How I Build 8 px into the chevrons. The heatmap's cells go from 11 to 8 px and the
-     latest-commits feed beside it goes (the counts and the test badge stay); the project frame,
-     title and gaps shrink. */
-  .stop-build .blog-grid { grid-template-rows: repeat(7, 8px); grid-auto-columns: 8px; gap: 2px; }
-  .stop-build .blog-feed { display: none; }
+     edge and How I Build 8 px into the chevrons. How I Build's workflow rail stays one short row
+     (it was the build-log heatmap, its cells 8 px here); the project frame, title and gaps shrink. */
+  .stop-build .wf-cv { aspect-ratio: 8; }
   .stop-project { padding-top: 12vh; padding-bottom: 8vh; }
   .stop-project .project .title { font-size: clamp(2.4rem, 5.4vw, 4.4rem); margin-bottom: .7rem; }   /* .stop-project: the base rules come later in the file */
   .stop-project .project .outcome { margin-bottom: .8rem; }
@@ -780,11 +752,11 @@ span.pill { cursor: default; }   /* "Private build", "Personal app", "Private re
 .project .title { font-family: var(--f-display); font-weight: 800; font-stretch: 78%; font-size: clamp(2.4rem, 8vw, 5.5rem); line-height: .9; letter-spacing: -0.02em; text-transform: uppercase; color: #eaf4ff; margin: 0 0 1rem; }
 .project .outcome { font-family: var(--f-display); font-weight: 500; font-stretch: 90%; font-size: clamp(1.1rem, 2.2vw, 1.55rem); line-height: 1.25; color: #eaf4ff; max-width: 30ch; margin: 0 0 1rem; }
 .project dl, .project dl > div { margin: 0; display: grid; gap: .55rem; }
-.project dt { font-family: var(--f-mono); font-weight: 700; font-size: .75rem; letter-spacing: .14em; text-transform: uppercase; color: #4fd2ff; }
+.project dt { font-family: var(--f-body); font-weight: 600; font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; color: #4fd2ff; }
 .project dd { margin: 0 0 .2rem; font-size: .9rem; line-height: 1.5; color: #b8d4ea; max-width: 52ch; }
 .project .stack { margin-top: .8rem; }
 .project .also { display: grid; grid-template-columns: 1fr; gap: .15rem .8rem; margin-top: 1.4rem; padding-top: .9rem; border-top: 1px solid rgba(159,216,255,.16); font-size: .82rem; color: #9fc2e0; }
-.project .also-label { font-family: var(--f-mono); font-weight: 700; font-size: .75rem; letter-spacing: .14em; text-transform: uppercase; color: #4fd2ff; }
+.project .also-label { font-family: var(--f-body); font-weight: 600; font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; color: #4fd2ff; }
 .project .also b { color: #eaf4ff; font-weight: 600; }
 .project .also-links { display: flex; gap: .9rem; }
 @media (min-width: 720px) { .project .also { grid-template-columns: auto 1fr; } .project .also-label { grid-column: 1 / -1; } .project .also-links { justify-self: end; } }
@@ -793,7 +765,7 @@ span.pill { cursor: default; }   /* "Private build", "Personal app", "Private re
    column (phones, narrow screens), a card strip under the image panel from 1100 × 600,
    where the panel leaves the lower third of its side empty. Exactly one shows. */
 .xl ul { list-style: none; margin: 0; padding: 0; }
-.xl-label { font-family: var(--f-mono); font-weight: 700; font-size: .75rem; letter-spacing: .14em; text-transform: uppercase; color: #4fd2ff; }
+.xl-label { font-family: var(--f-body); font-weight: 600; font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; color: #4fd2ff; }
 .xl-flow { margin-top: .55rem; }
 .xl-flow .more, .xl-flow li span { display: none; }
 .xl-flow ul { margin-top: .2rem; font-size: .9rem; line-height: 1.5; color: #b8d4ea; max-width: 52ch; text-wrap: balance; }
@@ -802,7 +774,7 @@ span.pill { cursor: default; }   /* "Private build", "Personal app", "Private re
    The clip (the panel on desktop, the figure on phones) illustrates it; the words alone
    carry the result, so colour, motion and video are never the only channel. */
 .exhibit { margin: 0 0 1rem; padding: .6rem .8rem .7rem; max-width: 34rem; border: 1px solid rgba(79,210,255,.28); border-radius: 8px; background: rgba(6,12,20,.72); }
-.ex-hd { display: flex; align-items: center; gap: .6rem; min-height: 1.6rem; font-family: var(--f-mono); font-weight: 700; font-size: .75rem; letter-spacing: .14em; text-transform: uppercase; color: #4fd2ff; }
+.ex-hd { display: flex; align-items: center; gap: .6rem; min-height: 1.6rem; font-family: var(--f-body); font-weight: 600; font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; color: #4fd2ff; }
 .ex-hd .more { color: #9fc2e0; letter-spacing: .06em; }
 .ex-media { flex: 1; text-align: right; letter-spacing: .06em; text-transform: none; color: #9fc2e0; }
 .ex-replay { font: inherit; color: #eaf4ff; background: rgba(79,210,255,.08); border: 1px solid rgba(79,210,255,.45); border-radius: 999px; padding: .2rem .65rem; cursor: pointer; }
@@ -812,7 +784,7 @@ span.pill { cursor: default; }   /* "Private build", "Personal app", "Private re
 .ex-choices button:hover { border-color: #4fd2ff; color: #eaf4ff; }
 .ex-choices button[aria-pressed="true"] { border-color: #4fd2ff; background: rgba(79,210,255,.16); color: #eaf4ff; }
 .ex-out { margin: 0; font-size: .9rem; line-height: 1.45; color: #b8d4ea; text-wrap: balance; }
-.ex-verdict { font-family: var(--f-mono); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; margin-right: .3em; }
+.ex-verdict { font-family: var(--f-body); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; margin-right: .3em; }
 .exhibit[data-verdict="allowed"] .ex-verdict { color: #4ee59b; }
 .exhibit[data-verdict="blocked"] .ex-verdict { color: #ff8c8c; }
 .xl-flow li:not(:last-child)::after { content: ' ·'; color: #4fd2ff; }
@@ -923,7 +895,6 @@ span.pill { cursor: default; }   /* "Private build", "Personal app", "Private re
   .project .also { margin-top: .45rem; padding-top: .35rem; }
   .stop-img.portrait { max-width: 12rem; }   /* Hi: the portrait's top slid 5 px under the bar at 390×664 */
   .stop-build .method .line { font-size: .84rem; }   /* How I Build ran 28 px past its room at 390×664 — */
-  .stop-build .blog-side { display: none; }        /* — and the commit counts go too; the heatmap and the test badge stay */
   .stop-build .proof { margin: .35rem 0; }
 }
 /* Small phones (iPhone 12/13 mini class, ≤ 640 px of Safari viewport, 2026-09-30): the frame now
@@ -940,7 +911,8 @@ span.pill { cursor: default; }   /* "Private build", "Personal app", "Private re
   .stop-build .proof-item span { letter-spacing: .05em; }
   .stop-build .proof { margin: .3rem 0; }
   .stop-build .method .line { font-size: .88rem; margin-bottom: .15em; }
-  .stop-build .blog { margin-bottom: .35rem; }
+  .stop-build .wf { margin-bottom: .35rem; }
+  .stop-build .wf-cv { aspect-ratio: 4.2; }
   .stop-build .repos { gap: .3rem; }
   .stop-build .repo { padding: .38rem .65rem; }
 }
@@ -955,7 +927,7 @@ span.pill { cursor: default; }   /* "Private build", "Personal app", "Private re
   .stop-img.anim { width: min(100%, calc(13.5vh * 28 / 17.6)); }
   .project .stack, .xl-flow { display: none; }
   .project .also-label { display: none; }
-  .project .also b::before { content: "Also · "; font-family: var(--f-mono); font-weight: 700; font-size: .75rem; letter-spacing: .14em; text-transform: uppercase; color: #4fd2ff; }
+  .project .also b::before { content: "Also · "; font-family: var(--f-body); font-weight: 600; font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; color: #4fd2ff; }
   .about .about-title { font-size: 1.6rem; }
   .about .para { font-size: .84rem; margin-bottom: .45em; }
   .stop-build .method .line { font-size: .84rem; line-height: 1.2; }
@@ -1081,10 +1053,10 @@ span.pill { cursor: default; }   /* "Private build", "Personal app", "Private re
   .tl-dot { top: .66rem; }
   .stop-timeline .pill { margin-top: .6rem; }
   /* How I Build in two columns, as on a landscape phone: the method beside the build log and the proof */
-  .stop-build { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); grid-template-areas: "hd hd" "method blog" "method proof" "repos repos"; column-gap: 2.6rem; align-content: safe center; padding-top: 13vh; padding-bottom: 11vh; }
+  .stop-build { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); grid-template-areas: "hd hd" "method wf" "method proof" "repos repos"; column-gap: 2.6rem; align-content: safe center; padding-top: 13vh; padding-bottom: 11vh; }
   .stop-build > .eyebrow { grid-area: hd; }
-  .stop-build .blog { grid-area: blog; align-self: start; margin: 0 0 .7rem; }
-  .stop-build .blog-kv { grid-template-columns: auto 1fr; }   /* one count per row beside the heatmap: two per row broke "days / shipped" */
+  .stop-build .wf { grid-area: wf; align-self: start; margin: 0 0 .7rem; }
+  .stop-build .wf-cv { aspect-ratio: 3.6; }
   .stop-build .method { grid-area: method; }
   .stop-build .method .line { font-size: 1.2rem; max-width: none; }
   .stop-build .proof { grid-area: proof; align-self: start; margin: 0 0 .9rem; }
@@ -1109,8 +1081,18 @@ span.pill { cursor: default; }   /* "Private build", "Personal app", "Private re
   .stop-build .proof-item { display: flex; align-items: baseline; gap: .6rem; }
   .stop-build .proof-item .num { display: inline; font-size: 1.3rem; min-width: 1.5em; }
 }
-@media (min-width: 900px) and (max-width: 1099px) and (min-height: 560px) and (max-height: 599px) {
-  .stop-build .blog .more { display: none; }   /* 900 × 560: the log's gloss ran to three lines and the repo cards reached the chevrons */
+/* How I Build's workflow as the full stage, beside the method (2026-10-14): on a laptop the
+   column the heatmap strip filled is wide enough for the 1.85:1 motion graphic, and the strip's
+   142 px row is freed for it. Under 641 px tall the two-column tier above keeps the rail. */
+@media (min-width: 1100px) and (min-height: 641px) {
+  .stop-build { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr); grid-template-areas: "hd hd" "method wf" "proof proof" "repos repos"; column-gap: 3rem; align-content: safe center; }
+  .stop-build > .eyebrow { grid-area: hd; }
+  .stop-build .method { grid-area: method; align-self: center; }
+  .stop-build .method .line { max-width: none; }
+  .stop-build .wf { grid-area: wf; align-self: center; margin: 0; max-width: none; }
+  .stop-build .wf-cv { aspect-ratio: 1.85; max-height: 40vh; }
+  .stop-build .proof { grid-area: proof; }
+  .stop-build .repos { grid-area: repos; }
 }
 
 /* one focus language for every control in the stops (the bar has its own below) */
@@ -1300,9 +1282,17 @@ span.pill { cursor: default; }   /* "Private build", "Personal app", "Private re
   #bar .bar-details a { padding: .42rem .55rem; }
 }
 @media (prefers-reduced-motion: reduce) {
-  #ld-loop { display: none; }   /* poster only: the JS also removes the element */
-  #loader { transition: opacity .4s ease; }
-  #loader.done { transform: none; filter: none; }   /* a plain fade: no zoom, no blur */
+  /* no iris: a plain sheet with the counter, then a fade; the Opening fades in without moving */
+  #loader { -webkit-mask-image: none; mask-image: none; transition: opacity .4s ease; }
+  #loader .ld-ring { display: none; }
+  #loader .ld-num { left: 50%; top: 50%; transform: translate(-50%, -50%) !important; }
+  #loader.done { opacity: 0; }
+  #overlay .op-w, #overlay .sub, #overlay .op-act > * { transform: none; transition-property: opacity; }
+  #overlay .op-w { opacity: 0; transition: opacity .5s ease; }
+  #overlay.revealed .op-w { animation: none; }
+  #overlay .op-line { clip-path: none; }
+  #overlay.revealed .op-w { opacity: 1; }
+  #overlay .op-avail i::after { animation: none; }
 }
 
 /* ==== Landscape phones (≤ 520 px tall, 2026-09-30) ==========================================
@@ -1363,9 +1353,10 @@ span.pill { cursor: default; }   /* "Private build", "Personal app", "Private re
   .stop-timeline .tl-dot { top: .72rem; }
 
   /* 04 How I Build: the method on the left, the build log and the proof (one line each) on the right, the repos in one row under both */
-  .stop-build { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "hd blog" "method blog" "method proof" "repos repos"; column-gap: 1.8rem; align-content: safe center; }
+  .stop-build { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "hd wf" "method wf" "method proof" "repos repos"; column-gap: 1.8rem; align-content: safe center; }
   .stop-build > .eyebrow { grid-area: hd; margin-bottom: .4rem; }
-  .stop-build .blog { grid-area: blog; align-self: start; margin: 0 0 .5rem; }
+  .stop-build .wf { grid-area: wf; align-self: start; margin: 0 0 .5rem; }
+  .stop-build .wf-cv { aspect-ratio: 4.2; }
   .stop-build .method { grid-area: method; }
   .stop-build .method .line { font-size: .92rem; line-height: 1.3; max-width: none; margin-bottom: .35em; }
   .stop-build .proof { grid-area: proof; align-self: start; grid-template-columns: 1fr; gap: .1rem; margin: 0 0 .5rem; padding: .35rem .6rem; border: 1px solid rgba(159,216,255,.16); border-radius: 8px; background: rgba(8,16,26,.55); }
@@ -1418,7 +1409,6 @@ span.pill { cursor: default; }   /* "Private build", "Personal app", "Private re
   .stop-project .project .stack { display: none; }
   .about .para { font-size: .8rem; }
   .stop-build .method .line { font-size: .86rem; }
-  .stop-build .blog-side { display: none; }   /* the counts; the heatmap and the test badge stay (as on short phones) */
   .stop-timeline .tl-title { margin-bottom: .5rem; }
   .stop-timeline .tl-row { padding: .22rem 0; }
 }

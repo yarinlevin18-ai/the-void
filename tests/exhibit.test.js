@@ -68,7 +68,7 @@ test('the exhibit renders in the text column: buttons, the first scenario presse
   assert.match(fig, /<video data-exhibit-video muted playsinline preload="none"/);
   assert.ok(!/\ssrc=|\sposter=|autoplay/.test(fig), 'nothing loads before the stop opens');
   // a project without an exhibit is untouched
-  const other = renderProject(PROFILE.work.featured.find((p) => p.id === 'sabai'), 'left');
+  const other = renderProject(PROFILE.work.featured.find((p) => p.id === 'thesis'), 'left');
   assert.ok(!other.includes('exhibit'));
 });
 
@@ -180,12 +180,12 @@ test('destroy releases the clip and stops listening', () => {
   assert.equal(box.dataset.scenario, 'allowed', 'a destroyed controller ignores clicks');
 });
 
-// ---- walkthrough clips (profile.js `clip`: SHADIEZ, Agent Control) ----
+// ---- walkthrough clips (profile.js `clip`: SHADIEZ) ----
 const CLIPS = PROFILE.work.featured.filter((p) => p.clip);
 const { initClip } = await import('../src/exhibit.js');
 
 test('each walkthrough ships its clip and a first-frame poster, small enough for a phone', () => {
-  assert.deepEqual(CLIPS.map((p) => p.id).sort(), ['agent-control', 'shadiez']);
+  assert.deepEqual(CLIPS.map((p) => p.id).sort(), ['shadiez']);   // Agent Control's clip became agent.js's loop (2026-10-14)
   for (const { id, clip } of CLIPS) {
     assert.ok(clip.alt, `${id}: alt`);
     assert.match(clip.src, /^\/exhibits\/.+\.mp4$/); assert.match(clip.poster, /^\/exhibits\/.+\.webp$/);

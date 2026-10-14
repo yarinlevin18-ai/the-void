@@ -30,7 +30,7 @@ export function humans(p, built, deps = []) {
     `Last update: ${built.iso}`,
     'Standards: HTML, CSS, JavaScript, WebGL',
     `Components: ${deps.join(', ')}, Vite`,
-    'Fonts: Bricolage Grotesque, Schibsted Grotesk, Doto (SIL Open Font License)',
+    'Fonts: Bricolage Grotesque, Schibsted Grotesk (SIL Open Font License)',
     'Built with: Claude Code',
     'Licenses: /licenses.txt',
     '',

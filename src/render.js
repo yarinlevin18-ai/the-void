@@ -106,32 +106,17 @@ export function renderTimeline(p) {
     ${renderLab()}`;
 }
 
-// The build log (2026-09-29; replaced the Bluesky live strip): this site's own git
-// history, baked in at build time (scripts/buildlog.js → __BUILDLOG__). A GitHub-style
-// heatmap, the counts, and the three latest commits. `log` null → no strip.
-const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const shortDate = (d) => { const [, m, day] = String(d).split('-'); return `${+day} ${MON[+m - 1] || ''}`; };
-const level = (n) => (n <= 0 ? 0 : n <= 2 ? 1 : n <= 5 ? 2 : n <= 10 ? 3 : 4);
-export const BLOG_WEEKS = 26;
-export function renderBuildLog(log) {
-  if (!log || !Array.isArray(log.days) || !log.days.length) return '';
-  const lead = new Date(`${log.first}T00:00:00Z`).getUTCDay();   // pad the first week so rows are weekdays
-  const all = [...Array(lead).fill(-1), ...log.days];
-  // The last 26 weeks at most: at 11 px a week the desktop grid would otherwise keep
-  // widening into the counts beside it. The counts stay all-time.
-  const cells = all.slice(Math.max(0, Math.ceil(all.length / 7) - BLOG_WEEKS) * 7);
-  const grid = cells.map((n, i) => `<i data-l="${n < 0 ? 'x' : level(n)}" style="--w:${Math.floor(i / 7)}"${n > 0 ? ` title="${n} commit${n > 1 ? 's' : ''}"` : ''}></i>`).join('');
-  const rows = (log.recent || []).map((c) => `<div><span class="h">${esc(c.h)}</span> · ${esc(shortDate(c.d))} · ${esc(c.s)}</div>`).join('');
-  return `<div class="blog">
-    <div class="blog-hd"><span>Build log<span class="more"> · this site, from its own git history</span></span><span class="blog-state"><i></i><b>${esc(log.tests)} tests passing</b></span></div>
-    <div class="blog-body">
-      <div class="blog-grid" role="img" aria-label="${esc(log.commits)} commits on ${esc(log.activeDays)} days since ${esc(shortDate(log.first))}">${grid}</div>
-      <div class="blog-side">
-        <div class="blog-kv"><span>commits</span><b>${esc(log.commits)}</b><span>days shipped</span><b>${esc(log.activeDays)}</b><span>longest streak</span><b>${esc(log.streak)} days</b><span>since</span><b>${esc(shortDate(log.first))}</b></div>
-        <div class="blog-feed">${rows}</div>
-      </div>
-    </div>
-  </div>`;
+// The workflow (2026-10-14, Yarin: "a motion graphic … illustrating my workflow and how I think";
+// it replaced the build-log heatmap): a canvas that src/workflow.js draws (main.js paints it while
+// the stop is open), carrying the real numbers from this site's git history (scripts/buildlog.js
+// → __BUILDLOG__). Screen readers get the five steps and the numbers as its label. `log` null →
+// the animation still runs, without the counts.
+export function renderWorkflow(log) {
+  const n = (v) => (Number.isFinite(+v) ? +v : 0);
+  const tests = n(log?.tests), commits = n(log?.commits), days = n(log?.activeDays);
+  const facts = log ? ` This site so far: ${commits} commits on ${days} days, ${tests} tests passing.` : '';
+  const label = `How I build, in five steps. Spec: a written plan, its decisions locked before any code. Build: Claude Code types small chunks while I direct. Review: I review every chunk and send some back. Ship: the full test suite, then a push. Lab: the patterns a build leaves behind start the next one.${facts}`;
+  return `<figure class="wf"><canvas class="wf-cv" data-wf data-tests="${tests}" data-commits="${commits}" data-days="${days}" role="img" aria-label="${esc(label)}"></canvas></figure>`;
 }
 
 export function renderBuild(p, log = null) {
@@ -144,7 +129,7 @@ export function renderBuild(p, log = null) {
   const link = (href, label) => href ? `<a href="${escAttr(href)}" target="_blank" rel="noopener">${label} ↗</a>` : '';
   // The stop's only heading (every other stop has an h2 title), styled as its eyebrow.
   return `<h2 class="eyebrow">${typedHeading('How I build')}</h2>
-    ${renderBuildLog(log)}
+    ${renderWorkflow(log)}
     <div class="method">${method}</div>
     <div class="proof">${proof}</div>
     <div class="repos">

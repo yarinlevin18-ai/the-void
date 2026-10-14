@@ -12,7 +12,7 @@ const root = fileURLToPath(new URL('..', import.meta.url)).replace(/[\\/]$/, '')
 
 test('the no-JS Work list follows the flight and names every project stop and its also-row', () => {
   const order = flightOrder(main);
-  assert.equal(order.length, 6);
+  assert.equal(order.length, 5);   // Sabai left 2026-10-14
   const list = workList(PROFILE, order);
   for (const { id, also } of order) {
     for (const x of [id, also].filter(Boolean)) assert.ok(list.includes(PROFILE.work.featured.find((p) => p.id === x).name.replace(/’/g, '’')), x);

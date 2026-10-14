@@ -56,7 +56,6 @@ test('index.html names the owner the way profile.js does', () => {
   assert.equal(meta('name', 'author'), PROFILE.name);
   assert.ok(html.includes('<link rel="author" href="/humans.txt" />'));
   assert.equal(html.match(/<h1>([^<]*)<\/h1>/)[1].replace(/&nbsp;/g, ' '), PROFILE.name);
-  assert.equal(html.match(/id="ld-mark" aria-label="([^"]*)"/)[1], PROFILE.name);
   const ld = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
   assert.equal(ld.mainEntity.name, PROFILE.name);
   assert.equal(ld.author['@id'], ld.mainEntity['@id']);

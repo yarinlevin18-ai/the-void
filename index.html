@@ -31,7 +31,6 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="preload" href="/fonts/BricolageGrotesque.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/SchibstedGrotesk.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/Doto.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/src/style.css" />
     <script type="application/ld+json">
     {
@@ -64,26 +63,22 @@
     </script>
   </head>
   <body>
-    <!-- Intro loader: a constellation wires itself up while the wordmark decodes -->
+    <!-- Intro loader (2026-10-14, "Aperture"): a black sheet with an iris cut into it over the live void -->
     <div id="loader">
-      <video id="ld-loop" muted playsinline preload="none" poster="/assets/loader/void-loop.webp" aria-hidden="true"></video>
-      <canvas id="ld-canvas" aria-hidden="true"></canvas>
-      <div class="ld-core">
-        <div class="ld-mark" id="ld-mark" aria-label="Yarin Levin"></div>
-        <div class="ld-meter">
-          <div class="ld-ticks" id="ld-ticks" aria-hidden="true"></div>
-          <div class="ld-num"><span id="ld-pct">0</span><span class="ld-unit">%</span></div>
-        </div>
-        <div class="ld-label" id="ld-label">initialising</div>
-      </div>
+      <svg class="ld-ring" id="ld-ring" aria-hidden="true"><circle id="ld-track" /><circle id="ld-arc" pathLength="100" /></svg>
+      <div class="ld-num" id="ld-num" aria-hidden="true"><span id="ld-pct">0</span><span class="ld-unit">%</span></div>
+      <p class="sr-only" role="status">Loading</p>
     </div>
 
     <canvas id="scene" role="img" aria-label="A dark 3D void of drifting data points and glowing connections — scroll or swipe to fly between portfolio sections"></canvas>
 
     <div id="overlay">
       <h1>Yarin&nbsp;Levin</h1>
-      <p class="sub">AI-native developer</p>
-      <p class="hint">scroll to fly</p>
+      <div class="op-sub"><p class="sub">AI-native developer</p></div>
+      <div class="op-act">
+        <span class="op-avail"><i aria-hidden="true"></i><span>Available now</span></span>
+        <button type="button" class="op-cta" id="op-cta">Start the tour<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v9.5M3.8 8.6 8 12.8l4.2-4.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div>
     </div>
     <nav id="bar" aria-label="Primary"></nav>
     <div id="stops" role="region" aria-label="Sections"></div>
@@ -153,16 +148,6 @@
       <div class="fx-row"><label>Damping</label><input id="fx-wateratt" type="range" min="0.95" max="0.999" step="0.001" /><span id="fx-wateratt-v"></span></div>
       <div class="fx-row"><label>Distortion</label><input id="fx-waterdisp" type="range" min="0" max="0.6" step="0.01" /><span id="fx-waterdisp-v"></span></div>
       <div class="fx-row"><label>Sheen</label><input id="fx-watersheen" type="range" min="0" max="2" step="0.05" /><span id="fx-watersheen-v"></span></div>
-
-      <div class="fx-group">Opening particles <span style="color:#5b768f">Frame 1</span></div>
-      <div class="fx-row"><label>Name scale</label><input id="fx-openfit" type="range" min="0.1" max="0.8" step="0.01" /><span id="fx-openfit-v"></span></div>
-      <div class="fx-row"><label>Dot size</label><input id="fx-opensize" type="range" min="0.3" max="3" step="0.1" /><span id="fx-opensize-v"></span></div>
-      <div class="fx-row"><label>Brightness</label><input id="fx-openglow" type="range" min="0.2" max="1.5" step="0.05" /><span id="fx-openglow-v"></span></div>
-      <div class="fx-row"><label>Form time</label><input id="fx-openform" type="range" min="1" max="5" step="0.1" /><span id="fx-openform-v"></span></div>
-      <div class="fx-row"><label>Shatter R</label><input id="fx-openshatterr" type="range" min="0" max="14" step="0.5" /><span id="fx-openshatterr-v"></span></div>
-      <div class="fx-row"><label>Shatter push</label><input id="fx-openpush" type="range" min="0" max="4" step="0.1" /><span id="fx-openpush-v"></span></div>
-      <div class="fx-row"><label>Spring</label><input id="fx-openspring" type="range" min="0.005" max="0.08" step="0.001" /><span id="fx-openspring-v"></span></div>
-      <div class="fx-row"><label>Color</label><input id="fx-opencolor" type="color" /></div>
 
       <div class="fx-group">Lightning</div>
       <div class="fx-row"><label>Light</label><input id="fx-lightint" type="range" min="0" max="3" step="0.05" /><span id="fx-lightint-v"></span></div>
@@ -235,7 +220,7 @@
 
       <div class="fx-group">Type</div>
       <div class="fx-row"><label>Size</label><input id="as-size" type="range" min="0.4" max="2.6" step="0.05" /><span id="as-size-v"></span></div>
-      <div class="fx-row"><label>Font</label><select id="as-font"><option value="">default</option><option value='var(--f-display)'>Display (Bricolage)</option><option value='var(--f-body)'>Body (Schibsted)</option><option value='var(--f-mono)'>Labels (Doto)</option></select></div>
+      <div class="fx-row"><label>Font</label><select id="as-font"><option value="">default</option><option value='var(--f-display)'>Display (Bricolage)</option><option value='var(--f-body)'>Body (Schibsted)</option></select></div>
       <div class="fx-row"><label>3D depth</label><input id="as-depth" type="range" min="0" max="16" step="1" /><span id="as-depth-v"></span></div>
 
 

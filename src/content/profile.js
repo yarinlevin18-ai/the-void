@@ -87,7 +87,7 @@ export const PROFILE = {
     title: 'Since April 2026.',
     rows: [
       { when: 'Apr 2026', what: 'First builds', line: 'Self-taught with Claude Code from the first line; the labs start here.' },
-      { when: 'May 2026', what: 'SHADIEZ', line: 'Paid client site, in production.' },
+      { when: 'May 2026', what: 'SHADIEZ', line: 'Paid client site, delivered and live.' },
       { when: 'Jun 2026', what: 'AeroCy', line: 'The company’s live bilingual site, shipped in days.' },
       { when: 'Jul 2026', what: 'TEEPO', line: 'Hebrew-RTL study platform, live with real auth.' },
       { when: 'Aug 2026', what: 'LLM Gateway', line: 'Model routing, a spend cap and agent policies.' },
@@ -110,7 +110,7 @@ export const PROFILE = {
   proof: [
     { n: 21, label: 'products built since April 2026' },
     { n: 7, label: 'live on the web today' },
-    { n: 1, label: 'paid client site in production' },
+    { n: 1, label: 'paid client site, delivered' },
   ],
   // stop 04 repo block: which featured ids get the lead card and the two compact rows
   buildStop: { lead: 'llm-gateway', rows: ['teepo', 'shadiez'] },
@@ -230,7 +230,7 @@ export const PROFILE = {
         tint: '#9fd8ff', img: '/previews/shadiez.webp',
         problem: 'A premium beach-shade brand needed a page that sells the feel of the product, not a spec sheet.',
         decision: 'A storytelling page around one 3D hero with scroll-driven motion and lead capture. No checkout until the brand needs it.',
-        outcome: 'Paid client work, in production.',
+        outcome: 'Paid client work, delivered and live.',
         stack: 'Next.js 16 · R3F · Tailwind v4 · Framer Motion · Lenis',
         url: 'https://shadiez.vercel.app', repo: 'https://github.com/yarinlevin18-ai/shadiez',
         // a scroll through the live page, recorded 2026-10-13 — plays on the panel / phone figure
@@ -272,7 +272,7 @@ export const PROFILE = {
       {
         id: 'cursor-buddy', name: 'Cursor Buddy', group: 'saas', kind: 'macOS AI assistant', tag: 'Native app', year: 2026,
         tint: '#4fd2ff', img: '', anim: 'buddy', private: true,   // no screenshot: buddy.js draws the product loop
-        animAlt: 'Cursor Buddy demo: the robot follows the macOS pointer, listens, thinks, and answers “What does this error mean?” beside the cursor',
+        animAlt: 'Cursor Buddy demo: the robot follows the macOS pointer and answers “What does this error mean?” beside the cursor. Asked to search the web, it opens the browser on its own, types the search it was given, and draws a box and an arrow over the fix on the page.',
         problem: 'Asking an AI about what was on my screen meant a screenshot, a new tab, and pasting the answer back.',
         decision: 'A menu-bar agent that sees the screen and acts in Mac apps, safety first: real-click-only approvals and a sandboxed terminal.',
         outcome: 'Hold a key, ask by voice or text, and the answer lands beside the cursor.',
@@ -290,17 +290,8 @@ export const PROFILE = {
         url: '',
       },
       {
-        id: 'sabai', name: 'Sabai', group: 'saas', kind: 'Trip companion', tag: 'Product', year: 2026,
-        tint: '#eab04e', img: '/previews/sabai.webp', private: true,
-        problem: 'A real Thailand trip meant bookings across five inboxes and no signal in half the places I was going.',
-        decision: 'Offline-first: schedule, stays, flights, maps, budget and emergency info in one app, with OCR of the actual booking PDFs. No accounts, no sync server.',
-        outcome: 'I used it every day of the trip.',
-        stack: 'Next.js 16 · React 19 · Tesseract.js',
-        url: '', pill: 'Personal app',   // unlinked 2026-09-29: the live app needs no login and shows real booking codes — gate it before linking again
-      },
-      {
         id: 'agent-control', name: 'Agent Control', group: 'saas', kind: 'Agent guardrails', tag: 'Cyber security', year: 2026,
-        tint: '#9fd8ff', img: '/previews/agent-control.webp', private: true,
+        tint: '#9fd8ff', img: '', anim: 'agent', private: true,   // no screenshot: agent.js draws the process (2026-10-14)
         problem: 'Businesses want AI agents, but not ones that move money or leak personal data on a prompt’s say-so.',
         decision: 'Guardrails the admin sets and the connector enforces, personal data scrubbed before any model call, an append-only audit log.',
         outcome: 'A working demo: four agents, four roles, every action on the record.',
@@ -311,8 +302,8 @@ export const PROFILE = {
           { t: 'Back-office autopilot', d: 'Invoices, supplier mail and stock checks, with a manager past a set limit.' },
         ],
         url: 'https://agent-control-demo.vercel.app',
-        // the public demo (fictional company, mocked data), recorded 2026-10-13: landing, dashboard, agent builder
-        clip: { src: '/exhibits/agent-control/walkthrough.mp4', poster: '/exhibits/agent-control/poster.webp', alt: 'A walk through the Agent Control demo: the landing page, the admin dashboard and the agent builder' },
+        // 2026-10-14 (Yarin): the walkthrough clip became agent.js's loop, from the demo's own mock data
+        animAlt: 'An animated demo with fictional data: three requests pass the personal-data scrub and the guardrails. An invoice under the ₪5,000 ceiling is auto-approved, one over it waits for a manager who approves it, and a payment-terms request is blocked with nothing sent. Each lands in the audit log.',
       },
       {
         id: 'thesis', name: 'Thesis Agent', group: 'saas', kind: 'AI research advisor', tag: 'Private build', year: 2026,
@@ -327,6 +318,9 @@ export const PROFILE = {
     shipped: [
       { name: 'Focus', what: 'WIP-capped project board — at most three active projects, enforced in the CLI, the API and the dashboard.', built: 'Node, SQLite, Astro dashboard. Left the flight 2026-09-29 for Cursor Buddy.', year: 2026 },
       { name: 'Gate Opener', what: 'Geofenced gate PWA — pulling up to the family gate is the trigger, no open button.', built: 'Next.js, Supabase, TypeScript; a geofence state machine GPS drift can’t fire twice. Left the flight 2026-10-13.', year: 2026 },
+      // Sabai left the flight 2026-10-14 (Yarin). Still no url: the live app needs no login and
+      // shows real booking codes — gate it before linking it anywhere.
+      { name: 'Sabai', what: 'Offline-first trip companion for a real Thailand trip — schedule, stays, flights, maps, budget.', built: 'Next.js 16, React 19, Tesseract.js OCR of the booking PDFs; no accounts, no sync server. Left the flight 2026-10-14.', year: 2026 },
       { name: 'Worldiez', what: 'Automated YouTube Shorts pipeline — clip in, branded 9:16 short out, scheduled to YouTube.', built: 'FFmpeg prep, Remotion compositions, Postiz scheduling, agent-orchestrated.', year: 2026 },
       { name: 'Mentorship', what: 'Shared app for a mentor and mentee — sessions, summaries, homework.', built: 'Next.js 16 Server Actions + Supabase Postgres, role-per-device.', year: 2026 },
       { name: 'dira-lease', what: 'Hebrew-RTL landing page that ranks apartment-sublease leads.', built: 'Next.js + Framer Motion, three-step funnel into Google Sheets.', year: 2026 },

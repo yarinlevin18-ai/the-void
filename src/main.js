@@ -15,7 +15,10 @@ import { PROFILE } from './content/profile.js';
 import { initPanels, pickFx } from './panels.js';
 import { initLab } from './labcard.js';
 import { initExhibit, initClip } from './exhibit.js';
-import { drawBuddy } from './buddy.js';
+import { drawBuddy, STILL as BUDDY_STILL } from './buddy.js';
+import { drawAgent, STILL as AGENT_STILL } from './agent.js';
+import { createName3D } from './name3d.js';
+import { drawWorkflow, STILL as WF_STILL } from './workflow.js';
 import { initBar } from './bar.js';
 import { resolveHash } from './hash.js';
 import { mountPrintCV } from './printcv.js';
@@ -66,7 +69,6 @@ const FX = {
   lightning: false, glowSpots: false,                                          // OFF by default (restraint pass) — the network is the one busy layer
   lightInt: 1, lightReach: 280, lightRate: 3, glowBright: 1, glowFlick: 1, cursorDrive: 0,   // lightning + glow + cursor-reactivity controls (cursor reactivity off since 2026-09-29: the void no longer tracks the mouse)
   waterStr: 0.18, waterRad: 0.018, waterAtt: 0.992, waterDisp: 0.22, waterSheen: 1.0,         // water swipe (APPROVED tuning — see water.md)
-  openFit: 0.3, openSize: 1.05, openGlow: 0.36, openForm: 1.2, openShatterR: 5, openPush: 1.7, openSpring: 0.028, openColor: '#9fd8ff',   // Frame 1 opening particles (glow 0.36 — additive overlap + bloom saturate fast; 0.55 still fused the letterforms)
 };
 const fxEl = document.querySelector('#fxpanel');
 // FX keyframes: these params live PER BEAT (beat.fx) and are interpolated across
@@ -464,144 +466,28 @@ const heroCluster = (() => {
   return { update };
 })();
 
-// ---- FRAME 1: OPENING — "Yarin Levin" formed from ~5k additive void particles
-//  (ported 1:1 from sketches/demo-opening.html): scatter→glyphs form-in, cursor-shatter idle,
-//  burst-exit on leave that hands into the flight. Glow is free — additive points + the
-//  existing UnrealBloom (threshold ~0.22). A dedicated Points set (the streaming
-//  starfield can't hold glyph positions); visually it reads as the void's own matter.
-const openingFX = (() => {
-  const group = new THREE.Group(); group.visible = false; scene.add(group);
-  const GLYPH = 0.17;                                  // glyph px → local (rebuild-fixed; live params read from FX)
-  let built = false, N = 0, posA, startA, targ, vel, geo, mat, pts, extX = 1;
-  let matchRect = null, fitScale = null;   // the loader hands us its wordmark's screen rect: the particle name sits exactly there, at that size
-  const basePos = new THREE.Vector3(), matchOff = new THREE.Vector3(); let growT0 = -1;   // after the loader lifts the name grows from the loader size into the hero size (GROW s)
-  const GROW = 1.2;
-  function buildText() {
-    try {
-      const c = document.createElement('canvas'), W = 1100, H = 320; c.width = W; c.height = H;
-      const x = c.getContext('2d'); x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle';
-      // One voice: the same display face the DOM and the loader use, uppercased
-      // and tracked to match the loader wordmark, then auto-fitted — the raster
-      // is drawn in Bricolage at weight 800 and auto-fitted to the 1100px canvas.
-      const NAME = PROFILE.name.toUpperCase(), TRACK = 12;   // from profile.js, like every other mention of the name
-      if ('letterSpacing' in x) x.letterSpacing = TRACK + 'px';
-      const face = (px) => '800 ' + px + 'px "Bricolage", "Helvetica Neue", Arial, sans-serif';
-      x.font = face(190);
-      const w190 = x.measureText(NAME).width - TRACK * (NAME.length - 1);   // glyph advance only; tracking is a constant term
-      const fit = Math.min(190, Math.floor(190 * (W * 0.9 - TRACK * (NAME.length - 1)) / Math.max(1, w190)));
-      x.font = face(fit);
-      x.fillText(NAME, W / 2 - TRACK / 2, H / 2 + 6);   // shift back by half the trailing track to stay optically centred
-      const d = x.getImageData(0, 0, W, H).data, raw = [];
-      for (let y = 0; y < H; y += 3) for (let xx = 0; xx < W; xx += 3) if (d[(y * W + xx) * 4 + 3] > 130) raw.push([(xx - W / 2) * GLYPH, -(y - H / 2) * GLYPH, (Math.random() - 0.5) * 6]);
-      for (let i = raw.length - 1; i > 0; i--) { const j = Math.random() * i | 0;[raw[i], raw[j]] = [raw[j], raw[i]]; }
-      N = Math.min(raw.length, IS_TOUCH ? 4200 : 7200); raw.length = N;   // step-3 sampling + higher cap: thin strokes (the e's crossbar) survive the shuffle cull
-      posA = new Float32Array(N * 3); startA = new Float32Array(N * 3); targ = new Float32Array(N * 3); vel = new Float32Array(N * 3);
-      for (let i = 0; i < N; i++) {
-        targ[i * 3] = raw[i][0]; targ[i * 3 + 1] = raw[i][1]; targ[i * 3 + 2] = raw[i][2];
-        const a = Math.random() * 6.28, r = 120 + Math.random() * 240;   // start scattered in a wide void cloud
-        startA[i * 3] = Math.cos(a) * r; startA[i * 3 + 1] = (Math.random() - 0.5) * 260; startA[i * 3 + 2] = -160 - Math.random() * 260;
-        posA[i * 3] = startA[i * 3]; posA[i * 3 + 1] = startA[i * 3 + 1]; posA[i * 3 + 2] = startA[i * 3 + 2];
-      }
-      let x0 = Infinity, x1 = -Infinity; for (let i = 0; i < N; i++) { x0 = Math.min(x0, targ[i * 3]); x1 = Math.max(x1, targ[i * 3]); } extX = Math.max(1, x1 - x0);
-      geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(posA, 3));
-      mat = new THREE.PointsMaterial({ size: FX.openSize, color: new THREE.Color(FX.openColor), transparent: true, opacity: FX.openGlow, blending: THREE.AdditiveBlending, depthWrite: false });
-      pts = new THREE.Points(geo, mat); pts.frustumCulled = false; group.add(pts);
-      group.scale.setScalar(FX.openFit); built = true;
-    } catch (e) { console.warn('[opening] build failed', e); }
-  }
-  if (document.fonts && document.fonts.load) document.fonts.load('800 190px "Bricolage"').catch(() => {}).finally(buildText); else buildText();
-  // anchor the name in the Opening beat's camera frame (at the look point, facing the camera)
-  const C = new THREE.Vector3(), ff = new THREE.Vector3(), rt = new THREE.Vector3(), uu = new THREE.Vector3(), zc = new THREE.Vector3(), basis = new THREE.Matrix4();
-  function place() {
-    const b = beats[0]; if (!b || !b.cam || !b.look) return;
-    C.set(b.cam[0], b.cam[1], b.cam[2]);
-    ff.set(b.look[0] - C.x, b.look[1] - C.y, b.look[2] - C.z); const dist = ff.length() || 1; ff.normalize();
-    uu.set(b.up?.[0] ?? 0, b.up?.[1] ?? 1, b.up?.[2] ?? 0);
-    rt.copy(ff).cross(uu).normalize(); uu.copy(rt).cross(ff).normalize();
-    zc.copy(rt).cross(uu); basis.makeBasis(rt, uu, zc); group.quaternion.setFromRotationMatrix(basis);
-    group.position.copy(C).addScaledVector(ff, dist);
-    basePos.copy(group.position); matchOff.set(0, 0, 0);
-    applyMatch(dist);
-  }
-  // Place and size the particle name over the loader wordmark's rect, in the
-  // Opening beat's own frame (not the live camera: mouse parallax and breath
-  // would jitter it). fitScale then replaces FX.openFit for the whole Opening,
-  // so the DOM mark crossfades into particles that are already in its place and
-  // the name rides the flight out from there.
-  function applyMatch(dist) {
-    if (!matchRect || !built) return;
-    const b = beats[0]; if (!b) return;
-    const W = window.innerWidth, H = window.innerHeight;
-    const fov = fitFov(b.fov ?? DEF_FOV);
-    const halfH = Math.tan(fov * Math.PI / 360) * dist, halfW = halfH * (W / H);
-    const nx = ((matchRect.left + matchRect.width / 2) / W) * 2 - 1, ny = 1 - ((matchRect.top + matchRect.height / 2) / H) * 2;
-    matchOff.set(0, 0, 0).addScaledVector(rt, nx * halfW).addScaledVector(uu, ny * halfH);
-    group.position.copy(basePos).add(matchOff);
-    fitScale = (matchRect.width * 2 * halfW) / (W * extX);
-  }
-  function matchTo(rect) {
-    if (!rect || !rect.width) return;
-    matchRect = { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
-    if (phase !== 'off') { place(); }             // already placed → re-place with the match applied
-  }
-  const overlaySub = document.querySelector('#overlay .sub');
-  let phase = 'off', t0 = 0, exitT0 = 0;
-  const ease = (k) => 1 - Math.pow(1 - k, 3);
-  function update(active, t) {
-    if (!built) return;
-    if (active && phase === 'off') { place(); for (let i = 0; i < N * 3; i++) { posA[i] = startA[i]; vel[i] = 0; } phase = 'form'; t0 = t; }
-    if (!active && (phase === 'form' || phase === 'idle')) { phase = 'exit'; exitT0 = t; }
-    group.visible = phase !== 'off';
-    if (overlaySub) overlaySub.style.display = phase !== 'off' ? 'none' : '';   // the particle wordmark owns the Opening; the DOM tagline would sit on top of it
-    // Portrait: fitFov() widens the Opening's 25° shot to ~75°, so the mark
-    // shrinks on screen while the points keep their pixel size — 12× the
-    // density, and additive + bloom fuse it into a bar. Scale size and glow by
-    // the FOV ratio (size only) so the mark reads the same at every aspect.
-    const bf = beats[0]?.fov ?? DEF_FOV;
-    const kFov = Math.min(1, Math.tan(bf * Math.PI / 360) / Math.max(1e-3, Math.tan(camera.fov * Math.PI / 360)));
-    const glow = FX.openGlow ?? 0.7;   // size alone restores desktop density; scaling glow too dims it by the cube
-    // once the loader has lifted, ease from the loader-matched size/place into the hero size at the look point
-    if (fitScale !== null && loaderDone && growT0 < 0) growT0 = t;
-    const gk = growT0 < 0 ? 0 : ease(Math.min(1, (t - growT0) / GROW));
-    const hero = FX.openFit || 0.3;
-    const F = fitScale === null ? hero : fitScale + (hero - fitScale) * gk;
-    if (fitScale !== null && phase !== 'off') group.position.copy(basePos).addScaledVector(matchOff, 1 - gk);
-    const kSize = kFov * Math.min(1.5, F / (FX.openFit || 0.3));   // density also follows the matched scale
-    if (mat) { mat.size = (FX.openSize || 1.1) * kSize; mat.color.set(FX.openColor || '#9fd8ff'); mat.opacity = glow; }   // live FX
-    group.scale.setScalar(F);
-    if (phase === 'off') return;
-    const RM = PREFERS_REDUCED;
-    if (phase === 'form') {
-      const k = RM ? 1 : Math.min((t - t0) / (FX.openForm || 2.6), 1), e = ease(k);
-      for (let i = 0; i < N * 3; i++) posA[i] = startA[i] + (targ[i] - startA[i]) * e;
-      if (k >= 1) { phase = 'idle'; }
-    } else if (phase === 'exit') {
-      const ek = (t - exitT0) / 1.5;
-      if (!RM) for (let i = 0; i < N; i++) { const ix = i * 3;
-        vel[ix] += posA[ix] * 0.006; vel[ix + 1] += posA[ix + 1] * 0.006; vel[ix + 2] += 1.5 + Math.random() * 0.7;
-        vel[ix] *= 0.985; vel[ix + 1] *= 0.985; vel[ix + 2] *= 0.99;
-        posA[ix] += vel[ix]; posA[ix + 1] += vel[ix + 1]; posA[ix + 2] += vel[ix + 2]; }
-      if (mat) mat.opacity = Math.max(0, glow * (1 - ek));
-      if (ek >= 1) { phase = 'off'; group.visible = false; }
-    } else {                                            // idle: spring home + cursor shatter
-      const dist = camera.position.distanceTo(group.position);
-      const halfH = Math.tan((camera.fov * Math.PI / 180) / 2) * dist, halfW = halfH * camera.aspect;
-      const mwx = RM ? 1e6 : (_cN.x * halfW) / F, mwy = RM ? 1e6 : (_cN.y * halfH) / F;
-      const R = FX.openShatterR || 5, R2 = R * R, push = FX.openPush ?? 1.7, spring = FX.openSpring || 0.028, damp = 0.9;
-      for (let i = 0; i < N; i++) { const ix = i * 3;
-        vel[ix] += (targ[ix] - posA[ix]) * spring; vel[ix + 1] += (targ[ix + 1] - posA[ix + 1]) * spring; vel[ix + 2] += (targ[ix + 2] - posA[ix + 2]) * spring;
-        if (!RM) { const ex = posA[ix] - mwx, ey = posA[ix + 1] - mwy, d2 = ex * ex + ey * ey;
-          if (d2 < R2 && d2 > 0.01) { const dd = Math.sqrt(d2), f = (1 - dd / R) * push; vel[ix] += ex / dd * f; vel[ix + 1] += ey / dd * f; vel[ix + 2] += (Math.random() - 0.5) * f * 0.2; } }
-        vel[ix] *= damp; vel[ix + 1] *= damp; vel[ix + 2] *= damp;
-        posA[ix] += vel[ix]; posA[ix + 1] += vel[ix + 1]; posA[ix + 2] += vel[ix + 2]; }
-    }
-    if (geo) geo.attributes.position.needsUpdate = true;
-  }
-  // The loader holds at 99% until the name has formed, so the hand-off is a
-  // crossfade between two identical marks, never a half-built cloud.
-  const formed = () => !built || phase === 'idle' || phase === 'exit' || editMode || index !== 0;
-  return { update, matchTo, formed };
+// ---- FRAME 1: OPENING (2026-10-14, Yarin: "replace with display type") ----------------------
+//  The particle wordmark and its cursor-shatter are gone: the name is the page's h1 in the
+//  display face, each line rising through its own mask once the iris has opened (see the
+//  loader below), then the role, the availability pill and one CTA. All of it lives in
+//  #overlay, so the asset system still fades it out as the flight leaves the Opening.
+const opening = (() => {
+  const ov = document.querySelector('#overlay'), h1 = ov?.querySelector('h1');
+  if (!ov || !h1) return { reveal() {}, cta: null };
+  const words = PROFILE.name.split(' ');
+  h1.innerHTML = `<span class="sr-only">${PROFILE.name}</span>` + words.map((w, i) =>
+    `<span class="op-line" aria-hidden="true"><span class="op-w" style="--d:${i * 110}ms">${w}${i === words.length - 1 ? '<span class="op-dot">.</span>' : ''}</span></span>`).join('');
+  const sub = ov.querySelector('.sub'); if (sub) sub.textContent = PROFILE.title;
+  const av = ov.querySelector('.op-avail span'); if (av) av.textContent = PROFILE.status.availability;
+  const cta = ov.querySelector('#op-cta');
+  return { reveal() { ov.classList.add('revealed'); name3d?.reveal(performance.now() / 1000); }, cta, h1, ov };
 })();
+// The name in the void (2026-10-14, src/name3d.js): the h1 above only lays it out; once the
+// display face has loaded, every glyph is a plane in the scene and the DOM lines hide
+// (.gl-name). Until then — or with no font — the DOM name rises as before.
+let name3d = null;
+const fovOfBeat = (b) => (usesPortrait(b) ? b.portrait.fov : fitFov(b?.fov ?? DEF_FOV));
+function layoutName() { if (name3d?.ready && beatPos[0]) name3d.layout(beatPos[0], beatQuats[0], fovOfBeat(beats[0]), window.innerHeight); }
 
 // Live density control for every void layer — uses draw ranges (instant, no
 // rebuild) so you can dial the amount of stars / nodes / energy lines / nebula.
@@ -868,10 +754,10 @@ function applyPortraitPoses() {
 }
 const VOID_FX = { panelDimFloor: 0, panelLightRange: 26 };   // shared by every stop that must not show a neighbouring panel
 const DEFAULT_BEATS = [
-  /* 0 */ { name: 'Opening', cam: [-56, 2, 120], look: [-11, 59, 42], up: [0, 1, 0], fov: 25, dur: 1.4, desc: '', img: '', link: '', fx: { bloomStrength: 0.65 }, panel: null },
+  /* 0 */ { name: 'Opening', cam: [-56, 2, 120], look: [-11, 59, 42], up: [0, 1, 0], fov: 25, dur: 1.35, desc: '', img: '', link: '', fx: { bloomStrength: 0.65 }, panel: null },
   // v18 (2026-09-14): person chapter — Hi / About / Timeline replace Hero / Intro / CV.
-  /* 1 */ { name: 'Hi', stop: 'hi', side: 'left', cam: [1, 53, 33], look: [1, 53, -67], up: [0, 1, 0], fov: 48, dur: 2.1, desc: '', img: '/assets/me/portrait.webp', link: '', fx: { ...VOID_FX }, panel: (() => { const p = P(1, 53, 33, 'left'); p.size = [19.2, 24]; p.pos[1] = 52; p.rot = [0, 8, 0]; return p; })() },   // v21: 4:5 portrait crop, turned closer to the camera
-  /* 2 */ { name: 'About', stop: 'about', side: 'right', ease: 'easeOut', cam: [6, 12, 5], look: [6, 12, -95], up: [0, 1, 0], fov: 48, dur: 2.4, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null,
+  /* 1 */ { name: 'Hi', stop: 'hi', side: 'left', cam: [1, 53, 33], look: [1, 53, -67], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/assets/me/portrait.webp', link: '', fx: { ...VOID_FX }, panel: (() => { const p = P(1, 53, 33, 'left'); p.size = [19.2, 24]; p.pos[1] = 52; p.rot = [0, 8, 0]; return p; })() },   // v21: 4:5 portrait crop, turned closer to the camera
+  /* 2 */ { name: 'About', stop: 'about', side: 'right', cam: [6, 12, 5], look: [6, 12, -95], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null,
            panels: [
              // v21 (2026-09-29): two panels side by side — the lectern shot was a crop of
              // the stage shot, so it's gone. Stage 4:3 (18×13.5), memorial 3:4 (10.5×14).
@@ -879,20 +765,21 @@ const DEFAULT_BEATS = [
              { img: '/assets/me/speaking-1.webp', ...mkPanel(11, 12, -40, 18, 13.5, [0, -8, 0]) },
              { img: '/assets/me/speaking-2.webp', ...mkPanel(26.5, 12, -40, 10.5, 14, [0, -12, 0]) },
            ] },
-  /* 3 */ { name: 'Timeline', stop: 'timeline', cam: [-8, 8, -21], look: [26, 20, -71], up: [0, 1, 0], fov: 60, dur: 1.6, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null },
-  /* 4 */ { name: 'How I Build', stop: 'build', cam: [7, 6, -45], look: [-14, 18, -95], up: [0, 1, 0], fov: 58, dur: 1.6, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null },
+  /* 3 */ { name: 'Timeline', stop: 'timeline', cam: [-8, 8, -21], look: [26, 20, -71], up: [0, 1, 0], fov: 60, dur: 1.35, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null },
+  /* 4 */ { name: 'How I Build', stop: 'build', cam: [7, 6, -45], look: [-14, 18, -95], up: [0, 1, 0], fov: 58, dur: 1.35, desc: '', img: '', link: '', fx: { ...VOID_FX }, panel: null },
   // v21 (2026-09-29): seven project stops. Cursor Buddy replaces Focus; TEEPO's
   // stop becomes three (Agent Control, Thesis Agent, Gate Opener) — TEEPO stays in
   // the Timeline and the How I Build cards. AeroCy rides along on Agent Control
   // (both security), SmartCut on SHADIEZ, which now opens the Landing pages group.
   /* 5 */ { name: 'LLM Gateway', stop: 'project', id: 'llm-gateway', side: 'left', groupLabel: 'SaaS', cam: [4, 3, -115], look: [4, 3, -215], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/llm-gateway.webp', link: '', fx: { ...VOID_FX }, panel: (() => { const p = P(4, 3, -115, 'left'); p.size = [28, 15.75]; return p; })() },   // 16:9 like its clips (v26)
   /* 6 */ { name: 'Cursor Buddy', stop: 'project', id: 'cursor-buddy', side: 'right', cam: [-4, 3, -185], look: [-4, 3, -285], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '', anim: 'buddy', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -185, 'right') },
-  /* 7 */ { name: 'Sabai', stop: 'project', id: 'sabai', side: 'left', cam: [4, 3, -255], look: [4, 3, -355], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/sabai.webp', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -255, 'left') },
-  /* 8 */ { name: 'Agent Control', stop: 'project', id: 'agent-control', also: 'aerocy', side: 'right', cam: [-4, 3, -325], look: [-4, 3, -425], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/agent-control.webp', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -325, 'right') },
-  /* 9 */ { name: 'Thesis Agent', stop: 'project', id: 'thesis', side: 'left', cam: [4, 3, -395], look: [4, 3, -495], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/thesis.webp', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -395, 'left') },
-  // v23 (2026-10-13): Gate Opener left the flight; SHADIEZ takes its slot and side so the sides keep alternating.
-  /* 10 */ { name: 'SHADIEZ', stop: 'project', id: 'shadiez', also: 'smartcut', side: 'right', groupLabel: 'Landing pages', cam: [-4, 3, -465], look: [-4, 3, -565], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/shadiez.webp', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -465, 'right') },
-  /* 11 */ { name: 'Contact', stop: 'contact', cam: [0, 49, -560], look: [1, 290, -560], up: [0, 0, -1], fov: 52, dur: 3, desc: '', img: '', link: '', panel: null },
+  // v27 (2026-10-14, Yarin: "take sabai out"): Sabai left the flight; the three stops after it
+  // move up one slot each (Agent Control left, Thesis right, SHADIEZ left) so the sides keep
+  // alternating. Contact stays put, so the finale glide is one slot longer.
+  /* 7 */ { name: 'Agent Control', stop: 'project', id: 'agent-control', also: 'aerocy', side: 'left', cam: [4, 3, -255], look: [4, 3, -355], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '', anim: 'agent', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -255, 'left') },
+  /* 8 */ { name: 'Thesis Agent', stop: 'project', id: 'thesis', side: 'right', cam: [-4, 3, -325], look: [-4, 3, -425], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/thesis.webp', link: '', fx: { ...VOID_FX }, panel: P(-4, 3, -325, 'right') },
+  /* 9 */ { name: 'SHADIEZ', stop: 'project', id: 'shadiez', also: 'smartcut', side: 'left', groupLabel: 'Landing pages', cam: [4, 3, -395], look: [4, 3, -495], up: [0, 1, 0], fov: 48, dur: 1.35, desc: '', img: '/previews/shadiez.webp', link: '', fx: { ...VOID_FX }, panel: P(4, 3, -395, 'left') },
+  /* 10 */ { name: 'Contact', stop: 'contact', cam: [0, 49, -560], look: [1, 290, -560], up: [0, 0, -1], fov: 52, dur: 3, desc: '', img: '', link: '', panel: null },
 ];
 // Live indices into `beats` (not DEFAULT_BEATS) — Director Mode can reorder /
 // add / delete stops, so these are recomputed after load() and on every commit().
@@ -950,7 +837,7 @@ function fitFov(v) {
   return Math.min(115, THREE.MathUtils.radToDeg(2 * Math.atan(t)));
 }
 // global (non-keyframed) state that Save must persist alongside the beats
-const GLOBAL_KEYS = ['starFrac', 'nodeFrac', 'lineFrac', 'nebFrac', 'driftOn', 'fovPunch', 'warpStrength', 'warpLength', 'twinkleOn', 'linesOn', 'nebVisible', 'uiHud', 'uiHint', 'uiScale', 'nebSpd', 'nebWarp', 'nebHue', 'nebEmber', 'nebVig', 'nebGlow', 'vignette', 'grain', 'pulse', 'flare', 'breath', 'breathRoll', 'lightning', 'glowSpots', 'lightInt', 'lightReach', 'lightRate', 'glowBright', 'glowFlick', 'cursorDrive', 'waterStr', 'waterRad', 'waterAtt', 'waterDisp', 'waterSheen', 'openFit', 'openSize', 'openGlow', 'openForm', 'openShatterR', 'openPush', 'openSpring', 'openColor'];
+const GLOBAL_KEYS = ['starFrac', 'nodeFrac', 'lineFrac', 'nebFrac', 'driftOn', 'fovPunch', 'warpStrength', 'warpLength', 'twinkleOn', 'linesOn', 'nebVisible', 'uiHud', 'uiHint', 'uiScale', 'nebSpd', 'nebWarp', 'nebHue', 'nebEmber', 'nebVig', 'nebGlow', 'vignette', 'grain', 'pulse', 'flare', 'breath', 'breathRoll', 'lightning', 'glowSpots', 'lightInt', 'lightReach', 'lightRate', 'glowBright', 'glowFlick', 'cursorDrive', 'waterStr', 'waterRad', 'waterAtt', 'waterDisp', 'waterSheen'];
 let activePunch = 0;   // 0..1 across a transition, peaks at the midpoint (for FOV punch)
 const DEF_FOV = 68, DEF_DUR = 1.6;
 // a sensible starter panel for a section: sits at its aim point, fixed orientation
@@ -1069,6 +956,27 @@ function load() {
           const was = beats.find((b) => b.id === 'llm-gateway'), now = DEFAULT_BEATS.find((b) => b.id === 'llm-gateway');
           if (was && now) { was.panel = structuredClone(now.panel); migrated = true; }
         }
+        if (!(d.version >= 27)) {
+          // v27 (2026-10-14, Yarin: "take sabai out"): Sabai leaves the flight (a shipped row now)
+          // and the three stops after it move up a slot — drop the one, re-adopt the others.
+          beats = beats.filter((b) => b.id !== 'sabai');
+          for (const id of ['agent-control', 'thesis', 'shadiez']) {
+            const now = DEFAULT_BEATS.find((b) => b.id === id), at = beats.findIndex((b) => b.id === id);
+            if (now && at >= 0) beats[at] = structuredClone(now);
+          }
+          migrated = true;
+        }
+        if (!(d.version >= 28)) {
+          // v28 (2026-10-14, Yarin: "the first sections … transitioning very slow, put them at the
+          // same speed as llm gateway"): the Opening, Hi, About, Timeline and How I Build hops take
+          // the project hop's 1.35 s (they were 1.4 / 2.1 / 2.4 / 1.6 / 1.6), and About drops its own
+          // easeOut curve for the site's one — re-adopt those two fields only.
+          for (const now of DEFAULT_BEATS.slice(0, 5)) {
+            const was = beats.find((b) => b.name === now.name);
+            if (was) { was.dur = now.dur; if (now.ease) was.ease = now.ease; else delete was.ease; }
+          }
+          migrated = true;
+        }
         beats.forEach(backfillBeat); // bring older saves up to the current schema
         if (migrated) save();
         return;
@@ -1080,7 +988,7 @@ function load() {
 }
 function save() {
   const g = {}; for (const k of GLOBAL_KEYS) g[k] = FX[k]; g.ease = txEaseName;
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 26 })); }
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ beats, speed: speedMul, smooth, g, version: 28 })); }
   catch (e) { console.warn('[save]', e); }   // private mode / quota: never let a failed write abort the boot
 }
 // push the global (saved) FX/UX/transition state into the live scene + DOM
@@ -1167,8 +1075,13 @@ function rebuildDerived() {
     ? new THREE.CatmullRomCurve3(beatPos.map((v) => v.clone()), false, 'centripetal')
     : null;
   if (panelsBuilt) rebuildAvoid();   // panels are built later at startup; rebuildPanels() re-runs it
+  layoutName();                      // the name sits on the Opening's shot
 }
 rebuildDerived();
+if (opening.h1) {   // the name's glyphs as planes in the scene (src/name3d.js)
+  name3d = createName3D({ THREE, scene, h1: opening.h1, reduced: PREFERS_REDUCED, anisotropy: renderer.capabilities.getMaxAnisotropy(), dpr: Math.min(window.devicePixelRatio, DPR_CAP) });
+  name3d.whenReady.then((ok) => { if (!ok) return; opening.ov.classList.add('gl-name'); layoutName(); });
+}
 
 // Position along the flight path at t∈[0,1], blending the straight segments with
 // the smooth spline by `smooth`. Always passes exactly through each shot (at f=0).
@@ -1293,31 +1206,51 @@ function drawPanelCanvas(b) {
   return cv;
 }
 // Animated panels (2026-09-29): a beat with `anim: 'buddy'` shows Cursor Buddy's
-// product loop (buddy.js) instead of a screenshot. Its canvas is redrawn at ≤ 30 fps
-// while the panel is lit (tickAnimPanels), at 1024 px so the upload stays cheap.
+// product loop (buddy.js) instead of a screenshot; since 2026-10-14 `anim: 'agent'` shows
+// Agent Control's process (agent.js). The canvas is redrawn at ≤ 30 fps while the panel is
+// lit (tickAnimPanels), at the panel's on-screen size (panelFit).
+const ANIMS = { buddy: { draw: drawBuddy, still: BUDDY_STILL }, agent: { draw: drawAgent, still: AGENT_STILL } };
+const animStill = (name) => ANIMS[name]?.still ?? 0;   // reduced motion: one still frame that tells the story
 const animPanels = [];
 function drawAnimCanvas(b, cv, sec) {
-  const ctx = cv.getContext('2d');
-  drawBuddy(ctx, cv.width, cv.height, sec);
+  const ctx = cv.getContext('2d'), name = animFor(b);
+  (ANIMS[name] || ANIMS.buddy).draw(ctx, cv.width, cv.height, PREFERS_REDUCED ? animStill(name) : sec);
   ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(79,210,255,.5)'; ctx.strokeRect(2, 2, cv.width - 4, cv.height - 4);
 }
 function makeAnimCanvas(b) {
   if (isCompact() && !editMode) return panelStandIn();   // phones animate the DOM figure instead
   const W = exhibitW(innerWidth * 0.45 * renderer.getPixelRatio()), H = Math.round(W * (b.panel.size[1] / b.panel.size[0]));   // panelFit corrects it on landing
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-  drawAnimCanvas(b, cv, PREFERS_REDUCED ? 11 : 0);   // reduced motion: one still frame, the answer on screen
+  drawAnimCanvas(b, cv, 0);
   return cv;
 }
 let _animLast = 0;
 function paintAnimFigure(sec) {             // phones: the DOM figure in the open stop
-  const fig = document.querySelector('#stops .stop.in canvas[data-anim="buddy"]');
-  if (!fig || !fig.offsetWidth) return;
+  const fig = document.querySelector('#stops .stop.in canvas[data-anim]'), anim = fig && ANIMS[fig.dataset.anim];
+  if (!anim || !fig.offsetWidth) return;
   const w = Math.round(fig.offsetWidth * Math.min(2, window.devicePixelRatio || 1)), h = Math.round(w * 17.6 / 28);
   const resized = fig.width !== w;
   if (resized) { fig.width = w; fig.height = h; }
   if (PREFERS_REDUCED && !resized && fig.dataset.painted) return;   // reduced motion: one still frame, repainted only on resize
-  drawBuddy(fig.getContext('2d'), fig.width, fig.height, PREFERS_REDUCED ? 11 : sec);
+  anim.draw(fig.getContext('2d'), fig.width, fig.height, PREFERS_REDUCED ? anim.still : sec);
   fig.dataset.painted = '1';
+}
+// How I Build's workflow (2026-10-14, src/workflow.js): a DOM canvas in the stop, drawn every
+// frame while the stop is open at its own device pixels (so it stays sharp at any size), the
+// loop starting over on each arrival. Reduced motion: one still frame, repainted on resize.
+let _wfT0 = -1;
+function paintWorkflow(now) {
+  const cv = document.querySelector('#stops .stop.in canvas[data-wf]');
+  if (!cv || !cv.offsetWidth) { _wfT0 = -1; return; }
+  if (_wfT0 < 0) _wfT0 = now;
+  const sc = Math.min(2.5, Math.max(1, window.devicePixelRatio || 1));
+  const w = Math.round(cv.offsetWidth * sc), h = Math.round(cv.offsetHeight * sc);
+  const resized = cv.width !== w || cv.height !== h;
+  if (resized) { cv.width = w; cv.height = h; }
+  if (PREFERS_REDUCED && !resized && cv.dataset.painted) return;
+  drawWorkflow(cv.getContext('2d'), w, h, PREFERS_REDUCED ? WF_STILL : (now - _wfT0) / 1000,
+    { scale: sc, tests: +cv.dataset.tests || 0, commits: +cv.dataset.commits || 0, days: +cv.dataset.days || 0 });
+  cv.dataset.painted = '1';
 }
 // Exhibit panels (2026-10-12): a project with `exhibit` in profile.js (LLM Gateway) shows
 // its scenario clip on the panel. The clip is the stop's own <video> (exhibit.js owns it and
@@ -1410,7 +1343,7 @@ function tickAnimPanels(now) {
     if (a.cv.width <= 2 || !a.mesh.visible || a.mesh.material.opacity <= 0.01) continue;
     const resized = _stopOpen && index === a.i && !editMode && panelFit(a);
     if (PREFERS_REDUCED && !resized) continue;   // the canvas already holds its still frame
-    drawAnimCanvas(a.b, a.cv, PREFERS_REDUCED ? 11 : now / 1000); a.tex.needsUpdate = true;
+    drawAnimCanvas(a.b, a.cv, now / 1000); a.tex.needsUpdate = true;
   }
 }
 // The animation comes from profile.js by project id (like the chapter tints), not only
@@ -1471,7 +1404,7 @@ function panelFx(mat, w, h) {
 const panelGeo = (b) => new THREE.PlaneGeometry(b.panel.size[0], b.panel.size[1], 24, 1);   // 24 columns: the bend needs vertices to curve
 function makePanelMesh(b, i) {
   const isExhibit = !!exhibitFor(b);
-  if (isExhibit || animFor(b) === 'buddy') {
+  if (isExhibit || ANIMS[animFor(b)]) {
     const cv = isExhibit ? makeExhibitCanvas(b) : makeAnimCanvas(b), tex = new THREE.CanvasTexture(cv);
     tex.colorSpace = THREE.NoColorSpace; tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
     const mesh = new THREE.Mesh(panelGeo(b), panelFx(new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide }), b.panel.size[0], b.panel.size[1]));
@@ -1599,7 +1532,7 @@ function makeLabel(text, selected) {
   const x = c.getContext('2d');
   x.fillStyle = 'rgba(4,6,10,0.55)'; x.beginPath(); x.arc(32, 32, 30, 0, Math.PI * 2); x.fill();
   x.fillStyle = selected ? '#ffffff' : '#4fd2ff';
-  x.font = 'bold 34px "Doto", ui-monospace, monospace';
+  x.font = '700 32px Schibsted, sans-serif';
   x.textAlign = 'center'; x.textBaseline = 'middle';
   x.fillText(text, 32, 35);
   const tex = new THREE.CanvasTexture(c);
@@ -1844,6 +1777,7 @@ function hidePhoneNote() {
   el.hidden = true;
   try { localStorage.setItem(PHONE_NOTE_KEY, String(Date.now())); } catch { /* ignore */ }
 }
+if (opening.cta) opening.cta.addEventListener('click', () => goTo(1));   // "Start the tour", the Opening's one CTA
 function goTo(i) {
   if (editMode) return;
   if (performance.now() - lastNav < NAV_COOLDOWN) return;
@@ -1980,7 +1914,12 @@ const overlay = document.querySelector('#overlay');
 const hudBeat = document.querySelector('#hud-beat');
 const hudProgress = document.querySelector('#hud-progress');
 const hudEl = document.querySelector('#hud');
-let _stopOpen = false, _dimV = 1, _apK = 1;   // is a stop's DOM block showing → how far the void has stepped back (1 = full)
+let _stopOpen = false, _dimV = 1, _apK = 1;
+// The Aperture entrance (2026-10-14): while the loader is up the camera waits INTRO_PUSH units
+// back along its view, a little wider; as the iris snaps open it pushes through to the shot.
+// _introK is 1 → 0 (eased in the loader's exit); nothing under reduced motion.
+const INTRO_PUSH = 24, INTRO_FOV = 6, _introFwd = new THREE.Vector3();
+let _introK = PREFERS_REDUCED ? 0 : 1;   // is a stop's DOM block showing → how far the void has stepped back (1 = full)
 const hudUp = document.querySelector('#hud-up'), hudDown = document.querySelector('#hud-down'), hudRail = document.querySelector('#hud-rail');
 // 2026-09-17: chevrons replace the page counter for visitors (the counter stays for
 // screen readers). Both route through goTo like every other input.
@@ -1992,9 +1931,8 @@ hudDown?.addEventListener('click', () => goTo(index + 1));
 //  (opacity + rise + blur) runs off each asset's in/out config; the depth-of-field
 //  blur is layered onto the group containers while flying. Editable live in the A panel.
 const ASSET_DEFS = [
-  { id: 'wordmark', label: 'Wordmark',      sel: '#overlay h1',         group: 'overlay', editable: true },
-  { id: 'tagline',  label: 'Tagline',       sel: '#overlay .sub',       group: 'overlay', editable: true },
-  { id: 'hint',     label: 'Scroll hint',   sel: '#overlay .hint',      group: 'overlay', editable: true },
+  { id: 'tagline',  label: 'Tagline',       sel: '#overlay .op-sub',    group: 'overlay' },   // the wrapper: the reveal owns .sub itself
+  { id: 'hint',     label: 'Availability + CTA', sel: '#overlay .op-act', group: 'overlay' },
   { id: 'card_shadiez',  label: 'Screen · Shadiez',  group: 'hero' },
   { id: 'card_smartcut', label: 'Screen · SmartCut', group: 'hero' },
 ];
@@ -2049,18 +1987,28 @@ function showAsset(a) {
   const el = assetEl(a); if (!el || el._as === 'in') return; el._as = 'in';
   if (PREFERS_REDUCED) { el.style.transition = 'none'; el.style.opacity = '1'; el.style.transform = 'none'; el.style.filter = 'none'; return; }
   const i = assetCfg[a.id].in;
-  const bl = IS_TOUCH ? 0 : i.blur;   // tweened blur() re-rasterizes text layers every frame — opacity+rise carry the reveal on phones
+  // tweened blur() re-rasterizes text layers every frame — opacity+rise carry the reveal on phones.
+  // The Opening's pills never take one (2026-10-14, Yarin: "this has the problem my name had"): a
+  // filter on their wrapper — even the blur(0px) a reveal used to leave behind — makes it a layer of
+  // its own, which cut the pills' glow and their glass backdrop into rectangles.
+  const bl = (IS_TOUCH || a.group === 'overlay') ? 0 : i.blur;
   el.style.transition = 'none'; el.style.opacity = '0'; el.style.transform = `translateY(${i.y}px)`; el.style.filter = bl ? `blur(${bl}px)` : 'none';
   void el.offsetWidth;                                     // commit the start state, then transition in
   const tr = `${i.dur}ms ${A_EASE[i.ease] || 'ease'} ${i.delay}ms`;
   el.style.transition = `opacity ${tr}, transform ${tr}${bl ? `, filter ${tr}` : ''}`;
-  el.style.opacity = '1'; el.style.transform = 'translateY(0)'; if (bl) el.style.filter = 'blur(0px)';
+  el.style.opacity = '1'; el.style.transform = 'translateY(0)';
+  if (bl) {
+    el.style.filter = 'blur(0px)';
+    clearTimeout(el._blT);   // once in, no filter at all: blur(0px) still makes a clipping layer
+    el._blT = setTimeout(() => { if (el._as === 'in') { el.style.transition = 'none'; el.style.filter = 'none'; } }, i.dur + i.delay + 60);
+  }
 }
 function hideAsset(a) {
   const el = assetEl(a); if (!el || el._as === 'out') return; el._as = 'out';
   if (PREFERS_REDUCED) { el.style.transition = 'none'; el.style.opacity = '0'; el.style.transform = 'none'; el.style.filter = 'none'; return; }
   const o = assetCfg[a.id].out;
-  const bl = IS_TOUCH ? 0 : o.blur;
+  const bl = (IS_TOUCH || a.group === 'overlay') ? 0 : o.blur;   // see showAsset
+  clearTimeout(el._blT);
   const tr = `${o.dur}ms ${A_EASE[o.ease] || 'ease'} ${o.delay}ms`;
   el.style.transition = `opacity ${tr}, transform ${tr}${bl ? `, filter ${tr}` : ''}`;
   el.style.opacity = '0'; el.style.transform = `translateY(${o.y}px)`; el.style.filter = bl ? `blur(${bl}px)` : 'none';
@@ -2568,6 +2516,7 @@ function applyResize(full) {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   if ((isPortrait() && !editMode) !== _derivedPortrait) rebuildDerived();   // rotate → swap desktop/portrait poses
+  layoutName();                                     // the name's glyphs follow the h1's new size and the Opening's new fov
   if (isCompact() !== _panelsCompact) { _panelsCompact = isCompact(); if (panelsBuilt) rebuildPanels(); }   // crossed the compact line: real textures or stand-ins
   if (full) {
     // pixel ratio BEFORE setSize — the ratio only reaches the drawing buffer on
@@ -2786,13 +2735,6 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
     ['glowbright', () => FX.glowBright, (v) => { FX.glowBright = v; }, f2],
     ['glowflick', () => FX.glowFlick, (v) => { FX.glowFlick = v; }, f2],
     ['cursordrive', () => FX.cursorDrive, (v) => { FX.cursorDrive = v; }, f2],
-    ['openfit', () => FX.openFit, (v) => { FX.openFit = v; }, f2],
-    ['opensize', () => FX.openSize, (v) => { FX.openSize = v; }, f2],
-    ['openglow', () => FX.openGlow, (v) => { FX.openGlow = v; }, f2],
-    ['openform', () => FX.openForm, (v) => { FX.openForm = v; }, f2],
-    ['openshatterr', () => FX.openShatterR, (v) => { FX.openShatterR = v; }, f2],
-    ['openpush', () => FX.openPush, (v) => { FX.openPush = v; }, f2],
-    ['openspring', () => FX.openSpring, (v) => { FX.openSpring = v; }, f3],
   ];
   for (const [id, get, set, fmt] of globalRows) {
     const inp = document.querySelector('#fx-' + id), out = document.querySelector('#fx-' + id + '-v');
@@ -2802,8 +2744,6 @@ if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom
     inp.addEventListener('input', () => { const v = parseFloat(inp.value); set(v); if (out) out.textContent = fmt(v); });
   }
 
-  const _ocol = document.querySelector('#fx-opencolor');
-  if (_ocol) { _ocol.value = FX.openColor; _ocol.addEventListener('input', () => { FX.openColor = _ocol.value; }); }
   const chk = (id, key, fn) => { const el = document.querySelector('#fx-' + id); if (!el) return; el.checked = !!FX[key]; el.addEventListener('change', () => { FX[key] = el.checked; fn(el.checked); }); };
   chk('twinkle', 'twinkleOn', (v) => { livingVoid.smat.uniforms.uTwinkle.value = (v && !PREFERS_REDUCED) ? 1 : 0; if (network) network.pmat.uniforms.uTwinkle.value = (v && !PREFERS_REDUCED) ? 1 : 0; });
   chk('drift', 'driftOn', () => {});
@@ -3014,7 +2954,7 @@ function tickLab() {
 }
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.05); // seconds since last frame (clamped for tab-switches)
-  tickLab(); tickExhibits(); tickAnimPanels(performance.now());
+  tickLab(); tickExhibits(); tickAnimPanels(performance.now()); paintWorkflow(performance.now());
   elapsed += dt;
   const t = elapsed;
   perfGovern(dt);
@@ -3035,10 +2975,13 @@ function animate() {
     const i1 = clamp(i0 + 1, 0, lastIdx());
     const f = seg - i0;
     pathPoint(progress, cp);           // straight or curved per `smooth`
-    const par = (IS_TOUCH || PREFERS_REDUCED) ? 0 : 3;   // desktop-only parallax: on touch the last swipe's point stuck as an offset
+    // desktop-only parallax: on touch the last swipe's point stuck as an offset. At the Opening a fifth
+    // of it: the name is in the scene, the role line under it is DOM, and 3 units moved them 70 px apart.
+    const par = (IS_TOUCH || PREFERS_REDUCED) ? 0 : 3 * (0.2 + 0.8 * clamp(progress * last, 0, 1));
     const mx = mouse.x * par, my = mouse.y * par;
     camera.position.set(cp.x + mx, cp.y - my, cp.z);
     camera.quaternion.copy(beatQuats[i0]).slerp(beatQuats[i1], f);
+    if (_introK > 0.0005) camera.position.addScaledVector(_introFwd.set(0, 0, -1).applyQuaternion(camera.quaternion), -INTRO_PUSH * _introK);
     // ---- Idle breath — the void is never perfectly still --------------------
     //  A sub-degree sway that exists only while parked. During a flight it would
     //  fight the composed easing, so it fades out with the tween and eases back
@@ -3058,7 +3001,7 @@ function animate() {
     // fov jump wherever a portrait-posed beat met a plain one.
     const fovOf = (b) => (usesPortrait(b) ? b.portrait.fov : fitFov(b?.fov ?? DEF_FOV));
     const fa = fovOf(beats[i0]), fb = fovOf(beats[i1]);
-    const nf = fa + (fb - fa) * f + FX.fovPunch * activePunch;
+    const nf = fa + (fb - fa) * f + FX.fovPunch * activePunch + INTRO_FOV * _introK;
     if (Math.abs(camera.fov - nf) > 0.01) { camera.fov = nf; camera.updateProjectionMatrix(); }
   }
 
@@ -3076,7 +3019,6 @@ function animate() {
     const hsc = heroOn ? Math.max(-0.5, Math.min(0.5, progress * Math.max(1, lastIdx()) - index)) : 0;
     heroCluster.update(heroOn, t, beats[index], hsc);
   }
-  try { openingFX.update(!editMode && index === 0 && progress < 0.06, t); } catch (e) { if (!animate._oerr) { console.error('[opening]', e); animate._oerr = 1; } }
   {                                          // per-chapter color world
     const [bi, bd] = nearestBeat(bCam);
     const s = clamp(1 - Math.sqrt(bd) / curFX.colorReach, 0, 1) * curFX.colorIntensity;   // 1 at a section, 0 far between
@@ -3181,14 +3123,21 @@ function animate() {
     hudEl.classList.toggle('at-start', !editMode && index === 0 && loaderDone);
   }
   try {                                                             // never let asset reveals break the render loop
-    const showOpening = !editMode && progress < 0.04;  // the Opening text lives at the very start
+    // the Opening's role line and CTA live at the very start, and leave the moment a flight does
+    // (`index` jumps to the destination): at progress .04 alone they hung on 40 % into the hop,
+    // well after the name in the void had parted around the camera (2026-10-14)
+    const showOpening = !editMode && index === 0 && progress < 0.04;
     for (const a of ASSET_DEFS) if (a.group === 'overlay') (showOpening ? showAsset : hideAsset)(a);
+    if (overlay && overlay.inert === showOpening) overlay.inert = !showOpening;   // the CTA can't be clicked or tabbed to once it has faded
     updateAssetDOF(!editMode && !!tween);              // text defocuses while flying
     if (asEl && !asEl.hidden && index !== _asFrame) loadAssetFields();   // panel follows the frame you fly to
   } catch (e) { if (!animate._aerr) { console.error('[assets]', e); animate._aerr = 1; } }
 
+  // the name in the void: arrival, drift, and the parting as the camera flies through it to Hi
+  const nameP = name3d ? name3d.update(performance.now() / 1000, camera.position, !editMode && progress * Math.max(1, lastIdx()) < 1.25) : 1;
   if (bokeh && bokeh.uniforms && bokeh.uniforms.focus) {   // lock focus onto the NEAREST section
     if (editMode) _focusV.copy(controls.target);
+    else if (nameP < 0.35 && name3d.shown() && nearestBeat(bCam)[0] === 0) _focusV.copy(name3d.centre);   // the Opening racks onto the name
     else {
       // nearest by CAMERA pose, not look point: project looks sit 100 units out,
       // so at TEEPO the nearest look was Sabai's and focus landed on Sabai's panel
@@ -3245,6 +3194,9 @@ function animate() {
   if (bloom) {
     const nb = beats[index];   // any stop showing a photo/screenshot panel (Hi, About, projects), not just projects
     bloom.threshold = !editMode && ((nb && (nb.panel || (nb.panels && nb.panels.length))) || _panelLit > 0.01) ? 1.0 : 0.22;
+    // the name in the void: at .22 bloom laid a white halo over the letters (.9) and they read soft;
+    // lifted to .94 only the sheen band and the cyan stop glow, while the node cores (> 1) still do
+    if (name3d?.group.visible) bloom.threshold = Math.max(bloom.threshold, 0.22 + 0.72 * (1 - nameP));
     bloom.strength = curFX.bloomStrength + voidWarp * 0.5;   // gentler transition flare (restraint pass)
   }
   if (bokeh) bokeh.enabled = !(editMode);   // DOF only in play; bloom stays on in all modes
@@ -3348,122 +3300,60 @@ try {
 } catch (e) { console.warn('[hash] ignored', e); }
 bar = initBar({ profile: PROFILE, onWork: () => goTo(WORK_INDEX), onAbout: () => goTo(ABOUT_INDEX), root: document.querySelector('#bar') });
 
-// ---- Intro loader: the void wires itself up, then warps into the flight -----
-//  Built from the scene's own vocabulary — nodes, links, one mono voice — so it
-//  reads as the first beat instead of a spinner bolted onto the front. The
-//  constellation assembles as progress climbs, the wordmark decodes slot by
-//  slot just ahead of the meter, and on exit the whole lattice stretches past
-//  the viewer (lab departure curve: leave with gravity) into the opening shot.
+// ---- Intro loader: Aperture (2026-10-14, Yarin: "use your motion graphic skills") ----------
+//  A black sheet with an iris cut into it, the live void already rendering behind. The iris
+//  opens from a single cyan point as the load climbs, a hairline ring traces its edge with the
+//  counter riding the ring's head, and on arrival it snaps wide while the camera pushes
+//  through (INTRO_PUSH above) and the Opening's type rises. The Contact door, at the other
+//  end of the tour, opens the same way: the site starts and ends with an aperture.
 (() => {
   const ld = document.querySelector('#loader');
-  if (!ld) { loaderDone = true; showPhoneNote(); return; }
-  const pctEl = document.querySelector('#ld-pct'), labEl = document.querySelector('#ld-label');
-  const markEl = document.querySelector('#ld-mark'), ticksEl = document.querySelector('#ld-ticks');
-  const cv = document.querySelector('#ld-canvas'), overlay = document.querySelector('#overlay');
+  if (!ld) { _introK = 0; loaderDone = true; showPhoneNote(); opening.reveal(); return; }
+  const pctEl = document.querySelector('#ld-pct'), numEl = document.querySelector('#ld-num');
+  const ring = document.querySelector('#ld-ring'), track = document.querySelector('#ld-track'), arc = document.querySelector('#ld-arc');
   const RM = PREFERS_REDUCED;
-  // The Higgsfield void loop's poster under the constellation, as a still (2026-09-29).
-  // The clip itself (public/assets/loader/void-loop.mp4, 1.8 MB) is no longer fetched:
-  // the loop fades out at 62 % of the loader, so it was on screen for ~190 ms on a warm
-  // localhost and rarely even reached `canplay` over a real network (code review).
-  // Reduced motion drops the element, as before.
-  const loop = document.querySelector('#ld-loop');
-  if (loop) { if (RM) loop.remove(); else loop.classList.add('on'); }
-
-  // the wordmark: one <i> per slot, scrambling until progress reaches it
-  const WORD = PROFILE.name.toUpperCase(), SCRAM = '#*+=-<>/|01[]{}';
-  const cells = [...WORD].map((ch) => {
-    const el = document.createElement('i');
-    if (ch !== ' ' && !RM) el.className = 'pend';
-    el.textContent = ch === ' ' ? ' ' : (RM ? ch : SCRAM[(Math.random() * SCRAM.length) | 0]);
-    if (markEl) markEl.appendChild(el);
-    return { ch, el, fixed: ch === ' ' };
-  });
-  const ticks = [];
-  if (ticksEl) for (let i = 0; i < 34; i++) { const b = document.createElement('b'); ticksEl.appendChild(b); ticks.push(b); }
-  // the status line names what is actually being built, not a fake percentage story
-  const STEPS = [[0, 'initialising'], [0.16, 'seeding the starfield'], [0.38, 'wiring the network'],
-    [0.6, 'warming the nebula'], [0.8, 'composing the shots'], [0.95, 'entering the void']];
-
-  // ---- the constellation ----------------------------------------------------
-  const ctx = cv && cv.getContext ? cv.getContext('2d') : null;
-  const NODES = IS_TOUCH ? 40 : 66, LINK = 0.185;      // normalised link radius
-  const nodes = [];
-  for (let i = 0; i < NODES; i++) nodes.push({
-    x: Math.random(), y: Math.random(), a: Math.random() * 6.283,
-    s: 0.14 + Math.random() * 0.5, r: 0.6 + Math.random() * 1.7,
-  });
-  let W = 0, H = 0;
-  function fit() {
-    if (!cv || !ctx) return;
-    const d = Math.min(2, window.devicePixelRatio || 1);
-    W = cv.clientWidth; H = cv.clientHeight;
-    cv.width = Math.max(1, Math.round(W * d)); cv.height = Math.max(1, Math.round(H * d));
-    ctx.setTransform(d, 0, 0, d, 0, 0);
-  }
-  fit(); window.addEventListener('resize', fit);
-
-  const _x = [], _y = [], _a = [];
-  function draw(p, warp, t) {
-    if (!ctx || !W) return;
-    ctx.clearRect(0, 0, W, H);
-    const reach = p * 1.15 * NODES;
-    const shown = Math.max(0, Math.min(NODES, Math.ceil(reach)));
-    const cx = W / 2, cy = H / 2, sw = 1 + warp * 2.4;     // exit: push the lattice past the viewer
-    _x.length = _y.length = _a.length = 0;
-    for (let i = 0; i < shown; i++) {
-      const n = nodes[i];
-      const dx = RM ? 0 : Math.sin(t * n.s + n.a) * 0.013, dy = RM ? 0 : Math.cos(t * n.s * 0.83 + n.a) * 0.013;
-      _x.push(cx + ((n.x - 0.5) + dx) * W * sw);
-      _y.push(cy + ((n.y - 0.5) + dy) * H * sw);
-      _a.push(clamp((reach - i) * 1.6, 0, 1));             // each node fades in as it is reached
-    }
-    ctx.lineWidth = 1;                                      // links first; nodes sit on top
-    for (let i = 0; i < shown; i++) for (let j = i + 1; j < shown; j++) {
-      const dx = (_x[i] - _x[j]) / W, dy = (_y[i] - _y[j]) / H;
-      const d = Math.sqrt(dx * dx + dy * dy);
-      if (d > LINK) continue;
-      const a = (1 - d / LINK) * 0.32 * _a[i] * _a[j] * (1 + warp * 1.8);
-      ctx.strokeStyle = 'rgba(79,210,255,' + a.toFixed(3) + ')';
-      ctx.beginPath(); ctx.moveTo(_x[i], _y[i]); ctx.lineTo(_x[j], _y[j]); ctx.stroke();
-    }
-    for (let i = 0; i < shown; i++) {
-      const tw = RM ? 0.8 : 0.55 + 0.45 * Math.sin(t * 1.7 + nodes[i].a);
-      ctx.fillStyle = 'rgba(190,232,255,' + (_a[i] * tw * 0.9).toFixed(3) + ')';
-      ctx.beginPath(); ctx.arc(_x[i], _y[i], nodes[i].r * (1 + warp), 0, 6.2832); ctx.fill();
-    }
-  }
-
-  const dur = 1300; let t0 = null, scramT = 0, matched = false;   // v16: 2.0s → 1.3s minimum; still gated on firstFrameDone
   const ease = (x) => 1 - Math.pow(1 - x, 3);
+  const snap = (x) => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;   // the snap: a held breath, then all at once
+  let W = innerWidth, H = innerHeight;
+  const size = () => { W = innerWidth; H = innerHeight; if (ring) ring.setAttribute('viewBox', `0 0 ${W} ${H}`); };
+  size(); window.addEventListener('resize', size);
+  const rLoad = () => Math.max(46, Math.min(W, H) * 0.17);     // the iris at 100 %: a lens, not yet a window
+  function paint(r, p, ringA) {
+    const cx = W / 2, cy = H / 2, rr0 = r + 2.5;              // the ring sits just outside the hole, or the mask eats half its stroke
+    ld.style.setProperty('--r', `${r.toFixed(1)}px`);
+    if (track) { track.setAttribute('cx', cx); track.setAttribute('cy', cy); track.setAttribute('r', rr0); }
+    if (arc) {
+      arc.setAttribute('cx', cx); arc.setAttribute('cy', cy); arc.setAttribute('r', rr0);
+      arc.setAttribute('transform', `rotate(-90 ${cx} ${cy})`); arc.style.strokeDasharray = `${(p * 100).toFixed(2)} 100`;
+    }
+    if (ring) ring.style.opacity = ringA;
+    if (numEl) {                                              // the counter rides the arc's head, just outside the ring
+      const th = -Math.PI / 2 + p * Math.PI * 2, rr = r + 24;
+      numEl.style.transform = `translate(${(cx + Math.cos(th) * rr).toFixed(1)}px, ${(cy + Math.sin(th) * rr).toFixed(1)}px) translate(-50%, -50%)`;
+    }
+  }
+  const dur = 1300; let t0 = null;
   function step(ts) {
     if (t0 === null) t0 = ts;
-    // hold at 99 until the scene has actually rendered a frame — the reveal
-    // must never cross-fade into a black canvas on a slow device
+    // hold at 99 until the scene has rendered a frame: the iris must never open onto a black canvas
     const raw = clamp((ts - t0) / dur, 0, 1);
-    const p = ease(Math.min(raw, (firstFrameDone && openingFX.formed()) ? 1 : 0.99));   // the scene has rendered AND the particle name has formed
+    const p = ease(Math.min(raw, firstFrameDone ? 1 : 0.99));
     if (pctEl) pctEl.textContent = Math.round(p * 100);
-    for (let i = 0; i < ticks.length; i++) ticks[i].classList.toggle('on', i / ticks.length < p);
-    if (labEl) { let s = STEPS[0][1]; for (const [at, txt] of STEPS) if (p >= at) s = txt; if (labEl.textContent !== s) labEl.textContent = s; }
-    if (loop && p >= 0.62 && loop.classList.contains('on')) loop.classList.remove('on');   // the loop dissolves into the constellation before the warp, so the hand-off is loop → lattice → void, not a cut
-    const reach = p * 1.12 * cells.length;                  // decode runs slightly ahead of the meter
-    if (!matched && p >= 0.92 && markEl) { matched = true; openingFX.matchTo(markEl.getBoundingClientRect()); }   // decoded by now: hand the wordmark's rect to the particle name
-    const cyc = ts - scramT > 55; if (cyc) scramT = ts;
-    if (!RM) for (let i = 0; i < cells.length; i++) {
-      const c = cells[i]; if (c.fixed) continue;
-      if (reach > i + 1) { if (c.el.textContent !== c.ch) { c.el.textContent = c.ch; c.el.classList.remove('pend'); } }
-      else if (cyc) c.el.textContent = SCRAM[(Math.random() * SCRAM.length) | 0];
-    }
-    draw(p, 0, ts / 1000);
-    if (raw < 1 || !firstFrameDone || !openingFX.formed()) { requestAnimationFrame(step); return; }
-    // ---- exit: the lattice warps past the viewer, the panel falls away -------
+    paint(RM ? 0 : 1.5 + (rLoad() - 1.5) * p, p, 1);
+    if (raw < 1 || !firstFrameDone) { requestAnimationFrame(step); return; }
+    // ---- exit: the iris snaps open, the camera pushes through, the name rises -----------
     ld.classList.add('done'); loaderDone = true; showPhoneNote();
-    if (overlay) overlay.classList.add('revealed');
-    const doneAt = ts;
+    if (RM) { opening.reveal(); setTimeout(() => { ld.style.display = 'none'; window.removeEventListener('resize', size); }, 450); return; }
+    const doneAt = ts, OPEN = 760, PUSH = 1500;
+    let revealed = false;
     (function out(ts2) {
-      const k = clamp((ts2 - doneAt) / 600, 0, 1);
-      draw(1, RM ? 0 : k * k, ts2 / 1000);
-      if (k < 1) requestAnimationFrame(out);
-      else { ld.style.display = 'none'; window.removeEventListener('resize', fit); try { loop?.pause(); } catch {} }   // never keep decoding behind the scene
+      const k = clamp((ts2 - doneAt) / OPEN, 0, 1), r0 = rLoad(), rEnd = Math.hypot(W, H) / 2 + 40;
+      paint(r0 + (rEnd - r0) * snap(k), 1, 1 - clamp(k * 1.6, 0, 1));
+      _introK = 1 - ease(clamp((ts2 - doneAt) / PUSH, 0, 1));
+      if (!revealed && k >= 0.42) { revealed = true; opening.reveal(); }   // the type starts as the iris clears the frame
+      if (_introK > 0) requestAnimationFrame(out);
+      else { _introK = 0; window.removeEventListener('resize', size); }
+      if (k >= 1 && ld.style.display !== 'none') ld.style.display = 'none';
     })(ts);
   }
   requestAnimationFrame(step);

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { esc, sentences, renderHi, renderAbout, renderTimeline, renderBuild, renderProject, renderContact, renderBuildLog, telHref } from '../src/render.js';
+import { esc, sentences, renderHi, renderAbout, renderTimeline, renderBuild, renderProject, renderContact, renderWorkflow, telHref } from '../src/render.js';
 import { PROFILE } from '../src/content/profile.js';
 
 test('esc escapes html', () => {
@@ -191,22 +191,16 @@ test('contact card ends on the owner\'s mark and the build stamp', () => {
   assert.ok(renderContact({ ...PROFILE, name: '<b>' }, built).includes('© 2026 &lt;b&gt; ·'), 'the name is escaped');
 });
 
-test('the build log renders a heatmap cell per day, the counts and the latest commits', () => {
-  const log = { first: '2026-06-21', today: '2026-06-24', commits: 5, activeDays: 2, streak: 1, tests: 9,
-    days: [3, 0, 0, 2], recent: [{ h: 'abc1234', d: '2026-06-24', s: 'fix <b>' }] };
-  const h = renderBuildLog(log);
-  const grid = h.slice(h.indexOf('blog-grid'), h.indexOf('blog-side'));
-  assert.equal((grid.match(/data-l="[0-4]"/g) || []).length, 4, 'one cell per day');
-  assert.equal((grid.match(/data-l="x"/g) || []).length, 0, '2026-06-21 is a Sunday: no padding');
-  assert.ok(grid.includes('data-l="2"') && grid.includes('data-l="1"'), '3 commits → level 2, 2 → level 1');
-  assert.ok(h.includes('9 tests passing'));
-  assert.ok(h.includes('fix &lt;b&gt;'), 'commit subjects are escaped');
-  assert.equal(renderBuildLog(null), '', 'no log, no strip');
-  const year = { ...log, days: Array(365).fill(1) };   // a year in (53 week columns): whole leading weeks drop until 26 remain
-  assert.equal((renderBuildLog(year).match(/<i data-l=/g) || []).length, 365 - (53 - 26) * 7);
-  assert.ok(renderBuildLog(year).includes('aria-label="5 commits on 2 days since'), 'the totals stay all-time');
-  assert.ok(renderBuild(PROFILE, log).includes('class="blog"'), 'How I Build carries the strip');
-  assert.ok(!renderBuild(PROFILE).includes('class="blog"'));
+test('How I Build carries the workflow animation, with the real numbers for it and for screen readers', () => {
+  const log = { first: '2026-06-21', today: '2026-06-24', commits: 5, activeDays: 2, streak: 1, tests: 9, days: [3, 0, 0, 2], recent: [] };
+  const h = renderWorkflow(log);
+  assert.ok(h.includes('data-tests="9"') && h.includes('data-commits="5"') && h.includes('data-days="2"'));
+  assert.ok(h.includes('role="img"') && h.includes('5 commits on 2 days, 9 tests passing'));
+  assert.ok(renderWorkflow(null).includes('data-tests="0"'), 'no log: the animation runs without the counts');
+  assert.ok(!renderWorkflow(null).includes('commits on'));
+  assert.ok(renderWorkflow({ tests: '<b>' }).includes('data-tests="0"'), 'only numbers reach the canvas');
+  assert.ok(renderBuild(PROFILE, log).includes('class="wf"'));
+  assert.ok(!renderBuild(PROFILE, log).includes('class="blog"'), 'the heatmap strip is gone');
 });
 
 test('contact: the finale lead-in types per character but reads whole to screen readers', () => {

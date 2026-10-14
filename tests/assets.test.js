@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
-// The loader shows the Higgsfield loop's poster as a still. The clip itself stopped being
-// fetched on 2026-09-29 and left the repo in the wrap-up pass (1.8 MB nobody downloaded).
-test('the loader keeps its poster, and the unused loop clip stays out of public/', () => {
-  const webp = statSync(new URL('../public/assets/loader/void-loop.webp', import.meta.url));
-  assert.ok(webp.size > 0 && webp.size < 80 * 1024, `void-loop.webp is ${webp.size} bytes`);
-  assert.ok(!existsSync(new URL('../public/assets/loader/void-loop.mp4', import.meta.url)));
+// The loader ships no media (2026-10-14): the Aperture iris shows the live void itself, so the
+// Higgsfield loop's poster left with the constellation (the clip itself left on 2026-09-29).
+test('the loader ships no media: neither the old loop clip nor its poster', () => {
+  for (const f of ['void-loop.webp', 'void-loop.mp4']) assert.ok(!existsSync(new URL(`../public/assets/loader/${f}`, import.meta.url)), f);
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const loader = html.slice(html.indexOf('<div id="loader">'), html.indexOf('<canvas id="scene"'));
+  assert.ok(!/<(img|video)|poster=/.test(loader), 'the loader is markup only');
 });
