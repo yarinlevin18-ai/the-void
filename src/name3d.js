@@ -33,7 +33,8 @@ export function createName3D({ THREE, scene, h1, reduced = false, anisotropy = 1
   const _o = new THREE.Vector3(), _ff = new THREE.Vector3(), _rt = new THREE.Vector3(), _up = new THREE.Vector3();
   const _q = new THREE.Quaternion(), _qr = new THREE.Quaternion(), _e = new THREE.Euler();
   const frame = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
-  let ready = false, revealT = -1, fontPx = 0, cx = 0, cy = 0, span = 1;
+  let ready = false, revealT = -1, fontPx = 0, cx = 0, cy = 0, span = 1, lastS = 0;
+  const dprNow = () => (typeof dpr === 'function' ? dpr() : dpr);   // a getter follows the window to another monitor
 
   // every visible character of the hidden h1 (the words and the cyan full stop), in reading order
   for (const el of h1.querySelectorAll('.op-w, .op-dot')) {
@@ -57,9 +58,13 @@ export function createName3D({ THREE, scene, h1, reduced = false, anisotropy = 1
 
   // one glyph on its own canvas: the DOM's content box plus a margin (the display face's
   // negative tracking lets ink run past the advance), the h1's cool top-to-bottom gradient
+  const scaleNow = () => Math.min(3, Math.max(1.5, dprNow() * 1.6));
   function paint(g, rect, px) {
-    const S = Math.min(3, Math.max(1.5, dpr * 1.6)), pad = px * 0.22;
+    const S = scaleNow(), pad = px * 0.22;
     const W = Math.ceil((rect.width + pad * 2) * S), H = Math.ceil((rect.height + pad * 2) * S);
+    // three r169 allocates a texture's GPU storage once: a canvas that changes size must drop the
+    // old texture, or the upload goes to the old size and the glyph garbles after a resize
+    if ((g.cv.width !== W || g.cv.height !== H) && g.pad) g.tex.dispose();
     g.cv.width = W; g.cv.height = H;
     const ctx = g.cv.getContext('2d');
     ctx.clearRect(0, 0, W, H);
@@ -85,7 +90,7 @@ export function createName3D({ THREE, scene, h1, reduced = false, anisotropy = 1
     frame.pos.copy(pos); frame.quat.copy(quat);
     const wpp = (2 * NAME_D * Math.tan((fov * Math.PI) / 360)) / viewH;   // world units per CSS pixel on the plane
     const px = parseFloat(getComputedStyle(h1).fontSize) || 100;
-    const repaint = Math.abs(px - fontPx) > 0.5; fontPx = px;
+    const S = scaleNow(), repaint = Math.abs(px - fontPx) > 0.5 || S !== lastS; fontPx = px; lastS = S;
     const W = window.innerWidth, Hh = window.innerHeight;
     let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
     const r = document.createRange();
@@ -137,13 +142,24 @@ export function createName3D({ THREE, scene, h1, reduced = false, anisotropy = 1
     return p;
   }
 
-  const fontReady = document.fonts?.load ? document.fonts.load('800 100px Bricolage') : Promise.resolve();
+  // ready only once the display face has really loaded: in a fallback face the glyphs would not
+  // match the type the page was designed in, so the DOM name stays instead
+  const FACE = '800 100px Bricolage';
+  const fontReady = document.fonts?.load ? document.fonts.load(FACE).then(() => document.fonts.check(FACE)) : Promise.resolve(false);
   return {
     group, centre,
     get ready() { return ready; },
     get count() { return glyphs.length; },
-    whenReady: fontReady.catch(() => {}).then(() => { ready = glyphs.length > 0; return ready; }),
+    whenReady: fontReady.catch(() => false).then((ok) => { ready = !!ok && glyphs.length > 0; return ready; }),
     layout, update,
+    // behind the loader: compile the glyph material and upload every glyph, so neither lands
+    // on the frame the iris snaps open
+    prime(renderer, camera) {
+      if (!ready) return;
+      const was = group.visible; group.visible = true;
+      try { renderer.compile(group, camera, scene); for (const g of glyphs) if (g.pad) renderer.initTexture(g.tex); } catch (e) { /* a warm-up only */ }
+      group.visible = was;
+    },
     reveal(t) { if (revealT < 0) revealT = t; },
     shown() { return revealT >= 0; },
   };

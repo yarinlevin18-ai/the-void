@@ -76,7 +76,7 @@ function mix(a, b, k) { k = smooth(k); return [a[0] + (b[0] - a[0]) * k, a[1] + 
 // The robot, in scene units: it trails the pointer, except from 9.7 to 15.6 s, when it flies
 // to the browser's address field, types the search, flies to the result, draws and steps aside.
 export function robotAt(t, H = 800 * 17.6 / 28) {
-  const [lx, ly] = pointerAt(Math.max(0, t - 0.07)), trail = [lx * 800 + 34.2, ly * H + 38];   // a stiff spring
+  const [lx, ly] = pointerAt((((t - 0.07) % LOOP) + LOOP) % LOOP), trail = [lx * 800 + 34.2, ly * H + 38];   // a stiff spring
   const on = (p) => [p[0] + 8, p[1] + 8];
   if (t < 9.7 || t >= 15.6) return trail;
   if (t < 10.1) return mix(trail, on(barTip(0)), (t - 9.7) / 0.4);

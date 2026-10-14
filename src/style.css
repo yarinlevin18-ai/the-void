@@ -94,37 +94,9 @@ html, button, a { touch-action: manipulation; }
    the scene and this h1 only lays them out — still in the page for its size, its phone tiers and
    its sr-only twin, but invisible and still (a rise here would move the boxes being measured). */
 #overlay.gl-name .op-line { visibility: hidden; clip-path: none; }
+#overlay.away .op-line { opacity: 0; transition: opacity .35s ease; }   /* the DOM name, when it shows at all, leaves the Opening with the rest */
 #overlay.gl-name .op-w { transform: none; transition: none; animation: none; filter: none; }
 
-/* Hero project screens — liquid-glass pane laid over each screen (ported 1:1 from demo-hero-screens.html) */
-.hero-screen { position: relative; will-change: transform; }
-.hero-screen .dim { position: absolute; inset: 0; border-radius: 22px; background: #05080f; pointer-events: none; z-index: 1; opacity: 0; }
-.hero-screen .frame { position: relative; border-radius: 22px; box-shadow: 0 46px 100px -34px rgba(0,0,0,.85), 0 0 60px -12px rgba(90,180,255,.30); transition: box-shadow .8s ease; }
-.hero-screen .inner { border-radius: 22px; overflow: hidden; position: relative; z-index: 1; }
-.hero-screen .inner img { display: block; width: 100%; height: auto; }
-.hero-screen .inner iframe { display: block; border: 0; background: #0d0d0d; }
-.hero-screen .glass {
-  position: absolute; inset: 0; border-radius: 22px; pointer-events: none; z-index: 2; overflow: hidden;
-  box-shadow:
-    inset 0 1.5px 0 rgba(255,255,255,.65),
-    inset 0 0 0 1px rgba(190,228,255,.45),
-    inset 0 -26px 50px -16px rgba(8,16,34,.55),
-    inset 0 30px 60px -30px rgba(180,220,255,.30);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.16) 0%, rgba(255,255,255,0) 20%),
-    radial-gradient(130% 70% at 50% -15%, rgba(210,235,255,.20), transparent 55%),
-    radial-gradient(140% 120% at 115% 120%, rgba(120,90,180,.16), transparent 55%);
-}
-.hero-screen .glass::before {
-  content: ""; position: absolute; top: -20%; bottom: -20%; left: -40%; width: 36%;
-  background: linear-gradient(105deg, transparent, rgba(255,255,255,.38), transparent);
-  filter: blur(2px); transform: skewX(-12deg); mix-blend-mode: screen; animation: heroSweep 6.5s ease-in-out infinite;
-}
-@keyframes heroSweep { 0% { left: -45%; } 55%, 100% { left: 115%; } }
-.hero-screen .cap { margin-top: .85rem; text-align: center; font-family: var(--f); font-size: .62rem; letter-spacing: .28em; text-transform: uppercase; color: #67849b; transition: color .8s ease; }   /* was #4d6a82 ≈ 3.3:1 on the void — now ≥4.5:1 */
-.hero-screen.wet .frame { box-shadow: 0 64px 120px -36px rgba(0,0,0,.9), 0 0 100px -10px rgba(100,190,255,.55); }
-.hero-screen.wet .glass::before { animation-duration: 3.4s; }
-.hero-screen.wet .cap { color: #cfeaff; }
 #overlay.revealed .op-w { transform: none; }
 #overlay.revealed .sub, #overlay.revealed .op-act > * { opacity: 1; transform: none; }
 #overlay .sub {
@@ -387,7 +359,7 @@ html, button, a { touch-action: manipulation; }
     shows the live void rendering behind. A hairline ring traces the iris, its arc is the
     progress and the counter rides the arc's head; on arrival the iris snaps wide.          */
 #loader {
-  position: fixed; inset: 0; z-index: 50; pointer-events: none; --r: 0px;
+  position: fixed; inset: 0; z-index: 50; --r: 0px;   /* blocks the page while it loads; lets go once .done */
   background: #020609;
   -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent var(--r), #000 calc(var(--r) + 1px));
   mask-image: radial-gradient(circle at 50% 50%, transparent var(--r), #000 calc(var(--r) + 1px));
@@ -401,6 +373,7 @@ html, button, a { touch-action: manipulation; }
   font-variant-numeric: tabular-nums; letter-spacing: .06em; white-space: nowrap;
 }
 #loader .ld-unit { color: #4fd2ff; margin-left: .1em; }
+#loader.done { pointer-events: none; }
 #loader.done .ld-num { opacity: 0; transition: opacity .2s ease; }
 
 /* beat list rows */
@@ -435,10 +408,6 @@ html, button, a { touch-action: manipulation; }
   #hud .hud-arrows { bottom: calc(.9rem + env(safe-area-inset-bottom, 0px)); }
 }
 
-@media (pointer: coarse) {
-  /* the infinite blurred sweep repaints a large layer every frame on mobile GPUs */
-  .hero-screen .glass::before { animation: none; }
-}
 
 /* ==== PRINT — the downloadable CV ============================================
    window.print() (the CV stop's "Download PDF") hides the site and prints
@@ -973,6 +942,8 @@ span.pill { cursor: default; }   /* "Private build", "Personal app", "Private re
 }
 @media (min-width: 900px) and (max-width: 1179px) and (min-height: 521px) and (max-height: 600px) {
   .stop-project .project .stack { display: none; }   /* 900 × 560: the Also row sat 12-23 px on the chevrons */
+  .project .also-line { display: none; }               /* and Agent Control's AeroCy links still did (2026-10-14 audit): name + links share a row, as on phones */
+  .project .also { align-items: baseline; }
 }
 
 /* 10 Contact — the door hands over a card. `.open` is set by main.js once the
@@ -1080,6 +1051,15 @@ span.pill { cursor: default; }   /* "Private build", "Personal app", "Private re
   .stop-build .proof { grid-template-columns: 1fr; gap: .15rem; }
   .stop-build .proof-item { display: flex; align-items: baseline; gap: .6rem; }
   .stop-build .proof-item .num { display: inline; font-size: 1.3rem; min-width: 1.5em; }
+}
+/* Laptop heights from 1180 px wide (2026-10-14 audit): at 1366 × 768 the Gateway, the one stop with
+   an exhibit box, ran its links 1 px off the bottom edge and held the first wheel (78 px). Its PROBLEM
+   / DECISION run in there, as on short windows; narrower than 1180 they are hidden instead (above). */
+@media (min-width: 1180px) and (min-height: 641px) and (max-height: 820px) {
+  .stop-project .project.has-exhibit dl { display: block; }
+  .stop-project .project.has-exhibit dl > div { display: block; text-wrap: balance; margin-bottom: .45rem; }
+  .stop-project .project.has-exhibit dt { display: inline; margin-right: .5em; }
+  .stop-project .project.has-exhibit dd { display: inline; }
 }
 /* How I Build's workflow as the full stage, beside the method (2026-10-14): on a laptop the
    column the heatmap strip filled is wide enough for the 1.85:1 motion graphic, and the strip's

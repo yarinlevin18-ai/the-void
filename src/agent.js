@@ -113,8 +113,9 @@ function drawTop(ctx, W, s, t) {
 }
 
 function drawKpis(ctx, W, s, t) {
-  const handled = 128 + (t >= RUNS[0].at + 4.0 && t < FADE + 0.6 ? 1 : 0) + (t >= APPROVE_AT && t < FADE + 0.6 ? 1 : 0);
-  const blocked = 4 + (t >= RUNS[2].at + 4.0 && t < FADE + 0.6 ? 1 : 0);
+  // the counts reset at the bottom of the dip (FADE + 0.3), while the numbers are out of sight
+  const handled = 128 + (t >= RUNS[0].at + 4.0 && t < FADE + 0.3 ? 1 : 0) + (t >= APPROVE_AT && t < FADE + 0.3 ? 1 : 0);
+  const blocked = 4 + (t >= RUNS[2].at + 4.0 && t < FADE + 0.3 ? 1 : 0);
   const fade = t >= FADE ? Math.abs(1 - clamp01((t - FADE) / 0.6) * 2) : 1;   // the numbers dip out and back as the loop resets
   const tiles = [
     ['Handled automatically today', String(handled), C.mint, [RUNS[0].at + 4.0, APPROVE_AT]],
@@ -314,7 +315,7 @@ function drawAudit(ctx, W, s, t) {
   rows.forEach((row) => {
     const age = t - row.at, k = row.at < 0 ? 1 : outCubic(age / 0.4);
     const a = (row.at < 0 ? 1 : fade) * k;
-    y += (rh) * (row.at < 0 ? 1 : k) - rh;                 // a new row opens its slot as it stamps in
+    y += rh * (row.at < 0 ? 1 : k * fade) - rh;            // a new row opens its slot as it stamps in, and closes it as the loop resets
     ctx.save(); ctx.globalAlpha = a;
     if (row.at >= 0 && age < 1.2) { ctx.fillStyle = alpha(OUT[row.tag].col, 0.07 * (1 - age / 1.2)); ctx.fillRect(x0 + 6 * s, y, w - 12 * s, rh - 2 * s); }
     pill(ctx, x0 + 14 * s, y + rh / 2 - 7.5 * s, OUT[row.tag].tag, OUT[row.tag].col, s, 7.5);

@@ -16,11 +16,13 @@ const BUILT = {
   iso: now.toISOString().slice(0, 10),
 };
 
-// Build log (2026-09-29): the How I Build strip reads this repo's own git history,
-// baked in as __BUILDLOG__ (scripts/buildlog.js; snapshot + merge on shallow clones).
-// Read-only here — only `npm run build` refreshes the committed snapshot.
+// Build log (2026-09-29): How I Build's workflow graphic (src/workflow.js) carries this repo's own
+// git history — commits, days shipped, tests — read by scripts/buildlog.js (snapshot + merge on
+// shallow clones). Read-only here — only `npm run build` refreshes the committed snapshot.
+// Only the three numbers the page shows are baked in; the snapshot keeps the rest for merge().
 const ROOT = fileURLToPath(new URL('.', import.meta.url)).replace(/\/$/, '');
-const BUILDLOG = readBuildLog(ROOT);
+const LOG = readBuildLog(ROOT);
+const BUILDLOG = LOG && { tests: LOG.tests, commits: LOG.commits, activeDays: LOG.activeDays };
 
 // Owner's mark (2026-09-29): banners, humans.txt and the no-JS copyright line
 // (scripts/owner.js); the runtime dependencies are named in humans.txt.
@@ -39,7 +41,7 @@ export default defineConfig({
     noscriptPlugin(ROOT, PROFILE),        // the no-JS Work list, from profile.js in flight order
     ownerPlugin(PROFILE, BUILT, DEPS),    // the owner's name on every shipped file
   ],
-  // Bundled libraries (three.js, meshline) keep their MIT notices: the minifier strips the
+  // Bundled libraries (three.js) keep their MIT notices: the minifier strips the
   // comments that carried them, so the build lists every license in /licenses.txt.
   build: { license: { fileName: 'licenses.txt' } },
   preview: { headers: VERCEL_HEADERS },

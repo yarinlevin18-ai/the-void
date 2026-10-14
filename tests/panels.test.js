@@ -10,7 +10,7 @@ const BEATS = [
   { name: 'Opening' },
   { name: 'Hi', stop: 'hi' },
   { name: 'About', stop: 'about' },
-  { name: 'Timeline', stop: 'timeline', screens: true },
+  { name: 'Timeline', stop: 'timeline' },
   { name: 'How I Build', stop: 'build' },
   { name: 'TEEPO', stop: 'project', id: 'teepo', also: 'aerocy', side: 'left', groupLabel: 'Landing pages' },
   { name: 'Contact', stop: 'contact' },

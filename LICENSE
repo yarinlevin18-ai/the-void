@@ -9,5 +9,5 @@ Third-party components keep their own licenses:
 
 - three.js: MIT License, © 2010-2024 three.js authors. The full text ships
   with the site at /licenses.txt, generated at build time.
-- Bricolage Grotesque, Schibsted Grotesk and Doto: SIL Open Font License 1.1,
+- Bricolage Grotesque and Schibsted Grotesk: SIL Open Font License 1.1,
   in public/fonts/*-OFL.txt.

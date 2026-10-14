@@ -28,7 +28,6 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
-import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
 
 // The owner's mark in the console, for whoever opens DevTools (2026-09-29).
 console.log(`%c${PROFILE.name}%c · ${PROFILE.title} · ${PROFILE.links.site}`, 'font: 700 13px system-ui, sans-serif; color: #4fd2ff', 'color: #9fc2e0');
@@ -62,7 +61,7 @@ const FX = {
   bloomStrength: 0.85, nebula: 0.9, driftOn: true, // living-void background
   fovPunch: 0,                                 // transient FOV widening mid-transition (whoosh)
   twinkleOn: true, linesOn: true, nebVisible: true,                           // living-void toggles
-  uiHud: true, uiHint: true, uiScale: 1,      // UX panel state
+  uiHud: true, uiScale: 1,                    // UX panel state
   nebSpd: 0.6, nebWarp: 1.4, nebHue: 0.35, nebEmber: 0.06, nebVig: true, nebGlow: 0.35,   // nebula climate + inner glow (restraint: teal family, ember nearly out)
   vignette: 0.45, grain: 0.02,                                                 // final frame grade (three-lab post constants: offset .3 / darkness .6)
   pulse: 0.5, flare: 0.5, breath: 1.1, breathRoll: 0.4,                        // signs of life: link traffic, node flares, idle camera sway (halved 2026-09-29, minimal pass)
@@ -101,25 +100,12 @@ const UP_VERTICAL = [0, 0, -1]; // "look straight up" orientation
 const IS_TOUCH = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches) && navigator.maxTouchPoints > 0;
 const LOW_END = IS_TOUCH && ((navigator.deviceMemory || 8) <= 4 || Math.min(screen.width, screen.height) <= 480);
 let DPR_CAP = IS_TOUCH ? 1.25 : 1.5;   // phones pay per-pixel: fill rate is the budget (adaptive governor may lower it)
-if (IS_TOUCH) { const _h = document.querySelector('#overlay .hint'); if (_h) _h.textContent = 'swipe to fly'; }
 
 // ---- Renderer / scene / camera --------------------------------------------
 const canvas = document.querySelector('#scene');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: false }); // composer renders the scene to its own targets — MSAA on the canvas is wasted
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, DPR_CAP)); // cap retina: fewer fragments, big fill-rate win
-// Shared CSS3D layer — live HTML assets (SmartCut, TEEPO) rendered as real iframes
-// positioned in 3D and synced to the camera. Sits above the canvas, below the UI.
-let css3d = null;
-if (!LOW_END) try {   // low-end phones skip the whole DOM-composited layer (guards exist everywhere css3d is used)
-  const cssR = new CSS3DRenderer();
-  cssR.setSize(window.innerWidth, window.innerHeight);
-  const el = cssR.domElement;
-  el.style.position = 'fixed'; el.style.top = '0'; el.style.left = '0';
-  el.style.width = '100%'; el.style.height = '100%'; el.style.pointerEvents = 'none'; el.style.zIndex = '1';
-  document.body.appendChild(el);
-  css3d = { renderer: cssR, scene: new THREE.Scene() };
-} catch (e) { console.warn('[css3d] disabled:', e); }
 let composer = null, bokeh = null, bloom = null;   // post-FX (set up below)
 let network = null;                                // data network (nodes + energy lines) — built after the beats load
 let _lastBeatIdx = 0, voidWarp = 0;                // warp burst on chapter change
@@ -372,99 +358,6 @@ const meteors = (() => {
   return { update };
 })();
 
-// ---- FRAME 2: HERO — DOM statement (the calm anchor) + TWO real project screens
-//  in frosted-glass frames, grouped under one cluster: Shadiez (PNG plane) and
-//  SmartCut (LIVE HTML via CSS3D iframe, synced to the camera). LAYOUT ONLY for now —
-//  placed statically; entrance/idle/parallax + adaptive recolor come in the next pass.
-const heroCluster = (() => {
-  const group = new THREE.Group(); group.visible = false; scene.add(group);
-  function styleVec(s) {                               // entrance/exit offset [dx, dy, dz, scaleFrom]
-    switch (s) {
-      case 'rise': return [0, -22, 0, 1];
-      case 'fall': return [0, 22, 0, 1];
-      case 'slideL': return [-34, 0, 0, 1];
-      case 'slideR': return [34, 0, 0, 1];
-      case 'depth': return [0, 0, -18, 1];
-      case 'scale': return [0, 0, 0, 0.5];
-      default: return [0, 0, 0, 1];                    // fade
-    }
-  }
-  const RMVEC = [0, 0, 0, 1], WORLD_W = 26;            // target screen world width at scale 1
-  const cards = [];
-  function addScreen(spec) {                           // each screen = a DOM container (content + liquid-glass pane + caption) on the CSS3D layer
-    let el = null, obj = null;
-    if (css3d) try {
-      el = document.createElement('div'); el.className = 'hero-screen'; el.style.width = spec.fw + 'px';
-      const src = import.meta.env.BASE_URL + spec.src;
-      const inner = spec.kind === 'iframe'
-        ? `<div class="inner" style="width:${spec.fw}px;height:${spec.fh}px"><iframe src="${src}" scrolling="no" style="width:${spec.iw}px;height:${spec.ih}px;transform:scale(${(spec.fw / spec.iw).toFixed(3)});transform-origin:top left"></iframe></div>`
-        : `<div class="inner" style="width:${spec.fw}px"><img src="${src}" alt="${spec.id}"/></div>`;
-      el.innerHTML = `<div class="frame">${inner}<div class="dim"></div><div class="glass"></div></div><div class="cap">${spec.cap}</div>`;
-      obj = new CSS3DObject(el); obj.visible = false; css3d.scene.add(obj);
-    } catch (e) { console.warn('[hero screen]', spec.id, e); }
-    cards.push({ id: spec.id, el, obj, dim: el ? el.querySelector('.dim') : null, baseScale: WORLD_W / spec.fw, enter: spec.enter || 0, liss: spec.liss, tilt: spec.tilt, focus: spec.focus0 || 0, _f: -1, _o: -1 });
-  }
-  // fw = native CSS resolution (rendered big, scaled DOWN in 3D → crisp, not upscaled-blurry); iframe at 1:1 native.
-  // 2026-09-29: the two screens left the Timeline (Yarin: "an old scrap") and no beat
-  // carries `screens` any more, so nothing is built or fetched. The layer stays for
-  // Director Mode; an addScreen({ id, kind: 'img', src, fw, cap, … }) call here brings one back
-  // (the old Shadiez / SmartCut specs and their public/assets/hero/ files are in git history).
-  // --- anchor the cluster in the Hero beat's camera frame ---
-  const C = new THREE.Vector3(), ff = new THREE.Vector3(), rt = new THREE.Vector3(), uu = new THREE.Vector3(), zc = new THREE.Vector3();
-  const baseQ = new THREE.Quaternion(), basis = new THREE.Matrix4();
-  const eul = new THREE.Euler(), pQ = new THREE.Quaternion(), _lp = new THREE.Vector3(), _eul = new THREE.Euler(), _tq = new THREE.Quaternion();
-  let placed = false, op = 0, focusIdx = 0, focusT = 0, _pt = 0;
-  function place(b) {
-    if (!b || !b.cam || !b.look) return;
-    C.set(b.cam[0], b.cam[1], b.cam[2]);
-    ff.set(b.look[0] - C.x, b.look[1] - C.y, b.look[2] - C.z).normalize();
-    uu.set(b.up?.[0] ?? 0, b.up?.[1] ?? 1, b.up?.[2] ?? 0);
-    rt.copy(ff).cross(uu).normalize(); uu.copy(rt).cross(ff).normalize();
-    zc.copy(rt).cross(uu); basis.makeBasis(rt, uu, zc); baseQ.setFromRotationMatrix(basis);
-    placed = true;
-  }
-  function update(active, t, b, scroll) {              // entrance/idle/parallax + focus rule + liquid-glass wetness
-    const dt = _pt ? Math.min(t - _pt, 0.05) : 0; _pt = t;
-    op += ((active ? 1 : 0) - op) * 0.06;
-    const vis = op > 0.004;
-    group.visible = vis;
-    for (const cd of cards) if (cd.obj) cd.obj.visible = vis;
-    if (!vis) return;
-    if (active && !placed) place(b);
-    if (!placed) return;
-    const RM = PREFERS_REDUCED;
-    if (active && !RM) { focusT += dt; if (focusT > 4.5) { focusT = 0; focusIdx = (focusIdx + 1) % cards.length; } }   // focus auto-cycles
-    const px = RM ? 0 : mouse.x, py = RM ? 0 : mouse.y, sc = RM ? 0 : (scroll || 0);
-    eul.set(py * 0.05 + sc * 0.05, -px * 0.06, 0, 'XYZ'); pQ.setFromEuler(eul);
-    group.position.copy(C).addScaledVector(rt, px * 2.5).addScaledVector(uu, -py * 1.8);   // whole-cluster parallax
-    group.quaternion.copy(baseQ).multiply(pQ);
-    group.updateMatrixWorld(true);
-    for (let i = 0; i < cards.length; i++) {
-      const cd = cards[i]; if (!cd.obj) continue;
-      const cfg = assetCfg[cd.id] || {};
-      cd.focus += (((i === focusIdx) ? 1 : 0) - cd.focus) * (RM ? 1 : 0.05);   // one screen awake at a time
-      const fo = cd.focus;
-      const ce = Math.max(0, Math.min(1, (op - cd.enter) / (1 - cd.enter))), e = RM ? op : ce * ce * (3 - 2 * ce);
-      const sv = RM ? RMVEC : styleVec(active ? (cfg.ein || 'fade') : (cfg.eout || 'fade'));
-      const dx = RM ? 0 : Math.sin(t * cd.liss.sp + cd.liss.ph) * cd.liss.ax, dy = RM ? 0 : Math.cos(t * cd.liss.sp * 0.8 + cd.liss.ph) * cd.liss.ay;
-      const zf = (cfg.z ?? -56) + (RM ? 0 : (-10 + fo * 18));   // focused screen pulls forward, unfocused pushes back
-      const xSq = Math.min(1, camera.aspect / 1.5);              // narrow (portrait) FOV: pull the raked screens toward center so they stay on-canvas
-      _lp.set((cfg.x ?? 0) * xSq + dx + (1 - e) * sv[0], (cfg.y ?? 0) + dy + (1 - e) * sv[1], zf + (1 - e) * sv[2]).applyMatrix4(group.matrixWorld);
-      cd.obj.position.copy(_lp);
-      const ry = RM ? 0 : THREE.MathUtils.degToRad((15 - fo * 9) * cd.tilt), rx = RM ? 0 : THREE.MathUtils.degToRad(5 - fo * 3);   // raked → face-on on focus
-      _eul.set(rx, ry, 0, 'XYZ'); _tq.setFromEuler(_eul); cd.obj.quaternion.copy(group.quaternion).multiply(_tq);
-      cd.obj.scale.setScalar(cd.baseScale * (cfg.scale || 1) * (0.92 + fo * 0.14) * (sv[3] + (1 - sv[3]) * e));
-      const blur = cfg.blur || 0;
-      const dimv = Math.round((1 - fo) * 50) / 100;    // 0..0.5 dark overlay (cheap — no filter re-raster of the live iframe)
-      if (cd.dim && dimv !== cd._f) { cd.dim.style.opacity = String(dimv); cd._f = dimv; }
-      if (blur > 0.05) cd.el.style.filter = `blur(${blur.toFixed(1)}px)`; else if (cd.el.style.filter) cd.el.style.filter = '';
-      const ev = Math.round(e * 100) / 100;
-      if (ev !== cd._o) { cd.el.style.opacity = String(ev); cd._o = ev; }   // only write on change → no needless re-composite
-      cd.el.classList.toggle('wet', fo > 0.5);
-    }
-  }
-  return { update };
-})();
 
 // ---- FRAME 1: OPENING (2026-10-14, Yarin: "replace with display type") ----------------------
 //  The particle wordmark and its cursor-shatter are gone: the name is the page's h1 in the
@@ -837,7 +730,7 @@ function fitFov(v) {
   return Math.min(115, THREE.MathUtils.radToDeg(2 * Math.atan(t)));
 }
 // global (non-keyframed) state that Save must persist alongside the beats
-const GLOBAL_KEYS = ['starFrac', 'nodeFrac', 'lineFrac', 'nebFrac', 'driftOn', 'fovPunch', 'warpStrength', 'warpLength', 'twinkleOn', 'linesOn', 'nebVisible', 'uiHud', 'uiHint', 'uiScale', 'nebSpd', 'nebWarp', 'nebHue', 'nebEmber', 'nebVig', 'nebGlow', 'vignette', 'grain', 'pulse', 'flare', 'breath', 'breathRoll', 'lightning', 'glowSpots', 'lightInt', 'lightReach', 'lightRate', 'glowBright', 'glowFlick', 'cursorDrive', 'waterStr', 'waterRad', 'waterAtt', 'waterDisp', 'waterSheen'];
+const GLOBAL_KEYS = ['starFrac', 'nodeFrac', 'lineFrac', 'nebFrac', 'driftOn', 'fovPunch', 'warpStrength', 'warpLength', 'twinkleOn', 'linesOn', 'nebVisible', 'uiHud', 'uiScale', 'nebSpd', 'nebWarp', 'nebHue', 'nebEmber', 'nebVig', 'nebGlow', 'vignette', 'grain', 'pulse', 'flare', 'breath', 'breathRoll', 'lightning', 'glowSpots', 'lightInt', 'lightReach', 'lightRate', 'glowBright', 'glowFlick', 'cursorDrive', 'waterStr', 'waterRad', 'waterAtt', 'waterDisp', 'waterSheen'];
 let activePunch = 0;   // 0..1 across a transition, peaks at the midpoint (for FOV punch)
 const DEF_FOV = 68, DEF_DUR = 1.6;
 // a sensible starter panel for a section: sits at its aim point, fixed orientation
@@ -1004,7 +897,6 @@ function applyGlobals() {
   livingVoid.spots.visible = FX.glowSpots;
   transitionEase = EASINGS[txEaseName] || EASINGS.smoother;
   const hud = document.querySelector('#hud'); if (hud) hud.style.display = FX.uiHud ? '' : 'none';
-  const hint = document.querySelector('#overlay .hint'); if (hint) hint.style.display = FX.uiHint ? '' : 'none';
   applyRootFont();
 }
 // Root font = 16px × the dev-only uiScale slider. There used to be a ×0.85
@@ -1025,7 +917,6 @@ function applyProjectTints() {
       return x ? parseInt(x.tint.slice(1), 16) : null;
     }
     if (b.stop === 'contact') return 0xff9e7a;
-    if (b.screens) return null;   // the screens stop keeps the chapter fallback like the Opening
     if (b.stop) return 0x4fd2ff;   // hi / about / timeline / build
     return null;                   // Opening
   });
@@ -1079,8 +970,15 @@ function rebuildDerived() {
 }
 rebuildDerived();
 if (opening.h1) {   // the name's glyphs as planes in the scene (src/name3d.js)
-  name3d = createName3D({ THREE, scene, h1: opening.h1, reduced: PREFERS_REDUCED, anisotropy: renderer.capabilities.getMaxAnisotropy(), dpr: Math.min(window.devicePixelRatio, DPR_CAP) });
-  name3d.whenReady.then((ok) => { if (!ok) return; opening.ov.classList.add('gl-name'); layoutName(); });
+  name3d = createName3D({ THREE, scene, h1: opening.h1, reduced: PREFERS_REDUCED, anisotropy: renderer.capabilities.getMaxAnisotropy(), dpr: () => Math.min(window.devicePixelRatio, DPR_CAP) });
+  name3d.whenReady.then((ok) => {
+    if (!ok) return;
+    opening.ov.classList.add('gl-name'); layoutName(); name3d.prime(renderer, camera);
+    // the body face (the role line, the pills) can swap in after the display face and move the
+    // flex-centred h1 a few px: measure again once every font has settled
+    document.fonts?.ready?.then(layoutName);
+    document.fonts?.addEventListener?.('loadingdone', layoutName);
+  });
 }
 
 // Position along the flight path at t∈[0,1], blending the straight segments with
@@ -1238,8 +1136,10 @@ function paintAnimFigure(sec) {             // phones: the DOM figure in the ope
 // How I Build's workflow (2026-10-14, src/workflow.js): a DOM canvas in the stop, drawn every
 // frame while the stop is open at its own device pixels (so it stays sharp at any size), the
 // loop starting over on each arrival. Reduced motion: one still frame, repainted on resize.
-let _wfT0 = -1;
+let _wfT0 = -1, _wfLast = 0;
 function paintWorkflow(now) {
+  if (now - _wfLast < 33) return;                // ≤ 30 fps, like the animated panels
+  _wfLast = now;
   const cv = document.querySelector('#stops .stop.in canvas[data-wf]');
   if (!cv || !cv.offsetWidth) { _wfT0 = -1; return; }
   if (_wfT0 < 0) _wfT0 = now;
@@ -1779,7 +1679,7 @@ function hidePhoneNote() {
 }
 if (opening.cta) opening.cta.addEventListener('click', () => goTo(1));   // "Start the tour", the Opening's one CTA
 function goTo(i) {
-  if (editMode) return;
+  if (editMode || !loaderDone) return;            // nothing flies under the loader (a click or key used to start the tour behind it)
   if (performance.now() - lastNav < NAV_COOLDOWN) return;
   const n = clamp(i, 0, lastIdx());
   if (n === index) return;
@@ -1910,7 +1810,7 @@ window.addEventListener('pointerup', _cLeave);
 window.addEventListener('pointercancel', _cLeave);
 
 // ---- HUD --------------------------------------------------------------------
-const overlay = document.querySelector('#overlay');
+const overlay = document.querySelector('#overlay'), opAct = overlay?.querySelector('.op-act');
 const hudBeat = document.querySelector('#hud-beat');
 const hudProgress = document.querySelector('#hud-progress');
 const hudEl = document.querySelector('#hud');
@@ -1933,19 +1833,13 @@ hudDown?.addEventListener('click', () => goTo(index + 1));
 const ASSET_DEFS = [
   { id: 'tagline',  label: 'Tagline',       sel: '#overlay .op-sub',    group: 'overlay' },   // the wrapper: the reveal owns .sub itself
   { id: 'hint',     label: 'Availability + CTA', sel: '#overlay .op-act', group: 'overlay' },
-  { id: 'card_shadiez',  label: 'Screen · Shadiez',  group: 'hero' },
-  { id: 'card_smartcut', label: 'Screen · SmartCut', group: 'hero' },
 ];
-const HERO_DEFAULTS = {       // local layout in the Hero cluster (x right, y up, z negative = into scene)
-  card_shadiez:  { x: 13, y: 9, z: -60, scale: 0.8, blur: 0, ein: 'depth', eout: 'fade' },
-  card_smartcut: { x: 17, y: -10, z: -52, scale: 0.8, blur: 0, ein: 'rise', eout: 'fade' },
-};
 const ASSET_KEY = 'voidAssets';
 // Enter/exit asymmetry, per the transition-lab rule: an exit runs at 0.7x the
 // enter's duration on the departure curve. Rise distance follows the motion
 // roadmap's state recipe (headline 16-24px, subhead 8-12px).
 const _aDefault = () => ({ text: null, size: 1, font: '', depth: 0, in: { dur: 900, delay: 120, y: 22, blur: 7, ease: 'out' }, out: { dur: 630, delay: 0, y: -12, blur: 6, ease: 'gravity' } });
-let assetCfg = {}; ASSET_DEFS.forEach((a) => { assetCfg[a.id] = a.group === 'hero' ? { ...HERO_DEFAULTS[a.id] } : _aDefault(); });
+let assetCfg = {}; ASSET_DEFS.forEach((a) => { assetCfg[a.id] = _aDefault(); });
 let assetDof = 6;            // DOF → text blur amount (px) at full defocus
 let _domDefocus = 0;
 // The house easing set, lifted from transition-lab / motion-lab: 'out' for
@@ -2021,7 +1915,9 @@ function updateAssetDOF(flying) {            // depth-of-field blur layered on t
   // animating CSS blur() re-rasterizes big text layers every frame — a top
   // jank source on phone GPUs mid-flight, and invisible at phone text sizes
   if (PREFERS_REDUCED || IS_TOUCH) { if (overlay) overlay.style.filter = ''; return; }
-  _domDefocus += ((flying ? 1 : 0) - _domDefocus) * 0.07;
+  // never on the way back to the Opening: the pills fade in there, and a filtered ancestor cut
+  // their glow and glass backdrop into rectangles (the asset reveals drop theirs for the same reason)
+  if (index === 0) _domDefocus = 0; else _domDefocus += ((flying ? 1 : 0) - _domDefocus) * 0.07;
   const db = _domDefocus * assetDof;
   if (overlay) overlay.style.filter = db > 0.03 ? `blur(${db.toFixed(2)}px)` : '';
 }
@@ -2527,7 +2423,6 @@ function applyResize(full) {
   }
   renderer.setSize(window.innerWidth, window.innerHeight);
   if (composer) composer.setSize(window.innerWidth, window.innerHeight);
-  if (css3d) css3d.renderer.setSize(window.innerWidth, window.innerHeight);
   // composer.setSize just resized every pass to full resolution — re-apply the governor's
   // bloom divisor on the height-only path too (iOS URL bar), or bloom ran 6-9× the pixels
   if (bloom) bloom.setSize((window.innerWidth / bloomDiv) | 0, (window.innerHeight / bloomDiv) | 0);
@@ -2663,7 +2558,7 @@ if (composer) try {
 } catch (e) { gradePass = null; console.warn('Grade disabled:', e); }
 
 // ---- Dev profiling handle + ?prof FPS/drawcall probe ------------------------
-const PROF = new URLSearchParams(location.search).has('prof');
+const PROF = DEV_TOOLS && new URLSearchParams(location.search).has('prof');   // dev only: an fps / draw-call line every second
 let _pf = { n: 0, t: 0, last: 0 };
 if (DEV_TOOLS) window.__void = { renderer, scene, camera, composer, bokeh, bloom, livingVoid, get info() { return renderer.info; } };
 
@@ -2772,9 +2667,7 @@ const asEl = document.querySelector('#assetpanel');
 let asSel = ASSET_DEFS[0].id;
 let _asFrame = -1;
 function frameAssets() {                          // assets that belong to the current frame
-  if (index === 0) return ASSET_DEFS.filter((a) => a.group === 'overlay');
-  const isHero = !!beats[index]?.screens;   // v18: the beat that carries the live screens
-  return ASSET_DEFS.filter((a) => isHero && a.group === 'hero');
+  return index === 0 ? ASSET_DEFS.filter((a) => a.group === 'overlay') : [];
 }
 function loadAssetFields() {
   if (!asEl) return;
@@ -2784,19 +2677,6 @@ function loadAssetFields() {
   const list = document.querySelector('#as-list');
   if (list) { list.innerHTML = defs.map((a) => `<option value="${a.id}">${a.label}</option>`).join(''); list.value = asSel; }
   const def = assetDef(asSel), c = assetCfg[asSel];
-  const isHero = def.group === 'hero';
-  const tc = document.querySelector('#as-text-ctrls'), hc = document.querySelector('#as-hero-ctrls');
-  if (tc) tc.style.display = isHero ? 'none' : '';
-  if (hc) hc.style.display = isHero ? '' : 'none';
-  if (isHero) {                                  // floating card: position / scale / transition styles
-    const setR = (id, v, fmt) => { const el = document.querySelector('#' + id); if (el) el.value = v; const o = document.querySelector('#' + id + '-v'); if (o) o.textContent = fmt ? fmt(v) : v; };
-    setR('ah-x', c.x ?? 0, (v) => Math.round(v)); setR('ah-y', c.y ?? 0, (v) => Math.round(v)); setR('ah-z', c.z ?? -60, (v) => Math.round(v));
-    setR('ah-scale', c.scale ?? 1, (v) => (+v).toFixed(2) + '×');
-    setR('ah-blur', c.blur ?? 0, (v) => (+v).toFixed(1) + 'px');
-    const ein = document.querySelector('#ah-ein'); if (ein) ein.value = c.ein || 'fade';
-    const eout = document.querySelector('#ah-eout'); if (eout) eout.value = c.eout || 'fade';
-    return;
-  }
   const txt = document.querySelector('#as-text');
   if (txt) {
     txt.disabled = false;
@@ -2840,13 +2720,6 @@ function loadAssetFields() {
   if (fni) fni.addEventListener('change', () => { assetCfg[asSel].font = fni.value; applyAssetStyle(assetDef(asSel)); saveAssets(); });
   const dpi = document.querySelector('#as-depth');
   if (dpi) dpi.addEventListener('input', () => { assetCfg[asSel].depth = parseFloat(dpi.value); applyAssetStyle(assetDef(asSel)); const o = document.querySelector('#as-depth-v'); if (o) o.textContent = parseFloat(dpi.value) + 'px'; saveAssets(); });
-  const ahBind = (id, key, fmt) => {              // floating-card position/scale → live into heroCluster
-    const el = document.querySelector('#' + id); if (!el) return;
-    el.addEventListener('input', () => { const v = parseFloat(el.value); assetCfg[asSel][key] = v; const o = document.querySelector('#' + id + '-v'); if (o) o.textContent = fmt ? fmt(v) : v; saveAssets(); });
-  };
-  ahBind('ah-x', 'x', (v) => Math.round(v)); ahBind('ah-y', 'y', (v) => Math.round(v)); ahBind('ah-z', 'z', (v) => Math.round(v)); ahBind('ah-scale', 'scale', (v) => v.toFixed(2) + '×'); ahBind('ah-blur', 'blur', (v) => v.toFixed(1) + 'px');
-  const ahEin = document.querySelector('#ah-ein'); if (ahEin) ahEin.addEventListener('change', () => { assetCfg[asSel].ein = ahEin.value; saveAssets(); });
-  const ahEout = document.querySelector('#ah-eout'); if (ahEout) ahEout.addEventListener('change', () => { assetCfg[asSel].eout = ahEout.value; saveAssets(); });
   const prev = document.querySelector('#as-preview');
   if (prev) prev.addEventListener('click', () => replayAsset(assetDef(asSel)));
   loadAssetFields();
@@ -2878,10 +2751,8 @@ const uxEl = document.querySelector('#uxpanel');
 (() => {
   if (!uxEl || !DEV_TOOLS) return;          // preview-only build
   const hud = document.querySelector('#hud');
-  const overlayHint = document.querySelector('#overlay .hint');
   const chk = (id, key, fn) => { const el = document.querySelector('#ux-' + id); if (!el) return; el.checked = !!FX[key]; el.addEventListener('change', () => { FX[key] = el.checked; fn(el.checked); }); };
   chk('hud', 'uiHud', (v) => { if (hud) hud.style.display = v ? '' : 'none'; });
-  chk('hint', 'uiHint', (v) => { if (overlayHint) overlayHint.style.display = v ? '' : 'none'; });
   const scale = document.querySelector('#ux-scale'), scaleOut = document.querySelector('#ux-scale-v');
   if (scale) {
     scale.value = FX.uiScale; if (scaleOut) scaleOut.textContent = (+FX.uiScale).toFixed(2) + '×';
@@ -2922,7 +2793,7 @@ function perfGovern(dt) {
     bloomDiv = 3;
     applyResize(true);
   }
-  console.info('[void] perf governor -> tier', _perfTier);
+  if (DEV_TOOLS) console.info('[void] perf governor -> tier', _perfTier);
 }
 
 let _barShown = false;                       // the bar's show/hide is idempotent, but don't touch the DOM every frame
@@ -2954,7 +2825,8 @@ function tickLab() {
 }
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.05); // seconds since last frame (clamped for tab-switches)
-  tickLab(); tickExhibits(); tickAnimPanels(performance.now()); paintWorkflow(performance.now());
+  tickLab(); tickExhibits(); tickAnimPanels(performance.now());
+  try { paintWorkflow(performance.now()); } catch (e) { if (!animate._wferr) { console.error('[workflow]', e); animate._wferr = 1; } }   // a canvas must never stop the render loop
   elapsed += dt;
   const t = elapsed;
   perfGovern(dt);
@@ -3014,11 +2886,6 @@ function animate() {
   if (gradePass) { gradePass.uniforms.uTime.value = t; gradePass.uniforms.uDark.value = FX.vignette; gradePass.uniforms.uGrain.value = FX.grain; }
   if (network) network.update(t, (FX.driftOn && !PREFERS_REDUCED) ? 1 : 0, _FAR, 0);   // data network: drift (the cursor stir and near-pointer glow are gone)
   meteors.update(dt, !editMode && index === 0 && !PREFERS_REDUCED);   // falling stars on the start frame only (none under reduced motion)
-  {                                          // Frame 2 — the grouped Hero cluster (assets parallax to cursor + scroll)
-    const heroOn = !editMode && !!beats[index]?.screens && !isCompact();   // v18: the Timeline beat carries the two live screens; portrait screens keep the rows readable
-    const hsc = heroOn ? Math.max(-0.5, Math.min(0.5, progress * Math.max(1, lastIdx()) - index)) : 0;
-    heroCluster.update(heroOn, t, beats[index], hsc);
-  }
   {                                          // per-chapter color world
     const [bi, bd] = nearestBeat(bCam);
     const s = clamp(1 - Math.sqrt(bd) / curFX.colorReach, 0, 1) * curFX.colorIntensity;   // 1 at a section, 0 far between
@@ -3128,13 +2995,19 @@ function animate() {
     // well after the name in the void had parted around the camera (2026-10-14)
     const showOpening = !editMode && index === 0 && progress < 0.04;
     for (const a of ASSET_DEFS) if (a.group === 'overlay') (showOpening ? showAsset : hideAsset)(a);
-    if (overlay && overlay.inert === showOpening) overlay.inert = !showOpening;   // the CTA can't be clicked or tabbed to once it has faded
+    // the role line and the pills can't be clicked or tabbed to before the reveal or once they
+    // have faded; the h1 (the page's name for screen readers) stays out of `inert` on every stop
+    const live = showOpening && overlay?.classList.contains('revealed');
+    if (opAct && opAct.inert === live) opAct.inert = !live;
+    overlay?.classList.toggle('away', !editMode && !showOpening);   // the DOM name (the no-font fallback) leaves with them
     updateAssetDOF(!editMode && !!tween);              // text defocuses while flying
     if (asEl && !asEl.hidden && index !== _asFrame) loadAssetFields();   // panel follows the frame you fly to
   } catch (e) { if (!animate._aerr) { console.error('[assets]', e); animate._aerr = 1; } }
 
   // the name in the void: arrival, drift, and the parting as the camera flies through it to Hi
-  const nameP = name3d ? name3d.update(performance.now() / 1000, camera.position, !editMode && progress * Math.max(1, lastIdx()) < 1.25) : 1;
+  let nameP = 1;
+  try { if (name3d) nameP = name3d.update(performance.now() / 1000, camera.position, !editMode && progress * Math.max(1, lastIdx()) < 1.25); }
+  catch (e) { if (!animate._nerr) { console.error('[name3d]', e); animate._nerr = 1; } }
   if (bokeh && bokeh.uniforms && bokeh.uniforms.focus) {   // lock focus onto the NEAREST section
     if (editMode) _focusV.copy(controls.target);
     else if (nameP < 0.35 && name3d.shown() && nearestBeat(bCam)[0] === 0) _focusV.copy(name3d.centre);   // the Opening racks onto the name
@@ -3246,7 +3119,6 @@ function animate() {
   }
   if (composer) composer.render(); else renderer.render(scene, camera);
   firstFrameDone = true;                     // loader gates its 100% on this — no black-frame pop on slow devices
-  if (css3d && css3d.scene.children.length) css3d.renderer.render(css3d.scene, camera);   // live HTML assets layer, synced to the camera — skipped while empty (no beat carries screens since 2026-09-29)
   if (PROF) {
     const now = performance.now();
     if (_pf.last) { _pf.t += now - _pf.last; _pf.n++; }

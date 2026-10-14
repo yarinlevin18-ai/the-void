@@ -1,7 +1,7 @@
 # CLAUDE.md — context for "The Void" portfolio
 
 Read this first. It captures the locked decisions and where everything lives so
-you can pick up the build with full context. Last synced to code: **v28 — the Aperture loader, the name set in the void (`name3d.js`), Doto gone, faster first hops, the How I Build workflow graphic, Cursor Buddy's browser + drawing, Sabai out of the flight, Agent Control's animated process demo (2026-10-14)**; v26 — the final Gateway clips on a 16:9 panel, screen-sized panel canvases, a new Cursor Buddy scene (same day); v25 — random entrances on every stop and every desktop panel, re-recorded walkthroughs, the Writing stop removed again (2026-10-13); v24 — a smoother and faster flight; v23 — Gate Opener out of the flight, the Gateway exhibit, walkthrough clips on SHADIEZ and Agent Control, the glass-pill bar (2026-10-13); before that v22 — wrap-up review + owner's mark (2026-09-29), every phone size and short desktop windows (2026-09-30).
+you can pick up the build with full context. Last synced to code: **the 2026-10-14 pre-publish audit (see **Pre-publish audit**); v28 — the Aperture loader, the name set in the void (`name3d.js`), Doto gone, faster first hops, the How I Build workflow graphic, Cursor Buddy's browser + drawing, Sabai out of the flight, Agent Control's animated process demo (2026-10-14)**; v26 — the final Gateway clips on a 16:9 panel, screen-sized panel canvases, a new Cursor Buddy scene (same day); v25 — random entrances on every stop and every desktop panel, re-recorded walkthroughs, the Writing stop removed again (2026-10-13); v24 — a smoother and faster flight; v23 — Gate Opener out of the flight, the Gateway exhibit, walkthrough clips on SHADIEZ and Agent Control, the glass-pill bar (2026-10-13); before that v22 — wrap-up review + owner's mark (2026-09-29), every phone size and short desktop windows (2026-09-30).
 
 ## What this is
 A 3D, scroll-driven portfolio for **Yarin Levin — AI-native developer**. The
@@ -44,14 +44,14 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
 
 ## Locked decisions
 - **Visual direction: DARK void**, one color story — navy/cyan is *the* palette.
-  Chapter tints per beat carry brand hue (SHADIEZ coastal blue, TEEPO green,
-  Sabai/Kiara mustard); the contact beat's ember is the single warm accent.
+  Chapter tints per beat carry brand hue (SHADIEZ / Agent Control coastal blue,
+  Thesis Agent mustard, `tint` in `profile.js`); the contact beat's ember is the single warm accent.
   Final grade pass = vignette (0.45) + fine grain on every device.
 - **Two typefaces:** Bricolage Grotesque (display, `--f-display`) and Schibsted
   Grotesk (body, `--f-body`, also aliased `--f`) — OFL, self-hosted Latin-subset woff2 in
   `public/fonts`, preloaded, ~137KB. No external requests. **Doto, the dot-matrix label face,
   left on 2026-10-14** (Yarin: "anything that has this font, change it to the font of the
-  website"): the labels (eyebrows, PROBLEM / DECISION, dates, stack lines, the build log, the
+  website"): the labels (eyebrows, PROBLEM / DECISION, dates, stack lines, the
   lab card) are Schibsted 600 caps at .1em, the Hi status a plain line, the proof counters
   Bricolage; `--f-mono` is gone and `tests/name3d.test.js` keeps it out. The lab's code tab
   and the canvas demos keep the system monospace. (The extruded 3D text tool —
@@ -77,9 +77,7 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   stood 1154 px inside a 900 px viewport, hiding the repo cards below the fold
   where the wheel (bound to the flight) can't reach them. A second block at
   `(max-height: 820px)` covers 1366x768. Both carry `(min-height: 560px)` so
-  landscape phones keep their own tuning. The live feed's box was `3.3em`, two
-  rows at a 1.65 line-height, while three rows render — the third was sliced in
-  half; it is now three rows plus the padding `border-box` folds in.
+  landscape phones keep their own tuning.
   **Portrait screens don't use the WebGL panels at all** (2026-09-17): every
   panel is zeroed in the render loop and the stop's imagery comes from DOM
   `<figure class="stop-img">` elements that `render.js` emits into the stop
@@ -140,8 +138,7 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   PROBLEM / DECISION / the list are run-in labels on every project stop (each label +
   sentence is its own `<div>` inside the `<dl>` — Safari only balances real blocks),
   and the three list stops show a 52 % screenshot (42 % under 690 px tall). The under-690
-  portrait tier also shrinks the Hi portrait, How I Build's method lines and drops the build
-  log's commit counts; How I Build's top padding is `max(12.5vh, 6.1rem)` because the bar is a
+  portrait tier also shrinks the Hi portrait, How I Build's method lines; How I Build's top padding is `max(12.5vh, 6.1rem)` because the bar is a
   fixed 94 px. Since 2026-09-30 every stop fits every phone size, the iPhone SE and landscape
   included (see **Phone sizes**). The
   same audit fixed the gateway copy: Hono not Fastify, and "every agent I run goes
@@ -264,9 +261,8 @@ repo connected, **push to main auto-deploys** (verified 2026-08-30; the old
   per stop (≤600ms, disabled under reduced-motion). Flight keys (Space/arrows)
   yield to a focused button or link inside a stop or the bar. A beat may carry
   a `panels[]` array (extra WebGL image meshes beyond its single `panel`, e.g.
-  About's three photos) and a `screens: true` flag (the CSS3D hero-screen
-  layer now anchors to whichever beat carries it, not to a stop named
-  `hero`). `src/render.js` holds the pure `(data) => HTMLElement` renderers
+  About's photos). The `screens: true` flag and the CSS3D hero-screen layer it
+  fed were deleted in the 2026-10-14 audit (no beat had carried it since 09-29). `src/render.js` holds the pure `(data) => HTMLElement` renderers
   (hi, about, timeline, build, project, contact) — no Three.js imports,
   node-tested.
 - **Deep links:** `#work` `#about` `#cv` `#contact` `#top` fly to that stop
@@ -391,24 +387,24 @@ folds a second featured project in as a compact row under the links.
 ## Code map
 | File | Lines | What |
 |---|---|---|
-| `src/main.js` | ~3,300 | Scene, network, nebula, flight, Director Mode, perf tiers, save/migrate, void dimming, HUD, animated panels, lab mount |
+| `src/main.js` | ~3,250 | Scene, network, nebula, flight, Director Mode, perf tiers, save/migrate, void dimming, HUD, animated panels, lab mount |
 | `src/buddy.js` | ~440 | Cursor Buddy's product loop on a canvas (panel texture + phone figure): the answer, then the browser and the drawing; node-tested timeline and robot path |
 | `src/workflow.js` | ~400 | How I Build's workflow motion graphic (stage + rail layouts), node-tested scenes (`tests/workflow.test.js`) |
-| `src/name3d.js` | ~150 | The Opening's name as glyph planes in the scene: measured from the hidden h1, the arrival, the sheen and the parting (`partAt` / `revealAt` node-tested in `tests/name3d.test.js`) |
+| `src/name3d.js` | ~165 | The Opening's name as glyph planes in the scene: measured from the hidden h1, the arrival, the sheen and the parting (`partAt` / `revealAt` node-tested in `tests/name3d.test.js`) |
 | `src/agent.js` | ~370 | Agent Control's process loop on a canvas (same plumbing as buddy.js: `ANIMS` in main.js), node-tested (`tests/agent.test.js`) |
 | `src/lab.js` / `src/labcard.js` | ~45 / ~115 | Timeline lab card: `cubicBezier` (node-tested) and the drag/loop/code-tab wiring |
-| `scripts/buildlog.js` | ~55 | Build-time git-history summary for How I Build (the workflow graphic reads its commits, days and tests), node-tested; snapshot in `src/content/buildlog.json`. Dates are UTC (`TZ=UTC`, `format-local`), like `today` |
-| `scripts/owner.js` / `scripts/stamp.js` | ~60 / ~170 | The owner's mark: bundle banners, humans.txt, the no-JS notice / XMP + EXIF in every image (see Owner's mark) |
-| `src/panels.js` | 96 | DOM stop layer: builds/shows/hides stops (inert + aria-hidden), count-up, print/copy |
-| `src/render.js` | ~210 | Pure HTML renderers (hi, about, timeline + lab card, build + build log, project + abilities / potential list, contact + finale) incl. the portrait-only `stop-img` figures, node-tested |
+| `scripts/buildlog.js` | ~105 | Build-time git-history summary for How I Build (the workflow graphic reads its commits, days and tests), node-tested; snapshot in `src/content/buildlog.json`. Dates are UTC (`TZ=UTC`, `format-local`), like `today` |
+| `scripts/owner.js` / `scripts/stamp.js` | ~60 / ~185 | The owner's mark: bundle banners, humans.txt, the no-JS notice / XMP + EXIF in every image (see Owner's mark) |
+| `src/panels.js` | ~195 | DOM stop layer: builds/shows/hides stops (inert + aria-hidden), count-up, print/copy |
+| `src/render.js` | ~245 | Pure HTML renderers (hi, about, timeline + lab card, build + workflow canvas, project + abilities / potential list, contact + finale) incl. the portrait-only `stop-img` figures, node-tested |
 | `src/exhibit.js` / `src/gateway.js` | ~140 / ~30 | Exhibit + walkthrough controllers (`initExhibit`, `initClip`) and the gateway's budget rule, node-tested (`tests/exhibit.test.js`) |
-| `src/bar.js` | 53 | Fixed top bar: name + role, availability, Work, About, phone / LinkedIn / GitHub, Copy email |
+| `src/bar.js` | ~65 | Fixed top bar: name + role, availability, Work, About, phone / LinkedIn / GitHub, Copy email |
 | `src/hash.js` | 28 | Deep-link resolver: fragment/anchor → stop index, prototype-free, node-tested |
-| `src/printcv.js` | 54 | Print-only CV (moved out of the old dossier.js) |
-| `src/content/profile.js` | 269 | **Single source of truth** for bio, CV, intro/method/proof, 9 featured (6 flight stops + AeroCy/SmartCut rows + TEEPO for How I Build) + shipped/labs projects, links, status |
-| `src/style.css` | ~1,260 | All styling incl. the phone tiers (portrait, small, SE, landscape — last in the file), the short-desktop tiers + print CV |
-| `index.html` | ~410 | Shell, loader, editor panels, JSON-LD, noscript skim path |
-| `public/previews/*.webp` | | teepo · aerocy · shadiez · smartcut · llm-gateway · thesis · gate-opener · kiaras-club (1400–2400 px wide, except gate-opener: a 1000×1600 phone capture; panel canvases take a 1600 px long side on desktop, 1024 on touch). Cursor Buddy and Agent Control have none — `buddy.js` / `agent.js` draw them |
+| `src/printcv.js` | ~65 | Print-only CV (moved out of the old dossier.js) |
+| `src/content/profile.js` | ~345 | **Single source of truth** for bio, CV, intro/method/proof, 8 featured (5 flight stops + AeroCy/SmartCut rows + TEEPO for How I Build) + shipped/labs projects, links, status |
+| `src/style.css` | ~1,395 | All styling incl. the phone tiers (portrait, small, SE, landscape — last in the file), the short-desktop tiers + print CV |
+| `index.html` | ~355 | Shell, loader, editor panels, JSON-LD, noscript skim path |
+| `public/previews/*.webp` | | teepo · aerocy · shadiez · smartcut · llm-gateway · thesis (1400–2400 px wide; gate-opener and kiaras-club left with their stops; no stop shows teepo / aerocy / smartcut (they are `also` rows or How I Build cards), but `tests/profile.test.js` wants every featured entry to carry its `img`; panel canvases take a 1600 px long side on desktop, 1024 on touch). Cursor Buddy and Agent Control have none — `buddy.js` / `agent.js` draw them |
 | `public/assets/me/` | | portrait 4:5 (1000×1250, centred, head to knees; 19.2×24 panel) + 2 About panels: FIDF stage 4:3 (logo + speaker, no black rig band; 18×13.5) and the Nova memorial at Re’im 3:4 (10.5×14). Re-cut 2026-09-29 from the originals in `~/.claude/uploads/…` (mild grade + unsharp, q88); the lectern shot was a crop of the stage and is gone. Panel textures keep the panel's aspect (long side 1600, 1024 on touch) — until 2026-09-29 the height was capped at 1024, so every portrait panel was a stretched square |
 
 Deps: `three` 0.169 and `vite` 8 (+ `happy-dom` for tests). No React.
@@ -446,7 +442,7 @@ Safari is still unchecked (the headless simulator can't be rotated from here).
   tighter project frame (1366 × 657 ran 8-20 px off before, production included).
 - **Short desktop windows** (a 1080p laptop at Windows' 150 % is 1280 × 720, and the taskbar
   and toolbars leave 560-600 px): at ≤ 640 px How I Build goes to two columns (method beside
-  the build log and the proof, as on a landscape phone), About, the Timeline and the project
+  the workflow rail and the proof, as on a landscape phone), About, the Timeline and the project
   stops tighten, and the group labels drop to 13vh, level with the text column; under 600 px
   PROBLEM / DECISION run in and the counters take a line each (and 900-1099 px wide drops the
   log's gloss). All three tiers sit after every stop rule, before the bar. Before them, the
@@ -556,6 +552,33 @@ From the living-systems handoff: a project stop may move instead of showing a st
 - Known, pre-existing (the live site does it too): at 640 × 360 landscape How I Build's
   words end 30 px under the fold, so the stop reads first.
 
+### Pre-publish audit (2026-10-14, Yarin: "any errors or bugs no matter how relevant fix it")
+Swept every stop at 12 sizes (1920 × 1080 down to 667 × 331, plus reduced motion) for console /
+page / request errors and for words under the bar, the chevrons or the fold — all clean after:
+- **The loader blocks input.** `#loader` only takes `pointer-events: none` once `.done`, and
+  `goTo()` returns until `loaderDone` — a click or ▼ during the load used to start a flight
+  behind the iris.
+- **The Opening stays accessible.** Only `.op-act` (the CTA row) goes `inert` while the type is
+  hidden or the flight has left; `#overlay` itself never does, or the h1 left the a11y tree.
+  No DOF blur on `#overlay` at index 0 (a filter cut the pills' glow into boxes, see Loader).
+- **name3d:** the glyph canvases follow the live DPR (a getter) and repaint when the scale
+  changes; a canvas that changes size disposes its GL texture first (three r169 allocates
+  storage once); `fontReady` only resolves true once `document.fonts.check` passes; `prime()`
+  compiles the glyphs and uploads their textures behind the loader; layout re-runs on
+  `document.fonts.ready` / `loadingdone`.
+- **Canvases:** `rr()` clamps negative sizes (arcTo throws), the workflow graphic is throttled to
+  30 fps and both it and name3d are try/caught in the render loop (one bad frame can't stop the
+  void); the workflow rail drains at the loop's end, its fonts went up to 12.5 / 13.5 px.
+- **Windows builds:** `scripts/buildlog.js` calls `execFileSync('git', [...])` — `execSync`
+  went through cmd.exe, which read the `|` in `--format` as a pipe. `__BUILDLOG__` ships only
+  `{ tests, commits, activeDays }`, the three fields the page reads.
+- **Dead code out:** the CSS3D layer and hero screens (main.js, index.html, style.css), the
+  `uiHint` FX key, `kiaras-club.webp`; dev-only logs gated on `DEV_TOOLS`; `npm audit fix`.
+- **Gateway fits:** at 1180+ wide and 641-820 tall its PROBLEM / DECISION run in (1366 × 768
+  held the wheel by 78 px); the tier starts at 641 because its specificity beat the ≤ 640 rule
+  that hides them (1280 × 600 ran 20 px off). 900-1179 × ≤ 600 drops the Also row's line.
+- **No-JS page** is set in the site's fonts with readable cyan links.
+
 ### Owner's mark (2026-09-29, Yarin: "make sure that everything is watermarked to my name")
 Every file the site ships names him, all from `profile.js`:
 - **Page:** `<meta name="author">`, `<link rel="author" href="/humans.txt">`,
@@ -633,7 +656,7 @@ export tuned `BEATS` and paste into `DEFAULT_BEATS`.
   panel textures — no panel image fetch, draw or upload, since those screens only
   show the DOM figures; crossing the compact line on resize rebuilds them, and
   Director Mode swaps real textures in while it's open (`setEdit`).
-- `LOW_END` (touch + ≤4GB or ≤480px) — also skips the whole CSS3D layer.
+- `LOW_END` (touch + ≤4GB or ≤480px) — the fewest nebula raymarch steps.
 - **Adaptive governor** (touch only, one-way): fps EMA < 45 → tier 1 (smaller
   raymarch) → tier 2 (DPR 1, nebula every 3rd frame, bloom at 1/3 res).
 - `PREFERS_REDUCED` — turns off "signs of life" (link traffic, node flares,
@@ -646,7 +669,7 @@ export tuned `BEATS` and paste into `DEFAULT_BEATS`.
 npm install
 npm run dev      # http://localhost:5173  (DEV_TOOLS on → E/B/T/U/A work)
 npm run build    # runs the test suite, then vite build → dist/
-npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash, save, assets, domain, lab, buddy, buildlog, owner, stamp, css, exhibit, agent, name3d, workflow (happy-dom for the DOM ones), 132 passing
+npm test         # node --test tests/*.test.js — profile, render, bar, panels, printcv, globals, hash, save, assets, domain, lab, buddy, buildlog, owner, stamp, css, exhibit, agent, name3d, workflow, noscript (happy-dom for the DOM ones), 132 passing
 npm run stamp    # the owner's name into any new image under public/ (the test suite fails until it's done)
 npx vite preview --host   # the production build with vercel.json's headers (CSP) — `void-preview` in .claude/launch.json
 ```

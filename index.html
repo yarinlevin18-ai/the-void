@@ -11,7 +11,7 @@
     <link rel="author" href="/humans.txt" />
     <!-- No JavaScript: drop the fixed 3D chrome (the loader alone is an opaque z-50 sheet)
          and restore page scroll, so the <noscript> skim path at the end of <body> is readable. -->
-    <noscript><style>#loader,#scene,#overlay,#hud,#bar,#stops{display:none!important}html,body{overflow:auto!important;height:auto!important}</style></noscript>
+    <noscript><style>#loader,#scene,#overlay,#hud,#bar,#stops{display:none!important}html,body{overflow:auto!important;height:auto!important}.nojs h1,.nojs h2{font-family:"Bricolage","Helvetica Neue",Arial,sans-serif;letter-spacing:-.01em}.nojs a{color:#7fd8ff}</style></noscript>
     <link rel="canonical" href="https://yarinlevin.com/" />
     <!-- Social share cards (og:image must be an absolute URL for scrapers) -->
     <meta property="og:type" content="website" />
@@ -84,7 +84,7 @@
     <div id="stops" role="region" aria-label="Sections"></div>
 
     <div id="hud">
-      <p class="sr-only" aria-live="polite"><span id="hud-beat">Opening</span>, <span id="hud-progress">1 / 13</span></p>
+      <p class="sr-only" aria-live="polite"><span id="hud-beat">Opening</span>, <span id="hud-progress">1 / 11</span></p>
       <div class="hud-arrows">
         <button type="button" id="hud-up" aria-label="Previous section"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 10.5 8 5.5l5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button type="button" id="hud-down" aria-label="Next section"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 5.5 5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -203,7 +203,6 @@
 
       <div class="fx-group">Interface</div>
       <label class="fx-chk"><input id="ux-hud" type="checkbox" checked /> HUD readout</label>
-      <label class="fx-chk"><input id="ux-hint" type="checkbox" checked /> "Scroll to fly" hint</label>
 
       <div class="fx-group">Scale</div>
       <div class="fx-row"><label>UI size</label><input id="ux-scale" type="range" min="0.8" max="1.4" step="0.05" /><span id="ux-scale-v"></span></div>
@@ -241,18 +240,6 @@
       <div class="fx-group">Depth of field</div>
       <div class="fx-row"><label>DOF → text</label><input id="as-dof" type="range" min="0" max="24" step="0.5" /><span id="as-dof-v"></span></div>
       </div><!-- /as-text-ctrls -->
-
-      <div id="as-hero-ctrls" style="display:none">
-        <div class="fx-group">Position</div>
-        <div class="fx-row"><label>X</label><input id="ah-x" type="range" min="-60" max="60" step="1" /><span id="ah-x-v"></span></div>
-        <div class="fx-row"><label>Y</label><input id="ah-y" type="range" min="-50" max="50" step="1" /><span id="ah-y-v"></span></div>
-        <div class="fx-row"><label>Depth</label><input id="ah-z" type="range" min="-140" max="-18" step="1" /><span id="ah-z-v"></span></div>
-        <div class="fx-row"><label>Scale</label><input id="ah-scale" type="range" min="0.2" max="2" step="0.05" /><span id="ah-scale-v"></span></div>
-        <div class="fx-row"><label>Blur</label><input id="ah-blur" type="range" min="0" max="14" step="0.5" /><span id="ah-blur-v"></span></div>
-        <div class="fx-group">Transitions</div>
-        <div class="fx-row"><label>Enter</label><select id="ah-ein"><option value="fade">fade</option><option value="rise">rise</option><option value="fall">fall</option><option value="scale">scale</option><option value="slideL">slide L</option><option value="slideR">slide R</option><option value="depth">depth</option></select></div>
-        <div class="fx-row"><label>Exit</label><select id="ah-eout"><option value="fade">fade</option><option value="rise">rise</option><option value="fall">fall</option><option value="scale">scale</option><option value="slideL">slide L</option><option value="slideR">slide R</option><option value="depth">depth</option></select></div>
-      </div>
 
       <div class="fx-row btns2"><button id="as-preview">Replay in ▸</button></div>
       <div class="fx-hint">A to hide · live · play mode · saved</div>
@@ -324,7 +311,7 @@
     <!-- No-JS / crawler fallback: the whole story in plain text.
          The flight stops (src/panels.js) are the interactive version of this same content. -->
     <noscript>
-      <div style="max-width:640px;margin:3rem auto;padding:0 1.2rem;font-family:monospace;color:#cfe8ff;line-height:1.6">
+      <div class="nojs" style="max-width:640px;margin:3rem auto;padding:0 1.2rem;font-family:'Schibsted','Helvetica Neue',Arial,sans-serif;color:#cfe8ff;line-height:1.6">
         <h1>Yarin Levin — AI-native developer</h1>
         <p><strong>Hi, I’m Yarin Levin.</strong> AI-native developer · B.A. student at Ben-Gurion · open to work.
            This is my CV as a landing page. Who I am, what I built, and how to reach me.</p>

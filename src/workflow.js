@@ -64,7 +64,7 @@ const eio = (v) => { v = clamp01(v); return v < 0.5 ? 4 * v * v * v : 1 - Math.p
 const lerp = (a, b, v) => a + (b - a) * v;
 
 function rr(ctx, x, y, w, h, r) {
-  r = Math.min(r, w / 2, h / 2);
+  w = Math.max(0, w); h = Math.max(0, h); r = Math.max(0, Math.min(r, w / 2, h / 2));   // arcTo throws on a negative radius
   ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
   ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
 }
@@ -121,9 +121,13 @@ function stage(ctx, W, t, o) {
   ctx.save(); rr(ctx, 0.5, 0.5, W - 1, H - 1, 10); ctx.clip();
   // a faint dot grid: the void's network, flattened
   ctx.fillStyle = 'rgba(79,210,255,.07)';
-  for (let y = 54; y < 262; y += 18) for (let x = m + 6; x < W - m; x += 18) { ctx.beginPath(); ctx.arc(x, y, 0.9, 0, Math.PI * 2); ctx.fill(); }
+  ctx.beginPath();                                       // one path, one fill: ~400 dots
+  for (let y = 54; y < 262; y += 18) for (let x = m + 6; x < W - m; x += 18) { ctx.moveTo(x + 0.9, y); ctx.arc(x, y, 0.9, 0, Math.PI * 2); }
+  ctx.fill();
 
-  // the rail: five story bars
+  // the rail: five story bars, which drain with everything else at the loop's end (they used to
+  // sit full until the wrap, then snap empty)
+  ctx.globalAlpha = fadeOut;
   const segW = (W - 2 * m - 4 * 10) / 5;
   SCENES.forEach((s, i) => {
     const x = m + i * (segW + 10), p = t >= END ? 1 : k(t, s.at, sceneEnd(i)), on = i === si && t < END;
@@ -360,22 +364,22 @@ function rail(ctx, W, t, o) {
   const x0 = m + 22, x1 = W - m - 22, step = (x1 - x0) / 4, ny = 32;
   // the track, filled to the current step, with a packet riding the live segment
   ctx.strokeStyle = C.ghost; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x0, ny); ctx.lineTo(x1, ny); ctx.stroke();
-  const p = t >= END ? 4 : si + k(t, SCENES[si].at, sceneEnd(si));
+  const p = t >= END ? 4 * fade : si + k(t, SCENES[si].at, sceneEnd(si));   // drains back at the loop's end
   ctx.strokeStyle = C.cyan; ctx.beginPath(); ctx.moveTo(x0, ny); ctx.lineTo(x0 + step * Math.min(4, p), ny); ctx.stroke();
   SCENES.forEach((s, i) => {
-    const x = x0 + i * step, on = i === si && t < END, done = i < si || t >= END;
+    const x = x0 + i * step, on = i === si && t < END, done = t >= END ? i <= p + 0.01 : i < si;
     if (on) { const q = (t * 0.9) % 1; ctx.strokeStyle = `rgba(79,210,255,${0.6 * (1 - q)})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, ny, 13 + q * 8, 0, Math.PI * 2); ctx.stroke(); }
     ctx.beginPath(); ctx.arc(x, ny, 13, 0, Math.PI * 2);
     ctx.fillStyle = on ? '#0d3346' : done ? '#0b2231' : '#08121c'; ctx.fill();
     ctx.strokeStyle = on || done ? C.cyan : C.line; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.strokeStyle = on ? C.ink : done ? C.cyan : C.faint; ctx.lineWidth = 1.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     ICON[i](ctx, x, ny);
-    font(ctx, `600 11px ${BODY}`, 0.9); ctx.textAlign = 'center'; ctx.fillStyle = on ? C.ink : done ? C.cyan : C.faint;
-    ctx.fillText(s.label.toUpperCase(), x, 62);
+    font(ctx, `600 12.5px ${BODY}`, 0.9); ctx.textAlign = 'center'; ctx.fillStyle = on ? C.ink : done ? C.cyan : C.faint;
+    ctx.fillText(s.label.toUpperCase(), x, 63);   // 12.5 / 13.5 units: ≥ 12 px on a phone's rail
   });
   // the caption: what is happening now (and in 04 the real test count)
   ctx.save(); ctx.globalAlpha = fade * eo(k(t, SCENES[si].at + 0.05, SCENES[si].at + 0.35));
-  font(ctx, `500 12.5px ${BODY}`); ctx.fillStyle = C.body; ctx.textAlign = 'center';
+  font(ctx, `500 13.5px ${BODY}`); ctx.fillStyle = C.body; ctx.textAlign = 'center';
   const cap = si === 3 ? `${Math.round(eo(k(t, 10.2, 11.2)) * o.tests)} tests passing, then shipped.` : SCENES[si].cap;
   ctx.fillText(fit(ctx, cap, W - 2 * m), W / 2, 88);
   ctx.restore(); ctx.textAlign = 'left';
